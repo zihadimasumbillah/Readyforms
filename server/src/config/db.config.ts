@@ -23,11 +23,11 @@ if (connectionUrl) {
   config = {
     dialect: 'postgres',
     dialectOptions: sslOptions,
-    logging: process.env.NODE_ENV === 'development'
+    logging: process.env.NODE_ENV === 'development' ? console.log : false
   };
   
   // Add the connection URL (can't use url property directly with TypeScript)
-  (config as any).connectionUri = connectionUrl;
+  (config as any).url = connectionUrl;
 } else {
   // Fall back to individual connection parameters
   config = {
@@ -38,7 +38,7 @@ if (connectionUrl) {
     port: parseInt(process.env.PGPORT || process.env.POSTGRES_PORT || '5432', 10),
     dialect: 'postgres',
     dialectOptions: sslOptions,
-    logging: process.env.NODE_ENV === 'development'
+    logging: process.env.NODE_ENV === 'development' ? console.log : false
   };
 }
 
