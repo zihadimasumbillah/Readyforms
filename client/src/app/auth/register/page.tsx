@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { authService } from "@/lib/api/auth-service";
+import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,6 +27,7 @@ export default function RegisterPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { register: registerUser } = useAuth();
 
   const { register, handleSubmit, formState: { errors } } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
@@ -43,14 +44,14 @@ export default function RegisterPage() {
     setError(null);
     
     try {
-      // We don't need confirmPassword for the API call
-      const { confirmPassword, ...registerData } = data;
-      await authService.register(registerData);
-      router.push("/");
-      router.refresh();
+      if (registerUser) {
+        await registerUser(data.name, data.email, data.password);
+        router.push("/dashboard");
+        router.refresh();
+      }
     } catch (err: any) {
       console.error("Registration error:", err);
-      setError(err.response?.data?.message || "Failed to register. Please try again.");
+      setError(err.message || "Failed to register. Please try again.");
     } finally {
       setIsLoading(false);
     }

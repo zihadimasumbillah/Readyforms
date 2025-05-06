@@ -1,90 +1,107 @@
 "use client";
 
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Heart, MessageSquare } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+import React from "react";
 import Link from "next/link";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Template } from "@/types";
 import { cn } from "@/lib/utils";
+import { Eye, Edit, Heart, MessageSquare } from "lucide-react";
+import { useAuth } from "@/contexts/auth-context";
 
 interface TemplateCardProps {
-  id: string;
-  title: string;
-  description: string;
-  topic?: { id: string; name: string };
-  author?: { id: string; name: string };
-  createdAt: string;
-  likesCount: number;
-  commentsCount: number;
-  isLiked: boolean;
-  onLikeToggle: (id: string) => void;
+  template: Template;
+  onClick?: () => void;
+  className?: string;
+  showStats?: boolean;
 }
 
-export function TemplateCard({
-  id,
-  title,
-  description,
-  topic,
-  author,
-  createdAt,
-  likesCount,
-  commentsCount,
-  isLiked,
-  onLikeToggle,
-}: TemplateCardProps) {
-  const timeAgo = formatDistanceToNow(new Date(createdAt), { addSuffix: true });
+export function TemplateCard({ template, onClick, className, showStats = true }: TemplateCardProps) {
+  const { user } = useAuth();
+  const isOwner = user && template.userId === user.id;
+  
+  // Filter out test templates
+  const isTestTemplate = 
+    (template.title?.toLowerCase() || '').includes('test') || 
+    (template.description?.toLowerCase() || '').includes('test');
+  
+  // Format the creation date
+  const formattedDate = template.createdAt ? 
+    new Date(template.createdAt).toLocaleDateString() : 'Unknown date';
+
+  // Get just the date without time for cleaner display
+  const creationDate = template.createdAt ? 
+    new Date(template.createdAt).toLocaleDateString() : 'Unknown date';
 
   return (
-    <Card className="overflow-hidden transition-all hover:shadow-lg">
-      <CardHeader className="pb-3">
-        <Link href={`/templates/${id}`}>
-          <CardTitle className="text-xl hover:underline cursor-pointer line-clamp-2">
-            {title}
+    <Card 
+      className={cn("overflow-hidden transition-all hover:shadow-md", className)} 
+    >
+      <CardHeader className="p-4 pb-2">
+        <div className="flex justify-between items-start gap-2">
+          <CardTitle className="text-lg line-clamp-1">
+            {template.title}
           </CardTitle>
-        </Link>
-        {topic && (
-          <Badge variant="secondary" className="mt-1">
-            {topic.name}
-          </Badge>
-        )}
-      </CardHeader>
-      <CardContent>
-        <p className="text-sm text-muted-foreground line-clamp-3">{description}</p>
-        <div className="mt-4 text-xs text-muted-foreground">
-          {author && (
-            <span>
-              By: <span className="font-medium">{author.name}</span> • {timeAgo}
-            </span>
+          {template.topic && (
+            <Badge variant="outline" className="shrink-0">
+              {template.topic.name}
+            </Badge>
           )}
         </div>
-      </CardContent>
-      <CardFooter className="flex justify-between pt-3 border-t">
-        <div className="flex gap-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="p-0 h-auto"
-            onClick={() => onLikeToggle(id)}
-          >
-            <Heart
-              className={cn(
-                "h-4 w-4 mr-1",
-                isLiked ? "fill-red-500 text-red-500" : "text-muted-foreground"
-              )}
-            />
-            <span className="text-sm text-muted-foreground">{likesCount}</span>
-          </Button>
-          <Link href={`/templates/${id}#comments`}>
-            <Button variant="ghost" size="sm" className="p-0 h-auto">
-              <MessageSquare className="h-4 w-4 mr-1 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">{commentsCount}</span>
-            </Button>
-          </Link>
+      </CardHeader>
+      <CardContent className="p-4 pt-2">
+        <div className="h-20">
+          {template.description && (
+            <p className="text-muted-foreground text-sm line-clamp-3 mb-2">
+              {template.description}
+            </p>
+          )}
         </div>
-        <Link href={`/templates/${id}`}>
-          <Button size="sm">View Template</Button>
-        </Link>
+        <div className="flex items-center mt-2 text-xs text-muted-foreground">
+          <span>
+            Created {creationDate} {template.user && `by ${template.user.name}`}
+          </span>
+        </div>
+        
+        {showStats && (
+          <div className="flex items-center justify-between mt-3 text-sm">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center text-muted-foreground">
+                <Heart className="h-3.5 w-3.5 mr-1" />
+                <span>{template.likesCount || 0}</span>
+              </div>
+              <div className="flex items-center text-muted-foreground">
+                <MessageSquare className="h-3.5 w-3.5 mr-1" />
+                <span>{template.commentsCount || 0}</span>
+              </div>
+            </div>
+          </div>
+        )}
+      </CardContent>
+      <CardFooter className="p-4 pt-0 gap-2">
+        <Button 
+          variant="secondary" 
+          className="w-full" 
+          size="sm"
+          onClick={onClick}
+        >
+          <Eye className="h-3.5 w-3.5 mr-1" />
+          View
+        </Button>
+        
+        {isOwner && (
+          <Button 
+            variant="outline" 
+            size="sm"
+            asChild
+          >
+            <Link href={`/templates/${template.id}/edit`}>
+              <Edit className="h-3.5 w-3.5 mr-1" />
+              Edit
+            </Link>
+          </Button>
+        )}
       </CardFooter>
     </Card>
   );

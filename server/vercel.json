@@ -6,7 +6,7 @@
       "use": "@vercel/node",
       "config": {
         "includeFiles": ["src/**", "dist/**", "package.json"],
-        "installCommand": "npm install --production"
+        "installCommand": "npm install --production && npm install pg@8.11.3"
       }
     }
   ],

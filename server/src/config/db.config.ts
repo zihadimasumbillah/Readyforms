@@ -16,6 +16,8 @@ const sslOptions = isProduction ? {
   }
 } : {};
 
+const loggingOption = process.env.NODE_ENV === 'development' ? console.log : false;
+
 let config: SequelizeOptions;
 
 if (connectionUrl) {
@@ -23,7 +25,7 @@ if (connectionUrl) {
   config = {
     dialect: 'postgres',
     dialectOptions: sslOptions,
-    logging: process.env.NODE_ENV === 'development' ? console.log : false
+    logging: loggingOption
   };
   
   // Add the connection URL (can't use url property directly with TypeScript)
@@ -38,7 +40,7 @@ if (connectionUrl) {
     port: parseInt(process.env.PGPORT || process.env.POSTGRES_PORT || '5432', 10),
     dialect: 'postgres',
     dialectOptions: sslOptions,
-    logging: process.env.NODE_ENV === 'development' ? console.log : false
+    logging: loggingOption
   };
 }
 

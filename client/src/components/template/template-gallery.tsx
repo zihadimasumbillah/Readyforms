@@ -1,195 +1,94 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { Template, Topic } from '@/types';
-import { TemplateCard } from '@/components/template/template-card';
-import { getAllTemplates, searchTemplates } from '@/lib/api/template-service';
-import { getAllTopics } from '@/lib/api/topic-service';
-import { getLikesByTemplate, checkLike } from '@/lib/api/like-service';
-import { getCommentsByTemplate } from '@/lib/api/comment-service';
-import { useAuth } from '@/contexts/auth-context';
+import React from "react";
+import { TemplateCard } from "@/components/template/template-card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Template } from "@/types";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/auth-context";
 
 interface TemplateGalleryProps {
-  templates?: Template[];
+  templates: Template[];
   loading?: boolean;
-  showTopicFilter?: boolean;
-  showFeaturedSection?: boolean;
+  onTemplateClick?: (template: Template) => void;
+  limit?: number;
+  requireAuth?: boolean;
 }
 
-export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
-  templates: initialTemplates,
-  loading: initialLoading = false,
-  showTopicFilter = true,
-  showFeaturedSection = false,
-}) => {
-  const [loading, setLoading] = useState(initialLoading);
-  const [templates, setTemplates] = useState<Template[]>(initialTemplates || []);
-  const [topics, setTopics] = useState<Topic[]>([]);
-  const [selectedTopic, setSelectedTopic] = useState<string>('all');
-  const [likesMap, setLikesMap] = useState<Record<string, number>>({});
-  const [commentsMap, setCommentsMap] = useState<Record<string, number>>({});
-  const [likedTemplatesMap, setLikedTemplatesMap] = useState<Record<string, boolean>>({});
+export function TemplateGallery({ 
+  templates, 
+  loading = false, 
+  onTemplateClick,
+  limit,
+  requireAuth = false
+}: TemplateGalleryProps) {
+  const router = useRouter();
   const { isAuthenticated } = useAuth();
-
-  // Fetch templates if not provided
-  useEffect(() => {
-    if (initialTemplates) {
-      setTemplates(initialTemplates);
-      return;
+  
+  // Limit templates if specified
+  const displayTemplates = limit ? templates.slice(0, limit) : templates;
+  
+  // Filter out test templates
+  const filteredTemplates = displayTemplates.filter(template => {
+    const title = template.title?.toLowerCase() || '';
+    const desc = template.description?.toLowerCase() || '';
+    return !(
+      title.includes('test template') || 
+      title.includes('updated template') || 
+      desc.includes('created by api') || 
+      desc.includes('admin-template-test')
+    );
+  });
+  
+  // Default template click handler
+  const handleTemplateClick = (template: Template) => {
+    if (onTemplateClick) {
+      onTemplateClick(template);
+    } else if (requireAuth && !isAuthenticated) {
+      router.push(`/auth/login?redirect=/templates/${template.id}`);
+    } else {
+      router.push(`/templates/${template.id}`);
     }
-
-    const fetchTemplates = async () => {
-      try {
-        setLoading(true);
-        const fetchedTemplates = await getAllTemplates();
-        setTemplates(fetchedTemplates);
-      } catch (error) {
-        console.error("Failed to fetch templates:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchTemplates();
-  }, [initialTemplates]);
-
-  // Fetch topics for filtering
-  useEffect(() => {
-    if (!showTopicFilter) return;
-
-    const fetchTopics = async () => {
-      try {
-        const fetchedTopics = await getAllTopics();
-        setTopics(fetchedTopics);
-      } catch (error) {
-        console.error("Failed to fetch topics:", error);
-      }
-    };
-
-    fetchTopics();
-  }, [showTopicFilter]);
-
-  // Load likes and comments counts for each template
-  useEffect(() => {
-    const fetchLikesAndComments = async () => {
-      if (templates.length === 0) return;
-
-      const likesData: Record<string, number> = {};
-      const commentsData: Record<string, number> = {};
-      const likedData: Record<string, boolean> = {};
-
-      await Promise.all(
-        templates.map(async (template) => {
-          try {
-            // Get likes count
-            const likesResponse = await getLikesByTemplate(template.id);
-            likesData[template.id] = likesResponse.likesCount;
-
-            // Get comments count
-            const comments = await getCommentsByTemplate(template.id);
-            commentsData[template.id] = comments.length;
-
-            // Check if current user liked this template (only if authenticated)
-            if (isAuthenticated) {
-              try {
-                const likedResponse = await checkLike(template.id);
-                likedData[template.id] = likedResponse.liked;
-              } catch (err) {
-                console.error(`Error checking like for template ${template.id}:`, err);
-                likedData[template.id] = false;
-              }
-            }
-          } catch (err) {
-            console.error(`Error fetching data for template ${template.id}:`, err);
-            likesData[template.id] = 0;
-            commentsData[template.id] = 0;
-            likedData[template.id] = false;
-          }
-        })
-      );
-
-      setLikesMap(likesData);
-      setCommentsMap(commentsData);
-      setLikedTemplatesMap(likedData);
-    };
-
-    fetchLikesAndComments();
-  }, [templates, isAuthenticated]);
-
-  // Filter templates by topic
-  const filteredTemplates = selectedTopic === 'all'
-    ? templates
-    : templates.filter(template => template.topicId === selectedTopic);
-
-  // Toggle topic filter
-  const handleTopicChange = (topicId: string) => {
-    setSelectedTopic(topicId);
   };
 
-  return (
-    <div className="space-y-8">
-      {/* Topic filters */}
-      {showTopicFilter && topics.length > 0 && (
-        <div className="flex flex-wrap gap-2 mb-4">
-          <button
-            className={`px-4 py-2 rounded-md text-sm ${
-              selectedTopic === 'all' 
-                ? 'bg-primary text-primary-foreground' 
-                : 'bg-muted text-muted-foreground hover:bg-muted/80'
-            }`}
-            onClick={() => handleTopicChange('all')}
-          >
-            All Topics
-          </button>
-          
-          {topics.map((topic) => (
-            <button
-              key={topic.id}
-              className={`px-4 py-2 rounded-md text-sm ${
-                selectedTopic === topic.id 
-                  ? 'bg-primary text-primary-foreground' 
-                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
-              }`}
-              onClick={() => handleTopicChange(topic.id)}
-            >
-              {topic.name}
-            </button>
-          ))}
-        </div>
-      )}
+  // Create an array of placeholders for loading state
+  const skeletons = Array(limit || 6).fill(0).map((_, i) => (
+    <div key={`skeleton-${i}`} className="flex flex-col gap-2">
+      <Skeleton className="h-[180px] w-full rounded-lg" />
+      <Skeleton className="h-5 w-2/3 rounded" />
+      <Skeleton className="h-4 w-full rounded" />
+      <div className="flex justify-between mt-2">
+        <Skeleton className="h-8 w-16 rounded" />
+        <Skeleton className="h-8 w-16 rounded" />
+      </div>
+    </div>
+  ));
 
-      {/* Templates grid */}
-      {loading ? (
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {[...Array(6)].map((_, i) => (
-            <div 
-              key={i} 
-              className="border rounded-lg p-4 h-[300px] animate-pulse bg-muted"
-            />
-          ))}
-        </div>
-      ) : filteredTemplates.length > 0 ? (
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {filteredTemplates.map((template) => (
-            <TemplateCard
-              key={template.id}
-              template={template}
-              likesCount={likesMap[template.id] || 0}
-              commentsCount={commentsMap[template.id] || 0}
-              isLiked={likedTemplatesMap[template.id] || false}
-            />
-          ))}
-        </div>
-      ) : (
-        <div className="text-center py-12">
-          <h3 className="text-lg font-medium">No templates found</h3>
-          <p className="text-muted-foreground mt-2">
-            {selectedTopic !== 'all' 
-              ? "No templates found for this topic." 
-              : "There are no templates available at the moment."}
-          </p>
-        </div>
-      )}
+  if (loading) {
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {skeletons}
+      </div>
+    );
+  }
+
+  if (!filteredTemplates || filteredTemplates.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-muted-foreground">No templates found</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      {filteredTemplates.map((template) => (
+        <TemplateCard
+          key={template.id}
+          template={template}
+          onClick={() => handleTemplateClick(template)}
+        />
+      ))}
     </div>
   );
-};
+}

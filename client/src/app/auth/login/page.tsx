@@ -6,10 +6,11 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { authService } from "@/lib/api/auth-service";
+import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { toast } from "@/components/ui/toast";
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -22,6 +23,7 @@ export default function LoginPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { login } = useAuth();
 
   const { register, handleSubmit, formState: { errors } } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -36,12 +38,14 @@ export default function LoginPage() {
     setError(null);
     
     try {
-      await authService.login(data);
-      router.push("/");
-      router.refresh();
+      if (login) {
+        await login(data.email, data.password);
+        router.push("/dashboard");
+        router.refresh();
+      }
     } catch (err: any) {
       console.error("Login error:", err);
-      setError(err.response?.data?.message || "Failed to login. Please check your credentials.");
+      setError(err.message || "Failed to login. Please check your credentials.");
     } finally {
       setIsLoading(false);
     }

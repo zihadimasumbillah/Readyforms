@@ -11,8 +11,8 @@ import {
   Menu,
   X,
   LogOut,
-  ChevronDown,
   BookTemplate,
+  ShieldAlert,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ThemeToggle } from "@/components/theme-toggle";
+import ApiHealthIndicator from "@/components/api-health-indicator";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -90,11 +91,11 @@ export function DashboardLayout({
   ];
 
   // Add admin route if user is admin
-  const adminItems = user.isAdmin
+  const adminItems = user?.isAdmin
     ? [
         {
           href: "/admin",
-          icon: <Settings className="h-4 w-4" />,
+          icon: <ShieldAlert className="h-4 w-4" />,
           label: "Admin",
         },
       ]
@@ -125,6 +126,8 @@ export function DashboardLayout({
           </Link>
         </div>
         <div className="ml-auto flex items-center gap-2">
+          {/* Add the API health indicator */}
+          {user.isAdmin && <ApiHealthIndicator />}
           <ThemeToggle />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
