@@ -12,8 +12,8 @@ const fontSans = FontSans({
 });
 
 export const metadata: Metadata = {
-  title: 'ReadyForms - Create Forms That Get Results',
-  description: 'Build professional forms in minutes, gather insights, and make data-driven decisions with our powerful and easy-to-use platform.',
+  title: 'ReadyForms - Create & Share Forms Easily',
+  description: 'Create, share, and analyze forms with ease. ReadyForms is your complete form solution.',
 };
 
 export default function RootLayout({
@@ -27,7 +27,12 @@ export default function RootLayout({
         'min-h-screen bg-background font-sans antialiased',
         fontSans.variable
       )}>
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+        <ThemeProvider 
+          attribute="class" 
+          defaultTheme="system" 
+          enableSystem 
+          disableTransitionOnChange
+        >
           <AuthProvider>
             {children}
             <Toaster />

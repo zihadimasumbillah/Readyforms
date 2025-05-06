@@ -1,33 +1,23 @@
 import apiClient from './api-client';
-import { Template } from '@/types';
 
-// Types for dashboard data
-interface UserStats {
+export interface UserStats {
   templates: number;
   responses: number;
   likes: number;
   comments: number;
 }
 
-interface ResponsesData {
-  recent: Array<{
-    id: string;
-    templateId: string;
-    templateTitle: string;
-    createdAt: string;
-  }>;
-  total: number;
-}
-
-export const dashboardService = {
-  // Get user's dashboard statistics
+const dashboardService = {
+  /**
+   * Get user dashboard stats
+   */
   getUserStats: async (): Promise<UserStats> => {
     try {
       const response = await apiClient.get<UserStats>('/dashboard/stats');
-      return response.data;
+      return response;
     } catch (error) {
-      console.error('Error fetching user stats:', error);
-      // Return default values if API fails
+      console.error('Get user stats error:', error);
+      // Return default stats on error
       return {
         templates: 0,
         responses: 0,
@@ -37,59 +27,61 @@ export const dashboardService = {
     }
   },
 
-  // Get user's templates
-  getUserTemplates: async (): Promise<Template[]> => {
+  /**
+   * Get user templates
+   */
+  getUserTemplates: async (): Promise<any[]> => {
     try {
-      const response = await apiClient.get<Template[]>('/dashboard/templates');
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching user templates:', error);
-      // If the API fails, try fetching from the templates endpoint as a fallback
-      try {
-        const fallbackResponse = await apiClient.get<Template[]>('/templates/user');
-        return fallbackResponse.data;
-      } catch (fallbackError) {
-        console.error('Fallback request also failed:', fallbackError);
+      const response = await apiClient.get<any[]>('/dashboard/templates');
+      // Ensure we always return an array even if the API fails or returns undefined
+      if (!response || !Array.isArray(response)) {
+        console.warn('API returned invalid data for templates:', response);
         return [];
       }
-    }
-  },
-
-  // Get user's recent form responses
-  getResponsesData: async (): Promise<ResponsesData> => {
-    try {
-      const response = await apiClient.get<ResponsesData>('/dashboard/responses');
-      return response.data;
+      return response;
     } catch (error) {
-      console.error('Error fetching response data:', error);
-      return {
-        recent: [],
-        total: 0
-      };
-    }
-  },
-
-  // Get popular templates
-  getPopularTemplates: async (limit: number = 5): Promise<Template[]> => {
-    try {
-      const response = await apiClient.get<Template[]>(`/dashboard/popular-templates?limit=${limit}`);
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching popular templates:', error);
+      console.error('Get user templates error:', error);
       return [];
     }
   },
 
-  // Get dashboard activity
-  getActivity: async () => {
+  /**
+   * Get user's form responses
+   */
+  getUserResponses: async (): Promise<any[]> => {
     try {
-      const response = await apiClient.get('/dashboard/activity');
-      return response.data;
+      const response = await apiClient.get<any[]>('/dashboard/responses');
+      // Ensure we always return an array even if the API fails
+      if (!response || !Array.isArray(response)) {
+        console.warn('API returned invalid data for responses:', response);
+        return [];
+      }
+      return response;
     } catch (error) {
-      console.error('Error fetching activity:', error);
+      console.error('Get user responses error:', error);
+      return [];
+    }
+  },
+
+  /**
+   * Get recent activity
+   */
+  getRecentActivity: async (limit: number = 5): Promise<any[]> => {
+    try {
+      const response = await apiClient.get<any[]>(`/dashboard/activity?limit=${limit}`);
+      // Ensure we always return an array even if the API fails
+      if (!response || !Array.isArray(response)) {
+        console.warn('API returned invalid data for activity:', response);
+        return [];
+      }
+      return response;
+    } catch (error) {
+      console.error('Get recent activity error:', error);
       return [];
     }
   }
 };
 
+// Export both as default and named export
+export { dashboardService };
 export default dashboardService;

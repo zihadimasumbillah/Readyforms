@@ -14,7 +14,9 @@ import { Separator } from "@/components/ui/separator";
 import { Template } from "@/types";
 import { Heart, MessageSquare, Share2, Eye, Send } from "lucide-react";
 import Link from "next/link";
-import apiClient from "@/lib/api/api-client";
+import templateService from "@/lib/api/template-service";
+import commentService from "@/lib/api/comment-service";
+import likeService from "@/lib/api/like-service";
 import { useAuth } from "@/contexts/auth-context";
 import { toast } from "@/components/ui/use-toast";
 
@@ -24,6 +26,8 @@ interface Comment {
   userId: string;
   templateId: string;
   createdAt: string;
+  updatedAt: string;
+  version: number;
   user: {
     id: string;
     name: string;
@@ -51,8 +55,8 @@ export default function TemplatePage({ params }: { params: { id: string } }) {
     const fetchTemplate = async () => {
       try {
         setLoading(true);
-        const response = await apiClient.get(`/templates/${params.id}`);
-        setTemplate(response.data);
+        const response = await templateService.getTemplateById(params.id);
+        setTemplate(response);
       } catch (error) {
         console.error("Error fetching template:", error);
         toast({
@@ -68,8 +72,8 @@ export default function TemplatePage({ params }: { params: { id: string } }) {
     const fetchComments = async () => {
       try {
         setCommentsLoading(true);
-        const response = await apiClient.get(`/comments/template/${params.id}`);
-        setComments(response.data);
+        const comments = await commentService.getCommentsByTemplate(params.id);
+        setComments(comments);
       } catch (error) {
         console.error("Error fetching comments:", error);
       } finally {
@@ -82,12 +86,12 @@ export default function TemplatePage({ params }: { params: { id: string } }) {
       
       try {
         // Check if user has liked this template
-        const likeStatusResponse = await apiClient.get(`/likes/check/${params.id}`);
-        setLiked(likeStatusResponse.data.liked);
+        const isLiked = await likeService.checkLike(params.id);
+        setLiked(isLiked);
         
         // Get the total like count
-        const likesCountResponse = await apiClient.get(`/likes/count/${params.id}`);
-        setLikesCount(likesCountResponse.data.count);
+        const count = await likeService.getLikeCount(params.id);
+        setLikesCount(count);
       } catch (error) {
         console.error("Error fetching like status:", error);
       }
@@ -111,10 +115,7 @@ export default function TemplatePage({ params }: { params: { id: string } }) {
     }
     
     try {
-      await apiClient.post('/forms', {
-        templateId: params.id,
-        answers: formResponses
-      });
+      await templateService.submitFormResponse(params.id, formResponses);
       
       toast({
         title: "Success",
@@ -141,19 +142,14 @@ export default function TemplatePage({ params }: { params: { id: string } }) {
     }
     
     try {
-      if (liked) {
-        await apiClient.delete(`/likes/template/${params.id}`);
-        setLikesCount(prev => Math.max(0, prev - 1));
-      } else {
-        await apiClient.post(`/likes/template/${params.id}`);
-        setLikesCount(prev => prev + 1);
-      }
-      setLiked(!liked);
+      const newLikedStatus = await likeService.toggleLike(params.id, liked);
+      setLiked(newLikedStatus);
+      setLikesCount(prev => newLikedStatus ? prev + 1 : Math.max(0, prev - 1));
     } catch (error) {
       console.error("Error toggling like:", error);
       toast({
         title: "Error",
-        description: "Failed to update like status.",
+        description: "Failed to update like status. Please try again.",
         variant: "destructive"
       });
     }
@@ -170,22 +166,24 @@ export default function TemplatePage({ params }: { params: { id: string } }) {
     
     try {
       setSubmittingComment(true);
-      const response = await apiClient.post('/comments', {
-        templateId: params.id,
-        content: newComment
-      });
+      const comment = await commentService.createComment(params.id, newComment);
       
-      setComments(prev => [...prev, response.data]);
+      // Add the new comment to the list with the user info
+      setComments([...comments, {
+        ...comment,
+        user: {
+          id: user?.id || '',
+          name: user?.name || 'Anonymous'
+        }
+      }]);
+      
       setNewComment('');
-      toast({
-        title: "Success",
-        description: "Your comment has been added.",
-      });
+      
     } catch (error) {
       console.error("Error submitting comment:", error);
       toast({
         title: "Error",
-        description: "Failed to post your comment.",
+        description: "Failed to submit your comment. Please try again.",
         variant: "destructive"
       });
     } finally {
@@ -193,88 +191,58 @@ export default function TemplatePage({ params }: { params: { id: string } }) {
     }
   };
   
-  // Helper function to render the form fields
-  const renderFormFields = () => {
-    if (!template) return null;
-    
-    const fields = [];
-    const questionOrder = JSON.parse(template.questionOrder || '[]');
-    
-    // Sort fields based on questionOrder, or default to sequential rendering
-    const orderedFields = questionOrder.length > 0 ? 
-      questionOrder : 
-      ['customString1', 'customString2', 'customString3', 'customString4',
-       'customText1', 'customText2', 'customText3', 'customText4',
-       'customInt1', 'customInt2', 'customInt3', 'customInt4',
-       'customCheckbox1', 'customCheckbox2', 'customCheckbox3', 'customCheckbox4'];
-    
-    // Iterate through ordered fields and render enabled ones
-    for (const field of orderedFields) {
-      const stateKey = `${field}State`;
-      const questionKey = `${field}Question`;
-      const answerKey = `${field}Answer`;
-      
-      if (!template[stateKey]) continue;
-      
-      if (field.startsWith('customString')) {
-        fields.push(
-          <div key={field} className="space-y-2">
-            <label className="text-sm font-medium">
-              {template[questionKey]}
-            </label>
-            <Input 
-              placeholder="Your answer"
-              value={formResponses[answerKey] || ''}
-              onChange={e => handleInputChange(answerKey, e.target.value)}
-            />
-          </div>
+  const renderInputField = (type: string, field: string, label: string = '') => {
+    switch (type) {
+      case 'String':
+        return (
+          <Input
+            id={field}
+            value={formResponses[field] || ''}
+            onChange={(e) => handleInputChange(field, e.target.value)}
+            placeholder={`Enter ${label.toLowerCase()}`}
+          />
         );
-      } else if (field.startsWith('customText')) {
-        fields.push(
-          <div key={field} className="space-y-2">
-            <label className="text-sm font-medium">
-              {template[questionKey]}
-            </label>
-            <Textarea 
-              placeholder="Your answer"
-              value={formResponses[answerKey] || ''}
-              onChange={e => handleInputChange(answerKey, e.target.value)}
-            />
-          </div>
+      case 'Text':
+        return (
+          <Textarea
+            id={field}
+            value={formResponses[field] || ''}
+            onChange={(e) => handleInputChange(field, e.target.value)}
+            placeholder={`Enter ${label.toLowerCase()}`}
+            rows={4}
+          />
         );
-      } else if (field.startsWith('customInt')) {
-        fields.push(
-          <div key={field} className="space-y-2">
-            <label className="text-sm font-medium">
-              {template[questionKey]}
-            </label>
-            <Input 
-              type="number" 
-              placeholder="Enter a number"
-              value={formResponses[answerKey] || ''}
-              onChange={e => handleInputChange(answerKey, parseInt(e.target.value) || 0)}
-            />
-          </div>
+      case 'Int':
+        return (
+          <Input
+            id={field}
+            type="number"
+            value={formResponses[field] || ''}
+            onChange={(e) => handleInputChange(field, parseInt(e.target.value) || '')}
+            placeholder={`Enter number for ${label.toLowerCase()}`}
+          />
         );
-      } else if (field.startsWith('customCheckbox')) {
-        fields.push(
-          <div key={field} className="flex items-start space-x-2 py-2">
-            <Checkbox 
+      case 'Checkbox':
+        return (
+          <div className="flex items-center space-x-2">
+            <Checkbox
               id={field}
-              checked={!!formResponses[answerKey]}
-              onCheckedChange={checked => handleInputChange(answerKey, !!checked)}
+              checked={!!formResponses[field]}
+              onCheckedChange={(checked) => handleInputChange(field, !!checked)}
             />
-            <label htmlFor={field} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-              {template[questionKey]}
+            <label
+              htmlFor={field}
+              className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+            >
+              Yes
             </label>
           </div>
         );
-      }
+      default:
+        return null;
     }
-    
-    return fields.length > 0 ? fields : <p className="text-muted-foreground">This form has no fields.</p>;
   };
-  
+
   // Format date for display
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -284,6 +252,57 @@ export default function TemplatePage({ params }: { params: { id: string } }) {
       hour: '2-digit',
       minute: '2-digit'
     });
+  };
+
+  // Determine the order of form fields from the template
+  const renderFormFields = () => {
+    if (!template) return null;
+    
+    const fields = [];
+    let orderedFields: string[] = [];
+    
+    // Parse the questionOrder if available
+    try {
+      if (template.questionOrder) {
+        orderedFields = JSON.parse(template.questionOrder);
+      }
+    } catch (e) {
+      console.error("Error parsing question order:", e);
+      
+      // Fallback: gather all enabled fields
+      orderedFields = [];
+      for (let i = 1; i <= 4; i++) {
+        if (template[`customString${i}State`]) orderedFields.push(`customString${i}`);
+        if (template[`customText${i}State`]) orderedFields.push(`customText${i}`);
+        if (template[`customInt${i}State`]) orderedFields.push(`customInt${i}`);
+        if (template[`customCheckbox${i}State`]) orderedFields.push(`customCheckbox${i}`);
+      }
+    }
+    
+    // Render fields in order
+    for (const field of orderedFields) {
+      const matchResult = field.match(/^custom(String|Text|Int|Checkbox)([1-4])$/);
+      if (!matchResult) continue;
+      
+      const [, type, num] = matchResult;
+      const stateKey = `${field}State`;
+      const questionKey = `${field}Question`;
+      const answerKey = `${field}Answer`;
+      
+      if (!template[stateKey]) continue; // Skip disabled fields
+      
+      fields.push(
+        <div key={field} className="mb-6">
+          <label className="block mb-2 text-sm font-medium">
+            {template[questionKey]}
+            {/* Add required asterisk if needed */}
+          </label>
+          {renderInputField(type, answerKey, template[questionKey])}
+        </div>
+      );
+    }
+    
+    return fields;
   };
 
   return (

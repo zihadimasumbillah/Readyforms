@@ -11,6 +11,9 @@ import templateRoutes from './routes/template.routes';
 import formResponseRoutes from './routes/form-response.routes';
 import commentRoutes from './routes/comment.routes';
 import likeRoutes from './routes/like.routes';
+import dashboardRoutes from './routes/dashboard.routes';
+import adminRoutes from './routes/admin.routes';
+import healthRoutes from './routes/health.routes';
 
 // Load environment variables
 dotenv.config();
@@ -46,6 +49,9 @@ app.use('/api/templates', templateRoutes);
 app.use('/api/forms', formResponseRoutes);
 app.use('/api/comments', commentRoutes);
 app.use('/api/likes', likeRoutes);
+app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/health', healthRoutes);
 
 // Start server
 app.listen(PORT, async () => {

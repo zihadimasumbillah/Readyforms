@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/auth-context";
+import { toast } from "@/components/ui/use-toast";
 
 export default function TemplatesPage() {
   const [loading, setLoading] = useState(true);
@@ -54,25 +55,40 @@ export default function TemplatesPage() {
       try {
         setLoading(true);
         const data = await dashboardService.getUserTemplates();
+        
+        // data will always be an array now thanks to our service changes
         setTemplates(data);
         setFilteredTemplates(data);
       } catch (error) {
         console.error("Error fetching templates:", error);
+        // Set empty arrays in case of error
+        setTemplates([]);
+        setFilteredTemplates([]);
+        toast({
+          title: "Error",
+          description: "Failed to fetch templates. Please try again later.",
+          variant: "destructive",
+        });
       } finally {
         setLoading(false);
       }
     };
 
-    fetchTemplates();
-  }, []);
+    if (user) {
+      fetchTemplates();
+    } else {
+      // If user isn't available, redirect to login
+      router.push('/auth/login');
+    }
+  }, [user, router]);
 
   useEffect(() => {
     if (searchQuery.trim() === '') {
       setFilteredTemplates(templates);
     } else {
       const filtered = templates.filter(template => 
-        template.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        template.description.toLowerCase().includes(searchQuery.toLowerCase())
+        (template?.title?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+        (template?.description?.toLowerCase() || '').includes(searchQuery.toLowerCase())
       );
       setFilteredTemplates(filtered);
     }

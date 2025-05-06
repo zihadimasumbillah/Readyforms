@@ -1,92 +1,88 @@
 import apiClient from './api-client';
 import { Template } from '@/types';
 
-export const templateService = {
-  // Get all templates
+const templateService = {
+  /**
+   * Get all templates
+   */
   getAllTemplates: async (): Promise<Template[]> => {
     try {
       const response = await apiClient.get<Template[]>('/templates');
-      return response.data;
+      return response;
     } catch (error) {
-      console.error('Error fetching templates:', error);
-      throw error;
+      console.error('Get all templates error:', error);
+      return [];
     }
   },
   
-  // Get template by ID
+  /**
+   * Get template by ID
+   */
   getTemplateById: async (id: string): Promise<Template> => {
     try {
       const response = await apiClient.get<Template>(`/templates/${id}`);
-      return response.data;
+      return response;
     } catch (error) {
-      console.error(`Error fetching template ${id}:`, error);
+      console.error(`Get template ${id} error:`, error);
       throw error;
     }
   },
   
-  // Get popular templates
-  getPopularTemplates: async (limit: number = 5): Promise<Template[]> => {
-    try {
-      const response = await apiClient.get<Template[]>(`/templates/popular?limit=${limit}`);
-      return response.data;
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to fetch popular templates');
-    }
-  },
-  
-  // Create a new template
+  /**
+   * Create a template
+   */
   createTemplate: async (templateData: any): Promise<Template> => {
     try {
       const response = await apiClient.post<Template>('/templates', templateData);
-      return response.data;
+      return response;
     } catch (error) {
-      console.error('Error creating template:', error);
+      console.error('Create template error:', error);
       throw error;
     }
   },
   
-  // Update a template
-  updateTemplate: async (id: string, templateData: any, version: number): Promise<Template> => {
+  /**
+   * Update a template
+   */
+  updateTemplate: async (id: string, templateData: any): Promise<Template> => {
     try {
-      // Make sure version is included for optimistic locking
-      const data = { ...templateData, version };
-      const response = await apiClient.put<Template>(`/templates/${id}`, data);
-      return response.data;
+      const response = await apiClient.put<Template>(`/templates/${id}`, templateData);
+      return response;
     } catch (error) {
-      console.error(`Error updating template ${id}:`, error);
+      console.error(`Update template ${id} error:`, error);
       throw error;
     }
   },
   
-  // Delete a template
+  /**
+   * Delete a template
+   */
   deleteTemplate: async (id: string, version: number): Promise<void> => {
     try {
-      await apiClient.delete(`/templates/${id}`, { data: { version } });
+      // Version must be included for optimistic locking
+      const data = { version };
+      await apiClient.delete(`/templates/${id}`, { data });
     } catch (error) {
-      console.error(`Error deleting template ${id}:`, error);
+      console.error(`Delete template ${id} error:`, error);
       throw error;
     }
   },
   
-  // Search for templates
+  /**
+   * Search for templates
+   */
   searchTemplates: async (query: string): Promise<Template[]> => {
     try {
       const response = await apiClient.get<Template[]>(`/templates/search?query=${encodeURIComponent(query)}`);
-      return response.data;
+      // Ensure we return an array
+      return Array.isArray(response) ? response : [];
     } catch (error) {
-      console.error(`Error searching templates with query "${query}":`, error);
-      throw error;
+      console.error(`Search templates error:`, error);
+      return []; // Return empty array instead of throwing
     }
   }
 };
 
-// Export individual functions for convenience
-export const { 
-  getAllTemplates, 
-  getTemplateById, 
-  getPopularTemplates, 
-  createTemplate, 
-  updateTemplate, 
-  deleteTemplate,
-  searchTemplates
-} = templateService;
+// Export both as default and named export
+export { templateService };
+export default templateService;

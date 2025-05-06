@@ -1,84 +1,73 @@
 import apiClient from './api-client';
 
-export interface LikeResponse {
-  liked: boolean;
-  message?: string;
-}
+const likeService = {
+  /**
+   * Check if current user has liked a template
+   */
+  checkLike: async (templateId: string): Promise<boolean> => {
+    try {
+      const response = await apiClient.get(`/likes/check/${templateId}`);
+      return response.liked;
+    } catch (error) {
+      console.error(`Check like error for template ${templateId}:`, error);
+      return false;
+    }
+  },
 
-export interface LikeCount {
-  count: number;
-}
+  /**
+   * Get like count for a template
+   */
+  getLikeCount: async (templateId: string): Promise<number> => {
+    try {
+      const response = await apiClient.get(`/likes/count/${templateId}`);
+      return response.count;
+    } catch (error) {
+      console.error(`Get like count error for template ${templateId}:`, error);
+      return 0;
+    }
+  },
 
-export interface LikeData {
-  id: string;
-  userId: string;
-  templateId: string;
-  createdAt: string;
-  user?: {
-    id: string;
-    name: string;
-    email: string;
-  };
-}
+  /**
+   * Like a template
+   */
+  likeTemplate: async (templateId: string): Promise<void> => {
+    try {
+      await apiClient.post(`/likes/template/${templateId}`);
+    } catch (error) {
+      console.error(`Like template error for template ${templateId}:`, error);
+      throw error;
+    }
+  },
 
-export interface LikesResponse {
-  templateId: string;
-  likesCount: number;
-  likes: LikeData[];
-}
+  /**
+   * Unlike a template
+   */
+  unlikeTemplate: async (templateId: string): Promise<void> => {
+    try {
+      await apiClient.delete(`/likes/template/${templateId}`);
+    } catch (error) {
+      console.error(`Unlike template error for template ${templateId}:`, error);
+      throw error;
+    }
+  },
 
-// Toggle like status for a template
-export const toggleLike = async (templateId: string): Promise<LikeResponse> => {
-  try {
-    // The backend uses same endpoint for both like and unlike
-    const response = await apiClient.post<LikeResponse>(`/likes/template/${templateId}`);
-    return response.data;
-  } catch (error) {
-    console.error(`Error toggling like for template ${templateId}:`, error);
-    throw error;
+  /**
+   * Toggle like for a template
+   */
+  toggleLike: async (templateId: string, isCurrentlyLiked: boolean): Promise<boolean> => {
+    try {
+      if (isCurrentlyLiked) {
+        await apiClient.delete(`/likes/template/${templateId}`);
+        return false;
+      } else {
+        await apiClient.post(`/likes/template/${templateId}`);
+        return true;
+      }
+    } catch (error) {
+      console.error(`Toggle like error for template ${templateId}:`, error);
+      throw error;
+    }
   }
 };
 
-// Unlike a template
-export const unlikeTemplate = async (templateId: string): Promise<LikeResponse> => {
-  try {
-    const response = await apiClient.delete<LikeResponse>(`/likes/template/${templateId}`);
-    return response.data;
-  } catch (error) {
-    console.error(`Error unliking template ${templateId}:`, error);
-    throw error;
-  }
-};
-
-// Check if current user has liked a template
-export const checkLike = async (templateId: string): Promise<LikeResponse> => {
-  try {
-    const response = await apiClient.get<LikeResponse>(`/likes/check/${templateId}`);
-    return response.data;
-  } catch (error) {
-    console.error(`Error checking like status for template ${templateId}:`, error);
-    throw error;
-  }
-};
-
-// Get like count for a template
-export const getLikeCount = async (templateId: string): Promise<LikeCount> => {
-  try {
-    const response = await apiClient.get<LikeCount>(`/likes/count/${templateId}`);
-    return response.data;
-  } catch (error) {
-    console.error(`Error getting like count for template ${templateId}:`, error);
-    throw error;
-  }
-};
-
-// Get likes for a template
-export const getLikesByTemplate = async (templateId: string): Promise<LikesResponse> => {
-  try {
-    const response = await apiClient.get<LikesResponse>(`/likes/template/${templateId}`);
-    return response.data;
-  } catch (error) {
-    console.error(`Error getting likes for template ${templateId}:`, error);
-    throw error;
-  }
-};
+export default likeService;

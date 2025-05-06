@@ -1,87 +1,101 @@
 // Common types for the ReadyForms application
 
-// User type
+// User type definition
 export interface User {
   id: string;
   name: string;
   email: string;
   isAdmin: boolean;
-  blocked: boolean;
   language?: string;
   theme?: string;
+  blocked?: boolean;
   createdAt: string;
   updatedAt: string;
 }
 
-// Topic type
+// Topic type definition
 export interface Topic {
   id: string;
   name: string;
   description?: string;
-  version?: number;
   createdAt: string;
   updatedAt: string;
+  version: number;
 }
 
-// Template type
+// Template type definition
 export interface Template {
   id: string;
   title: string;
   description: string;
-  userId: string;
-  user?: User;
-  topicId: string;
-  topic?: Topic;
-  isPublic: boolean;
   imageUrl?: string;
-  allowedUsers?: string; // JSON string of user IDs
+  userId: string;
+  topicId: string;
+  isPublic: boolean;
+  allowedUsers?: string;
+  version: number;
   createdAt: string;
   updatedAt: string;
-  version?: number;
-  // Form fields
+  
+  // Custom field states
   customString1State: boolean;
-  customString1Question?: string;
   customString2State: boolean;
-  customString2Question?: string;
   customString3State: boolean;
-  customString3Question?: string;
   customString4State: boolean;
-  customString4Question?: string;
   customText1State: boolean;
-  customText1Question?: string;
   customText2State: boolean;
-  customText2Question?: string;
   customText3State: boolean;
-  customText3Question?: string;
   customText4State: boolean;
-  customText4Question?: string;
   customInt1State: boolean;
-  customInt1Question?: string;
   customInt2State: boolean;
-  customInt2Question?: string;
   customInt3State: boolean;
-  customInt3Question?: string;
   customInt4State: boolean;
-  customInt4Question?: string;
   customCheckbox1State: boolean;
-  customCheckbox1Question?: string;
   customCheckbox2State: boolean;
-  customCheckbox2Question?: string;
   customCheckbox3State: boolean;
-  customCheckbox3Question?: string;
   customCheckbox4State: boolean;
-  customCheckbox4Question?: string;
-  questionOrder: string; // JSON string of question order
+  
+  // Custom field questions
+  customString1Question: string;
+  customString2Question: string;
+  customString3Question: string;
+  customString4Question: string;
+  customText1Question: string;
+  customText2Question: string;
+  customText3Question: string;
+  customText4Question: string;
+  customInt1Question: string;
+  customInt2Question: string;
+  customInt3Question: string;
+  customInt4Question: string;
+  customCheckbox1Question: string;
+  customCheckbox2Question: string;
+  customCheckbox3Question: string;
+  customCheckbox4Question: string;
+  
+  // Order of questions (JSON string)
+  questionOrder: string;
+  
+  // Relations (optional because they might not always be included)
+  user?: User;
+  topic?: Topic;
+  
+  // Extra stats that might be included in some responses
+  likesCount?: number;
+  commentsCount?: number;
+  responsesCount?: number;
 }
 
-// Form Response type
+// Form Response type definition
 export interface FormResponse {
   id: string;
   templateId: string;
   userId: string;
   createdAt: string;
   updatedAt: string;
-  // Custom fields
+  version: number;
+  
+  // Custom field answers
   customString1Answer?: string;
   customString2Answer?: string;
   customString3Answer?: string;
@@ -98,35 +112,39 @@ export interface FormResponse {
   customCheckbox2Answer?: boolean;
   customCheckbox3Answer?: boolean;
   customCheckbox4Answer?: boolean;
+  
+  // Relations
+  user?: User;
+  template?: Template;
 }
 
-// Comment type
+// Comment type definition
 export interface Comment {
   id: string;
+  content: string;
   userId: string;
   templateId: string;
-  content: string;
   createdAt: string;
   updatedAt: string;
-  user?: {
-    id: string;
-    name: string;
-  };
+  version: number;
+  
+  // Relations
+  user?: User;
+  template?: Template;
 }
 
-// Like type
+// Like type definition
 export interface Like {
   id: string;
   userId: string;
   templateId: string;
   createdAt: string;
   updatedAt: string;
-}
-
-// Auth response type
-export interface AuthResponse {
-  token: string;
-  user: User;
+  version: number;
+  
+  // Relations
+  user?: User;
+  template?: Template;
 }
 
 // Dashboard stats type
@@ -135,4 +153,16 @@ export interface DashboardStats {
   responses: number;
   likes: number;
   comments: number;
+}
+
+// Admin dashboard stats type
+export interface AdminDashboardStats {
+  templates: number;
+  responses: number;
+  likes: number;
+  comments: number;
+  users: number;
+  activeUsers: number;
+  topicsCount: number;
+  adminCount: number;
 }

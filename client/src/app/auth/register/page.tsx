@@ -10,6 +10,8 @@ import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { useToast } from "@/components/ui/use-toast";
+import { AlertCircle } from "lucide-react";
 
 const registerSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -26,8 +28,9 @@ type RegisterFormData = z.infer<typeof registerSchema>;
 export default function RegisterPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
   const { register: registerUser } = useAuth();
+  const { toast } = useToast();
 
   const { register, handleSubmit, formState: { errors } } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
@@ -41,17 +44,26 @@ export default function RegisterPage() {
 
   const onSubmit = async (data: RegisterFormData) => {
     setIsLoading(true);
-    setError(null);
+    setFormError(null);
     
     try {
       if (registerUser) {
         await registerUser(data.name, data.email, data.password);
+        toast({
+          title: "Registration successful",
+          description: "Your account has been created successfully!",
+        });
         router.push("/dashboard");
         router.refresh();
       }
     } catch (err: any) {
       console.error("Registration error:", err);
-      setError(err.message || "Failed to register. Please try again.");
+      setFormError(err.message || "Failed to register. Please try again.");
+      toast({
+        variant: "destructive",
+        title: "Registration failed",
+        description: err.message || "Failed to create account. Please try with a different email.",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -126,7 +138,14 @@ export default function RegisterPage() {
                 <p className="text-sm text-destructive">{errors.confirmPassword.message}</p>
               )}
             </div>
-            {error && <p className="text-sm text-destructive">{error}</p>}
+            
+            {formError && (
+              <div className="rounded-md bg-destructive/15 p-3 flex items-center gap-2 text-sm text-destructive">
+                <AlertCircle className="h-4 w-4" />
+                <p>{formError}</p>
+              </div>
+            )}
+            
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? "Registering..." : "Register"}
             </Button>

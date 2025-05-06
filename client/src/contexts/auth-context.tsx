@@ -1,138 +1,135 @@
 "use client";
 
-import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
-import axios from 'axios';
-import Cookies from 'js-cookie';
-import { login as apiLogin, register as apiRegister, getCurrentUser } from '@/lib/api/auth-service';
-import { checkApiHealth } from '@/lib/api/health-service';
-import { User } from '@/types';
-import { useRouter } from 'next/navigation';
+import { createContext, useContext, useEffect, useState } from "react";
+import authService, { User } from "@/lib/api/auth-service";
 
 interface AuthContextType {
   user: User | null;
-  loading: boolean;
-  login?: (email: string, password: string) => Promise<void>;
-  register?: (name: string, email: string, password: string) => Promise<void>;
-  logout?: () => void;
   isAuthenticated: boolean;
-  apiHealthy: boolean;
+  isLoading: boolean;
+  login: (email: string, password: string) => Promise<void>;
+  register: (name: string, email: string, password: string) => Promise<void>;
+  logout: () => void;
 }
 
-const AuthContext = createContext<AuthContextType>({
-  user: null,
-  loading: true,
-  isAuthenticated: false,
-  apiHealthy: true
-});
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider = ({ children }: { children: ReactNode }) => {
+export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [apiHealthy, setApiHealthy] = useState(true);
-  const router = useRouter();
-  
-  // Check API health during initialization
-  useEffect(() => {
-    const verifyApiHealth = async () => {
-      try {
-        const healthStatus = await checkApiHealth();
-        const isHealthy = healthStatus.status === 'healthy';
-        setApiHealthy(isHealthy);
+  const [isLoading, setIsLoading] = useState(true);
 
-        if (!isHealthy) {
-          console.error("API Connection Issue: There might be a problem connecting to the server. Some features may not work.");
-        }
-      } catch (error) {
-        console.error("Failed to check API health:", error);
-        setApiHealthy(false);
-      }
-    };
-
-    verifyApiHealth();
-  }, []);
-
-  // Check if user is already logged in on initial render
+  // Check for stored auth on mount
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const token = localStorage.getItem('token');
+        // Check if token exists
+        const token = localStorage.getItem("token");
         if (!token) {
-          setLoading(false);
+          setIsLoading(false);
           return;
         }
 
-        const currentUser = await getCurrentUser();
-        if (currentUser) {
-          setUser(currentUser);
-        }
+        // Fetch current user
+        const currentUser = await authService.getCurrentUser();
+        setUser(currentUser);
       } catch (error) {
-        console.error('Authentication check failed:', error);
-        // Clear invalid token
-        localStorage.removeItem('token');
+        console.error("Auth check error:", error);
+        // Clear potentially invalid tokens
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
       } finally {
-        setLoading(false);
+        setIsLoading(false);
       }
     };
 
     checkAuth();
   }, []);
 
+  // Login function
   const login = async (email: string, password: string) => {
-    setLoading(true);
     try {
-      const response = await apiLogin(email, password);
-      localStorage.setItem('token', response.token);
+      // Validate inputs
+      if (!email || !password) {
+        throw new Error("Email and password are required");
+      }
+      
+      // Call login API
+      const response = await authService.login({
+        email,
+        password,
+      });
+
+      // Store token and user
+      localStorage.setItem("token", response.token);
+      localStorage.setItem("user", JSON.stringify(response.user));
+      
+      // Update state
       setUser(response.user);
-      return response;
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Login failed');
-    } finally {
-      setLoading(false);
+    } catch (error) {
+      // Log and rethrow
+      console.error("Login error in context:", error);
+      throw error;
     }
   };
 
+  // Register function
   const register = async (name: string, email: string, password: string) => {
-    setLoading(true);
     try {
-      const response = await apiRegister(name, email, password);
-      localStorage.setItem('token', response.token);
+      // Validate inputs
+      if (!name || !email || !password) {
+        throw new Error("Name, email, and password are required");
+      }
+      
+      // Call register API
+      const response = await authService.register({
+        name,
+        email,
+        password,
+      });
+
+      // Store token and user
+      localStorage.setItem("token", response.token);
+      localStorage.setItem("user", JSON.stringify(response.user));
+      
+      // Update state
       setUser(response.user);
-      return response;
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Registration failed');
-    } finally {
-      setLoading(false);
+    } catch (error) {
+      // Log and rethrow
+      console.error("Register error in context:", error);
+      throw error;
     }
   };
 
+  // Logout function
   const logout = () => {
-    localStorage.removeItem('token');
+    // Clear storage
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    
+    // Clear state
     setUser(null);
-    // Redirect to login page
-    router.push('/auth/login');
-  };
-
-  const contextValue = {
-    user,
-    loading,
-    login,
-    register,
-    logout,
-    isAuthenticated: !!user,
-    apiHealthy
   };
 
   return (
-    <AuthContext.Provider value={contextValue}>
+    <AuthContext.Provider
+      value={{
+        user,
+        isAuthenticated: !!user,
+        isLoading,
+        login,
+        register,
+        logout,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
-};
+}
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 };

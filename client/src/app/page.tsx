@@ -8,6 +8,7 @@ import { Navbar } from "@/components/navbar";
 import { TemplateGallery } from "@/components/template/template-gallery";
 import { Template } from "@/types";
 import apiClient from "@/lib/api/api-client";
+import templateService from "@/lib/api/template-service";
 import { Search, ArrowRight } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 
@@ -22,11 +23,16 @@ export default function HomePage() {
     const fetchTemplates = async () => {
       try {
         setLoading(true);
-        // Fetch only public templates and limit to 6
-        const response = await apiClient.get('/templates?public=true&limit=6');
+        // Use the template service instead of direct API client call
+        const templatesData = await templateService.getAllTemplates();
         
-        // Filter out test templates that contain specific text patterns
-        const filteredData = response.data.filter((template: Template) => {
+        // Ensure templatesData is an array and limit to 6 templates
+        const safeTempData = Array.isArray(templatesData) ? templatesData.slice(0, 6) : [];
+        
+        // Filter out test templates
+        const filteredData = safeTempData.filter((template: Template) => {
+          if (!template) return false;
+          
           const title = template.title?.toLowerCase() || '';
           const desc = template.description?.toLowerCase() || '';
           return !(
@@ -111,23 +117,29 @@ export default function HomePage() {
                       <div key={i} className="bg-background animate-pulse rounded-md h-32"></div>
                     ))
                   : 
-                    templates.slice(0, 4).map((template) => (
-                      <Link 
-                        href={isAuthenticated ? `/templates/${template.id}` : `/auth/login?redirect=/templates/${template.id}`}
-                        key={template.id}
-                        className="bg-background hover:bg-accent/50 transition-colors p-3 rounded-md border shadow-sm group"
-                      >
-                        <h3 className="font-medium line-clamp-1 group-hover:text-primary transition-colors">{template.title}</h3>
-                        {template.description && (
-                          <p className="text-muted-foreground text-sm line-clamp-2 mt-1">
-                            {template.description}
-                          </p>
-                        )}
-                        <div className="mt-2 text-xs text-primary opacity-0 group-hover:opacity-100 transition-opacity flex items-center">
-                          View template <ArrowRight className="ml-1 h-3 w-3" />
-                        </div>
-                      </Link>
-                    ))
+                    templates && templates.length > 0 ? (
+                      templates.slice(0, 4).map((template) => (
+                        <Link 
+                          href={isAuthenticated ? `/templates/${template.id}` : `/auth/login?redirect=/templates/${template.id}`}
+                          key={template.id}
+                          className="bg-background hover:bg-accent/50 transition-colors p-3 rounded-md border shadow-sm group"
+                        >
+                          <h3 className="font-medium line-clamp-1 group-hover:text-primary transition-colors">{template.title}</h3>
+                          {template.description && (
+                            <p className="text-muted-foreground text-sm line-clamp-2 mt-1">
+                              {template.description}
+                            </p>
+                          )}
+                          <div className="mt-2 text-xs text-primary opacity-0 group-hover:opacity-100 transition-opacity flex items-center">
+                            View template <ArrowRight className="ml-1 h-3 w-3" />
+                          </div>
+                        </Link>
+                      ))
+                    ) : (
+                      <div className="col-span-2 py-6 text-center text-muted-foreground">
+                        No templates available
+                      </div>
+                    )
                   }
                 </div>
                 <Button variant="ghost" size="sm" className="w-full mt-4" asChild>

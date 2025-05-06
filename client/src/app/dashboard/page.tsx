@@ -10,7 +10,7 @@ import { dashboardService } from "@/lib/api/dashboard-service";
 import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
 import { useAuth } from "@/contexts/auth-context";
-import { FileText, MessageSquare, Heart, PlusCircle, ArrowRight, Calendar, Clock } from "lucide-react";
+import { FileText, MessageSquare, Heart, PlusCircle, ArrowRight, Calendar, Clock, ShieldAlert } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from '@/components/ui/use-toast';
 
@@ -44,10 +44,10 @@ export default function DashboardPage() {
         // Fetch user templates (limited to recent ones)
         const templates = await dashboardService.getUserTemplates();
         
-        // Filter out test templates
+        // Filter out test templates - adding null checks
         const filteredTemplates = templates.filter(template => {
-          const title = template.title?.toLowerCase() || '';
-          const desc = template.description?.toLowerCase() || '';
+          const title = template?.title?.toLowerCase() || '';
+          const desc = template?.description?.toLowerCase() || '';
           return !(
             title.includes('test template') || 
             title.includes('updated template') || 

@@ -1,96 +1,68 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { CheckCircle, AlertCircle, Loader2 } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { cn } from "@/lib/utils";
-import { checkApiHealth } from "@/lib/api/health-service";
+import React, { useState, useEffect } from 'react';
+import { ActivityIcon } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import Link from 'next/link';
+import { checkApiHealth } from '@/lib/api/health-service';
 
-interface ApiHealthIndicatorProps {
-  className?: string;
-  size?: number;
-  showTooltip?: boolean;
-}
-
-export default function ApiHealthIndicator({
-  className,
-  size = 16,
-  showTooltip = true
-}: ApiHealthIndicatorProps) {
-  const [status, setStatus] = useState<'checking' | 'healthy' | 'unhealthy'>('checking');
-  const [lastChecked, setLastChecked] = useState<Date | null>(null);
+const ApiHealthIndicator = () => {
+  const [isHealthy, setIsHealthy] = useState<boolean | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const checkHealth = async () => {
       try {
-        const result = await checkApiHealth();
-        setStatus(result.status as 'healthy' | 'unhealthy');
-        setLastChecked(new Date());
+        setIsLoading(true);
+        const healthy = await checkApiHealth();
+        setIsHealthy(healthy);
       } catch (error) {
-        console.error("Error checking API health:", error);
-        setStatus('unhealthy');
-        setLastChecked(new Date());
+        console.error('Error checking API health:', error);
+        setIsHealthy(false);
+      } finally {
+        setIsLoading(false);
       }
     };
-
+    
     checkHealth();
     
-    // Check health periodically (every 5 minutes)
-    const interval = setInterval(checkHealth, 5 * 60 * 1000);
-    return () => clearInterval(interval);
+    // Check API health every 60 seconds
+    const intervalId = setInterval(checkHealth, 60000);
+    
+    return () => clearInterval(intervalId);
   }, []);
-
-  const icon = status === 'checking' ? (
-    <Loader2 className="animate-spin" size={size} />
-  ) : status === 'healthy' ? (
-    <CheckCircle size={size} className="text-green-500" />
-  ) : (
-    <AlertCircle size={size} className="text-red-500" />
-  );
-
-  const tooltipText = status === 'checking' 
-    ? 'Checking API status...' 
-    : status === 'healthy' 
-      ? 'API is online' 
-      : 'API connection issues';
-
-  if (showTooltip) {
+  
+  if (isLoading) {
     return (
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger>
-            <div className={cn("flex items-center", className)}>
-              {icon}
-              {lastChecked && (
-                <span className="text-xs ml-2 text-muted-foreground hidden sm:inline">
-                  {status === 'checking' ? 'Checking...' : lastChecked.toLocaleTimeString()}
-                </span>
-              )}
-            </div>
-          </TooltipTrigger>
-          <TooltipContent>
-            <div className="text-sm">
-              <p>{tooltipText}</p>
-              {lastChecked && (
-                <p className="text-xs text-muted-foreground">
-                  Last checked: {lastChecked.toLocaleString()}
-                </p>
-              )}
-            </div>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
+      <Button variant="ghost" size="icon" disabled className="opacity-50">
+        <ActivityIcon className="h-4 w-4 animate-pulse" />
+      </Button>
     );
   }
-
+  
   return (
-    <div className={cn("flex items-center", className)}>
-      {icon}
-      {lastChecked && (
-        <span className="text-xs ml-2 text-muted-foreground hidden sm:inline">
-          {status === 'checking' ? 'Checking...' : lastChecked.toLocaleTimeString()}
-        </span>
-      )}
-    </div>
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button 
+            variant="ghost" 
+            size="icon"
+            className={isHealthy ? 'text-green-500 hover:text-green-600' : 'text-red-500 hover:text-red-600'}
+            asChild
+          >
+            <Link href="/api-status">
+              <ActivityIcon className={`h-4 w-4 ${!isHealthy && 'animate-pulse'}`} />
+            </Link>
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>API Status: {isHealthy ? 'Healthy' : 'Issues Detected'}</p>
+          <p className="text-xs text-muted-foreground">Click for details</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
-}
+};
+
+export default ApiHealthIndicator;

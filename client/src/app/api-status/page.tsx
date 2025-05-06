@@ -15,9 +15,8 @@ import healthService, { HealthCheckResponse } from "@/lib/api/health-service";
 export default function ApiStatusPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [healthStatus, setHealthStatus] = useState<HealthCheckResponse | null>(null);
   const [endpointStatus, setEndpointStatus] = useState<HealthCheckResponse | null>(null);
-  const [lastChecked, setLastChecked] = useState<Date | null>(null);
+  
   const { user, logout } = useAuth();
   const router = useRouter();
 
@@ -29,20 +28,14 @@ export default function ApiStatusPage() {
   };
 
   const checkHealth = async () => {
-    if (refreshing) return;
-    
-    setRefreshing(true);
     try {
-      const health = await healthService.checkApiHealth();
-      const endpoints = await healthService.checkEndpoints();
+      setRefreshing(true);
+      const status = await healthService.checkEndpoints();
+      setEndpointStatus(status);
       
-      setHealthStatus(health);
-      setEndpointStatus(endpoints);
-      setLastChecked(new Date());
-      
-      if (health.status === 'healthy') {
+      if (status.status === 'healthy') {
         toast({
-          title: "Health Check Complete",
+          title: "Health Check Successful",
           description: "All systems are operational",
         });
       } else {
@@ -110,82 +103,23 @@ export default function ApiStatusPage() {
           Refresh
         </Button>
       </div>
-      
-      {/* Overall Status Card */}
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            System Status 
-            {loading ? (
-              <Skeleton className="w-24 h-8" />
-            ) : (
-              <Badge variant={healthStatus?.status === 'healthy' ? 'default' : 'destructive'}>
-                {healthStatus?.status === 'healthy' ? 'Operational' : 'Issues Detected'}
-              </Badge>
-            )}
-          </CardTitle>
-          <CardDescription>
-            {lastChecked ? `Last checked: ${lastChecked.toLocaleString()}` : 'Checking system status...'}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          {loading ? (
-            <div className="space-y-4">
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <div className="flex items-center">
-                <div className="mr-4 rounded-full bg-primary/10 p-2">
-                  {healthStatus?.status === 'healthy' ? (
-                    <CheckCircle className="h-5 w-5 text-green-600" />
-                  ) : (
-                    <AlertCircle className="h-5 w-5 text-red-600" />
-                  )}
-                </div>
-                <div>
-                  <p className="font-medium">{healthStatus?.message}</p>
-                  <p className="text-sm text-muted-foreground">API Server</p>
-                </div>
-              </div>
-              
-              <div className="flex items-center">
-                <div className="mr-4 rounded-full bg-primary/10 p-2">
-                  <Database className="h-5 w-5 text-blue-600" />
-                </div>
-                <div>
-                  <p className="font-medium">
-                    Database is {healthStatus?.databaseStatus || 'unavailable'}
-                  </p>
-                  <p className="text-sm text-muted-foreground">PostgreSQL Database</p>
-                </div>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-      
-      {/* Endpoints Status Card */}
+
       <Card>
         <CardHeader>
           <CardTitle>API Endpoints</CardTitle>
-          <CardDescription>
-            Status of individual API endpoints
-          </CardDescription>
+          <CardDescription>Health status of essential API endpoints</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {loading ? (
-              Array(3).fill(0).map((_, i) => (
-                <div key={i} className="flex justify-between items-center p-3 border rounded-lg">
-                  <Skeleton className="h-6 w-24" />
-                  <Skeleton className="h-6 w-16" />
-                </div>
-              ))
-            ) : (
-              endpointStatus?.endpoints?.map((endpoint, index) => (
-                <div key={index} className="flex justify-between items-center p-3 border rounded-lg">
+          {loading ? (
+            <div className="space-y-3">
+              {Array(3).fill(0).map((_, i) => (
+                <Skeleton key={i} className="h-12 w-full" />
+              ))}
+            </div>
+          ) : endpointStatus?.endpoints && endpointStatus.endpoints.length > 0 ? (
+            <div className="space-y-4">
+              {endpointStatus.endpoints.map((endpoint, index) => (
+                <div key={index} className="flex justify-between items-center p-3 border rounded-md">
                   <div className="flex items-center">
                     {endpoint.status === 'healthy' ? (
                       <CheckCircle className="h-4 w-4 mr-2 text-green-600" />
@@ -205,15 +139,13 @@ export default function ApiStatusPage() {
                     )}
                   </div>
                 </div>
-              ))
-            )}
-            
-            {!loading && (!endpointStatus?.endpoints || endpointStatus.endpoints.length === 0) && (
-              <div className="text-center py-4">
-                <p className="text-muted-foreground">No endpoint data available</p>
-              </div>
-            )}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-4">
+              <p className="text-muted-foreground">No endpoint data available</p>
+            </div>
+          )}
         </CardContent>
       </Card>
     </DashboardLayout>
