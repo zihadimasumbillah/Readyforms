@@ -6,6 +6,7 @@ import { FormResponse } from './FormResponse';
 import { Comment } from './Comment';
 import { Like } from './Like';
 import config from '../config/db.config';
+import 'pg';
 
 // Initialize Sequelize with models
 const sequelize = new Sequelize({
