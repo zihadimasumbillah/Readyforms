@@ -1,0 +1,115 @@
+import { Request, Response } from 'express';
+import { Comment, Template } from '../models';
+import catchAsync from '../utils/catchAsync';
+import User from '../models/User';
+import { optimisticDelete, handleOptimisticLockError } from '../utils/optimistic-locking';
+
+/**
+ * Get all comments for a template
+ * @route GET /api/comments/template/:templateId
+ */
+export const getCommentsByTemplate = async (req: Request, res: Response) => {
+  try {
+    const { templateId } = req.params;
+    
+    // Verify that the template exists
+    const template = await Template.findByPk(templateId);
+    
+    if (!template) {
+      return res.status(404).json({ message: 'Template not found' });
+    }
+    
+    // Get comments for this template
+    const comments = await Comment.findAll({
+      where: {
+        templateId
+      },
+      include: [{
+        model: User,
+        attributes: ['id', 'name']
+      }],
+      order: [['createdAt', 'ASC']] // Show oldest first
+    });
+    
+    return res.status(200).json(comments);
+  } catch (error) {
+    console.error('Get comments error:', error);
+    return res.status(500).json({ message: 'Server error' });
+  }
+};
+
+/**
+ * Create new comment
+ * @route POST /api/comments
+ */
+export const createComment = catchAsync(async (req: Request, res: Response) => {
+  const { templateId, content } = req.body;
+  
+  // Validate request
+  if (!templateId || !content) {
+    return res.status(400).json({ message: 'Template ID and content are required' });
+  }
+  
+  // Ensure user exists on request (added by auth middleware)
+  if (!req.user) {
+    return res.status(401).json({ message: 'Not authenticated' });
+  }
+  
+  const comment = await Comment.create({
+    templateId,
+    userId: req.user.id,
+    content
+  });
+  
+  res.status(201).json(comment);
+});
+
+/**
+ * Delete a comment
+ * @route DELETE /api/comments/:id
+ */
+export const deleteComment = async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Not authenticated' });
+    }
+    
+    const { id } = req.params;
+    const { version } = req.body;
+    
+    if (version === undefined) {
+      return res.status(400).json({ message: 'version field is required for optimistic locking' });
+    }
+    
+    // Find the comment
+    const comment = await Comment.findByPk(id, {
+      include: [Template]
+    });
+    
+    if (!comment) {
+      return res.status(404).json({ message: 'Comment not found' });
+    }
+    
+    // Check if user has permission to delete this comment
+    const isCommentAuthor = req.user.id === comment.userId;
+    const isTemplateOwner = req.user.id === comment.template.userId;
+    const isAdmin = req.user.isAdmin;
+    
+    if (!isCommentAuthor && !isTemplateOwner && !isAdmin) {
+      return res.status(403).json({ 
+        message: 'You do not have permission to delete this comment' 
+      });
+    }
+    
+    // Delete the comment with optimistic locking
+    await optimisticDelete(Comment, id, version);
+    
+    return res.status(200).json({
+      message: 'Comment deleted successfully'
+    });
+  } catch (error) {
+    return handleOptimisticLockError(error, res) || res.status(500).json({ 
+      message: 'Server error while deleting comment' 
+    });
+  }
+};

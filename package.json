@@ -1,0 +1,27 @@
+{
+  "name": "ready-forms",
+  "version": "1.0.0",
+  "description": "Customizable forms web application",
+  "main": "index.js",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:server": "cd server && npm run dev",
+    "dev:client": "cd client && npm run dev",
+    "install:all": "npm install && cd server && npm install && cd ../client && npm install",
+    "build": "cd server && npm run build && cd ../client && npm run build",
+    "start": "cd server && npm start"
+  },
+  "keywords": [
+    "forms",
+    "typescript",
+    "react",
+    "nodejs",
+    "express"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/uuid": "^10.0.0",
+    "concurrently": "^8.2.2"
+  }
+}
