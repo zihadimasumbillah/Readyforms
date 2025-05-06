@@ -85,9 +85,19 @@ export function TemplateCard({ template, onClick, className, showStats = true }:
           className="w-full" 
           size="sm"
           onClick={onClick}
+          asChild={!onClick}
         >
-          <Eye className="h-3.5 w-3.5 mr-1" />
-          View
+          {onClick ? (
+            <>
+              <Eye className="h-3.5 w-3.5 mr-1" />
+              View
+            </>
+          ) : (
+            <Link href={`/templates/${template.id}`}>
+              <Eye className="h-3.5 w-3.5 mr-1" />
+              View
+            </Link>
+          )}
         </Button>
         
         {isOwner && (

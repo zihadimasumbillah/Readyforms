@@ -1361,6 +1361,9 @@ video {
 .grid-cols-3 {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
+.grid-cols-4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
 .flex-row {
   flex-direction: row;
 }
@@ -1699,6 +1702,10 @@ video {
 }
 .bg-transparent {
   background-color: transparent;
+}
+.bg-blue-500 {
+  --tw-bg-opacity: 1;
+  background-color: rgb(59 130 246 / var(--tw-bg-opacity, 1));
 }
 .bg-gradient-to-b {
   background-image: linear-gradient(to bottom, var(--tw-gradient-stops));

@@ -4,6 +4,21 @@ import catchAsync from '../utils/catchAsync';
 import axios from 'axios';
 import os from 'os';
 
+interface HealthCheckResult {
+  status: string;
+  message: string;
+  database: {
+    connected: boolean;
+    responseTime: number;
+  };
+  memory: {
+    usage: number;
+    total: number;
+    free: number;
+  };
+  uptime: number;
+}
+
 /**
  * Check endpoints health
  * @route GET /api/health/check
@@ -129,17 +144,23 @@ export const getSystemHealth = catchAsync(async (_req: Request, res: Response) =
     // Get database metrics
     let dbMetrics = {};
     try {
+      interface DbVersionInfo {
+        version: string;
+        current_database: string;
+        current_user: string;
+      }
       const dbStatus = await sequelize.query('SELECT version(), current_database(), current_user');
+      const dbInfo = dbStatus[0] as DbVersionInfo[];
       dbMetrics = {
         connected: true,
-        version: dbStatus[0][0].version,
-        database: dbStatus[0][0].current_database,
-        user: dbStatus[0][0].current_user
+        version: dbInfo[0].version,
+        database: dbInfo[0].current_database,
+        user: dbInfo[0].current_user
       };
     } catch (error) {
       dbMetrics = {
         connected: false,
-        error: error.message
+        error: (error as Error).message
       };
     }
     
@@ -154,6 +175,103 @@ export const getSystemHealth = catchAsync(async (_req: Request, res: Response) =
     res.status(500).json({ 
       message: 'Server error while getting system health',
       timestamp: new Date().toISOString()
+    });
+  }
+});
+
+/**
+ * Get system health status
+ * @route GET /api/health
+ */
+export const getHealth = catchAsync(async (req: Request, res: Response) => {
+  const startTime = Date.now();
+  
+  try {
+    // Test database connection
+    const databaseStartTime = Date.now();
+    await sequelize.authenticate();
+    const databaseResponseTime = Date.now() - databaseStartTime;
+    
+    // Get memory usage
+    const memoryUsage = process.memoryUsage();
+    
+    // Prepare health check result
+    const healthCheck: HealthCheckResult = {
+      status: 'healthy',
+      message: 'API is functioning normally',
+      database: {
+        connected: true,
+        responseTime: databaseResponseTime
+      },
+      memory: {
+        usage: Math.round(memoryUsage.rss / 1024 / 1024), // Convert to MB
+        total: Math.round(memoryUsage.heapTotal / 1024 / 1024), // Convert to MB
+        free: Math.round((memoryUsage.heapTotal - memoryUsage.heapUsed) / 1024 / 1024) // Convert to MB
+      },
+      uptime: process.uptime()
+    };
+    
+    return res.status(200).json(healthCheck);
+  } catch (error) {
+    const typedError = error as Error;
+    const healthCheck = {
+      status: 'unhealthy',
+      message: 'API is experiencing issues',
+      database: {
+        connected: false,
+        responseTime: Date.now() - startTime
+      },
+      error: typedError.message,
+      uptime: process.uptime()
+    };
+    
+    return res.status(503).json(healthCheck);
+  }
+});
+
+/**
+ * Get database health status
+ * @route GET /api/health/database
+ */
+export const getDatabaseHealth = catchAsync(async (req: Request, res: Response) => {
+  const startTime = Date.now();
+  
+  try {
+    // Test database connection
+    await sequelize.authenticate();
+    
+    // Get table statistics
+    const [dbStats] = await sequelize.query(`
+      SELECT 
+        (SELECT COUNT(*) FROM "Users") as user_count,
+        (SELECT COUNT(*) FROM "Templates") as template_count,
+        (SELECT COUNT(*) FROM "FormResponses") as response_count
+    `);
+    
+    // Cast to proper type
+    interface DbStats {
+      user_count: number;
+      template_count: number;
+      response_count: number;
+    }
+    
+    const typedDbStats = dbStats as unknown as DbStats[];
+    
+    return res.status(200).json({
+      status: 'connected',
+      responseTime: Date.now() - startTime,
+      statistics: {
+        users: typedDbStats[0].user_count,
+        templates: typedDbStats[0].template_count,
+        responses: typedDbStats[0].response_count
+      }
+    });
+  } catch (error) {
+    const typedError = error as Error;
+    return res.status(503).json({
+      status: 'disconnected',
+      responseTime: Date.now() - startTime,
+      error: typedError.message
     });
   }
 });

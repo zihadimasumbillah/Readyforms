@@ -15,7 +15,19 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  // Initialize user from localStorage to prevent brief unauthenticated states during page loads
+  const [user, setUser] = useState<User | null>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const savedUser = localStorage.getItem('user');
+        return savedUser ? JSON.parse(savedUser) : null;
+      } catch (error) {
+        console.error('Error parsing stored user data:', error);
+        return null;
+      }
+    }
+    return null;
+  });
   const [isLoading, setIsLoading] = useState(true);
 
   // Check for stored auth on mount
@@ -31,12 +43,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         // Fetch current user
         const currentUser = await authService.getCurrentUser();
+        // Store the refreshed user details
+        localStorage.setItem("user", JSON.stringify(currentUser));
         setUser(currentUser);
       } catch (error) {
         console.error("Auth check error:", error);
-        // Clear potentially invalid tokens
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
+        // Don't clear tokens on network errors to prevent unnecessary logouts
+        if ((error as any)?.status === 401) {
+          // Only clear on actual auth errors, not network issues
+          localStorage.removeItem("token");
+          localStorage.removeItem("user");
+          setUser(null);
+        }
       } finally {
         setIsLoading(false);
       }

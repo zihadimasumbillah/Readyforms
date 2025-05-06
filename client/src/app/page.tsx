@@ -17,6 +17,7 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [filteredTemplates, setFilteredTemplates] = useState<Template[]>([]);
+  const [sortMethod, setSortMethod] = useState<'recent' | 'popular' | 'recommended'>('recommended');
   const { isAuthenticated } = useAuth();
 
   useEffect(() => {
@@ -26,8 +27,8 @@ export default function HomePage() {
         // Use the template service instead of direct API client call
         const templatesData = await templateService.getAllTemplates();
         
-        // Ensure templatesData is an array and limit to 6 templates
-        const safeTempData = Array.isArray(templatesData) ? templatesData.slice(0, 6) : [];
+        // Ensure templatesData is an array and get a good number of templates
+        const safeTempData = Array.isArray(templatesData) ? templatesData : [];
         
         // Filter out test templates
         const filteredData = safeTempData.filter((template: Template) => {
@@ -43,8 +44,11 @@ export default function HomePage() {
           );
         });
         
-        setTemplates(filteredData);
-        setFilteredTemplates(filteredData);
+        // Sort templates based on selected method
+        const sortedTemplates = sortTemplates(filteredData, sortMethod);
+        
+        setTemplates(sortedTemplates);
+        setFilteredTemplates(sortedTemplates);
       } catch (error) {
         console.error('Error fetching templates:', error);
         setTemplates([]);
@@ -55,7 +59,44 @@ export default function HomePage() {
     };
 
     fetchTemplates();
-  }, []);
+  }, [sortMethod]);
+
+  // Function to sort templates based on different criteria
+  const sortTemplates = (templates: Template[], method: string) => {
+    switch (method) {
+      case 'recent':
+        // Sort by newest first
+        return [...templates].sort((a, b) => 
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+      case 'popular':
+        // Sort by likes count if available, otherwise use random sorting
+        return [...templates].sort((a, b) => 
+          (b.likesCount || 0) - (a.likesCount || 0)
+        );
+      case 'recommended':
+      default:
+        // Mix of popular and diverse templates - provide variety
+        const popular = [...templates].sort((a, b) => 
+          (b.likesCount || 0) - (a.likesCount || 0)
+        );
+        
+        // Get some templates from different topics to ensure diversity
+        const uniqueTopics = new Set(templates.map(t => t.topicId));
+        const diverse: Template[] = [];
+        
+        uniqueTopics.forEach(topicId => {
+          const template = templates.find(t => t.topicId === topicId);
+          if (template) diverse.push(template);
+        });
+        
+        // Combine diverse templates with popular ones, removing duplicates
+        const diverseIds = new Set(diverse.map(t => t.id));
+        const remaining = popular.filter(t => !diverseIds.has(t.id));
+        
+        return [...diverse, ...remaining];
+    }
+  };
 
   useEffect(() => {
     if (searchQuery.trim() === '') {
@@ -173,6 +214,28 @@ export default function HomePage() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
+              </div>
+
+              {/* Sort Options */}
+              <div className="flex gap-4 mt-4">
+                <Button
+                  variant={sortMethod === 'recent' ? 'default' : 'outline'}
+                  onClick={() => setSortMethod('recent')}
+                >
+                  Recent
+                </Button>
+                <Button
+                  variant={sortMethod === 'popular' ? 'default' : 'outline'}
+                  onClick={() => setSortMethod('popular')}
+                >
+                  Popular
+                </Button>
+                <Button
+                  variant={sortMethod === 'recommended' ? 'default' : 'outline'}
+                  onClick={() => setSortMethod('recommended')}
+                >
+                  Recommended
+                </Button>
               </div>
             </div>
             

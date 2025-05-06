@@ -79,7 +79,21 @@ const dashboardService = {
       console.error('Get recent activity error:', error);
       return [];
     }
-  }
+  },
+
+  /**
+   * Delete a template
+   */
+  deleteTemplate: async (id: string, version: number): Promise<void> => {
+    try {
+      // Version must be included for optimistic locking
+      const data = { version };
+      await apiClient.delete(`/templates/${id}`, { data });
+    } catch (error) {
+      console.error(`Delete template ${id} error:`, error);
+      throw error;
+    }
+  },
 };
 
 // Export both as default and named export

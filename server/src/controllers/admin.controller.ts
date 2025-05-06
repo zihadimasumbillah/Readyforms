@@ -2,6 +2,13 @@ import { Request, Response } from 'express';
 import { Template, User, FormResponse, Like, Comment, Topic, sequelize } from '../models';
 import catchAsync from '../utils/catchAsync';
 
+interface StatisticsResult {
+  active_users: number;
+  total_templates: number;
+  total_responses: number;
+  public_templates: number;
+}
+
 /**
  * Get admin dashboard stats
  * @route GET /api/admin/stats
@@ -35,6 +42,10 @@ export const getAdminStats = catchAsync(async (_req: Request, res: Response) => 
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     
+    interface ActiveUsersResult {
+      active_users: number;
+    }
+    
     const activeUsers = await sequelize.query(
       `SELECT COUNT(DISTINCT "userId") as active_users
        FROM form_responses
@@ -43,7 +54,7 @@ export const getAdminStats = catchAsync(async (_req: Request, res: Response) => 
         replacements: { thirtyDaysAgo },
         type: sequelize.QueryTypes.SELECT
       }
-    );
+    ) as ActiveUsersResult[];
     
     // Send stats
     res.status(200).json({
@@ -175,4 +186,54 @@ export const getAllTemplates = catchAsync(async (_req: Request, res: Response) =
     console.error('Error getting all templates:', error);
     res.status(500).json({ message: 'Server error while getting all templates' });
   }
+});
+
+/**
+ * Get system statistics
+ * @route GET /api/admin/statistics
+ */
+export const getStatistics = catchAsync(async (req: Request, res: Response) => {
+  try {
+    // Only admins can access this (checked by middleware)
+    
+    // Get statistics via raw SQL query for efficiency
+    const [results] = await sequelize.query(`
+      SELECT 
+        (SELECT COUNT(*) FROM "Users" WHERE "blocked" = false) as active_users,
+        (SELECT COUNT(*) FROM "Templates") as total_templates,
+        (SELECT COUNT(*) FROM "FormResponses") as total_responses,
+        (SELECT COUNT(*) FROM "Templates" WHERE "isPublic" = true) as public_templates
+    `);
+    
+    // Cast results to proper interface
+    const stats = results as unknown as StatisticsResult[];
+    
+    if (!stats.length) {
+      return res.status(500).json({ message: 'Failed to retrieve statistics' });
+    }
+    
+    res.status(200).json({
+      statistics: {
+        activeUsers: stats[0].active_users,
+        totalTemplates: stats[0].total_templates,
+        totalResponses: stats[0].total_responses,
+        publicTemplates: stats[0].public_templates
+      }
+    });
+  } catch (error) {
+    console.error('Error getting admin statistics:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+/**
+ * Get all users with full details (admin only)
+ * @route GET /api/admin/users
+ */
+export const getAllUsers = catchAsync(async (req: Request, res: Response) => {
+  const users = await User.findAll({
+    attributes: { exclude: ['password'] }
+  });
+  
+  res.status(200).json(users);
 });

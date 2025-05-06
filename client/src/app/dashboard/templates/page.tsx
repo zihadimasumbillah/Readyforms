@@ -98,16 +98,26 @@ export default function TemplatesPage() {
     if (!templateToDelete) return;
     
     try {
-      // Implement the delete functionality
-      // This will be connected to your API
-      console.log("Deleting template:", templateToDelete.id);
-      // await templateService.deleteTemplate(templateToDelete.id, templateToDelete.version);
+      // Call the API to delete the template
+      await dashboardService.deleteTemplate(templateToDelete.id, templateToDelete.version);
       
       // Update state after successful deletion
       setTemplates(templates.filter(t => t.id !== templateToDelete.id));
+      setFilteredTemplates(filteredTemplates.filter(t => t.id !== templateToDelete.id));
+      
+      toast({
+        title: "Success",
+        description: "Template deleted successfully",
+      });
+      
       setTemplateToDelete(null);
     } catch (error) {
       console.error("Error deleting template:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete template. Please try again.",
+        variant: "destructive"
+      });
     }
   };
 

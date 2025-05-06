@@ -336,6 +336,7 @@ export function TemplateForm({
                     onClick={() => addNewQuestion('String')}
                     disabled={countActiveFieldsOfType('String') >= 4}
                     className="gap-1"
+                    type="button" // Explicitly set type to button to prevent form submission
                   >
                     <PlusCircle className="h-3.5 w-3.5" />
                     Add Text Field
@@ -346,6 +347,7 @@ export function TemplateForm({
                     onClick={() => addNewQuestion('Text')}
                     disabled={countActiveFieldsOfType('Text') >= 4}
                     className="gap-1"
+                    type="button" // Explicitly set type to button to prevent form submission
                   >
                     <PlusCircle className="h-3.5 w-3.5" />
                     Add Text Area
@@ -356,6 +358,7 @@ export function TemplateForm({
                     onClick={() => addNewQuestion('Int')}
                     disabled={countActiveFieldsOfType('Int') >= 4}
                     className="gap-1"
+                    type="button" // Explicitly set type to button to prevent form submission
                   >
                     <PlusCircle className="h-3.5 w-3.5" />
                     Add Number
@@ -366,6 +369,7 @@ export function TemplateForm({
                     onClick={() => addNewQuestion('Checkbox')}
                     disabled={countActiveFieldsOfType('Checkbox') >= 4}
                     className="gap-1"
+                    type="button" // Explicitly set type to button to prevent form submission
                   >
                     <PlusCircle className="h-3.5 w-3.5" />
                     Add Checkbox
