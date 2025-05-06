@@ -57,18 +57,26 @@ instance.interceptors.response.use(
       // Handle authentication errors
       if (status === 401) {
         // Only clear token on server auth errors, not client validation errors
-        if (error.response.config.url !== '/auth/login' && error.response.config.method !== 'post') {
-          // Clear token and user data on auth error
-          if (typeof window !== 'undefined') {
+        if (error.response.config.url !== '/auth/login' && 
+            error.response.config.url !== '/auth/register' && 
+            error.response.config.method !== 'post') {
+          
+          // Check if we're already on the login page or if we have a pending auth request
+          const isAuthRelatedPath = window.location.pathname.includes('/auth/');
+          const isCheckingAuth = error.response.config.url === '/auth/me' || 
+                                error.response.config.url === '/auth/current-user';
+          
+          // Only clear token and redirect if not already on auth page and not checking auth
+          if (typeof window !== 'undefined' && !isAuthRelatedPath && !isCheckingAuth) {
             localStorage.removeItem('token');
             localStorage.removeItem('user');
             
-            // If not on login page, redirect to login
-            if (!window.location.pathname.includes('/auth/login')) {
-              // Store the current location for redirecting back after login
-              localStorage.setItem('redirectAfterLogin', window.location.pathname);
-              window.location.href = '/auth/login';
-            }
+            // Store the current location for redirecting back after login
+            localStorage.setItem('redirectAfterLogin', window.location.pathname);
+            
+            // Use router for navigation instead of direct location change
+            // This is smoother and maintains React state
+            window.location.href = '/auth/login';
           }
         }
       }

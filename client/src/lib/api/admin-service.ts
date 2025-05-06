@@ -1,5 +1,5 @@
 import apiClient from './api-client';
-import { Template, Topic, User } from '@/types';
+import { FormResponse, Template, Topic, User } from '@/types';
 
 export interface SystemActivity {
   id: string;
@@ -49,6 +49,52 @@ const adminService = {
         console.error('Fallback request also failed:', fallbackError);
         return [];
       }
+    }
+  },
+  
+  // Get template by ID with admin privileges (includes private templates)
+  getTemplateById: async (id: string): Promise<Template> => {
+    try {
+      const response = await apiClient.get<Template>(`/admin/templates/${id}`);
+      return response;
+    } catch (error) {
+      console.error(`Error fetching template ${id} as admin:`, error);
+      // Fall back to regular template endpoint
+      return await apiClient.get<Template>(`/templates/${id}`);
+    }
+  },
+  
+  // Update any template as admin (regardless of ownership)
+  updateTemplate: async (id: string, templateData: any): Promise<Template> => {
+    try {
+      const response = await apiClient.put<Template>(`/admin/templates/${id}`, templateData);
+      return response;
+    } catch (error) {
+      console.error(`Error updating template ${id} as admin:`, error);
+      throw error;
+    }
+  },
+  
+  // Delete any template as admin (regardless of ownership)
+  deleteTemplate: async (id: string, version: number): Promise<void> => {
+    try {
+      await apiClient.delete(`/admin/templates/${id}`, { data: { version } });
+    } catch (error) {
+      console.error(`Error deleting template ${id} as admin:`, error);
+      throw error;
+    }
+  },
+  
+  // Get all form responses across the system (admin only)
+  getAllFormResponses: async (limit: number = 100, page: number = 1): Promise<FormResponse[]> => {
+    try {
+      const response = await apiClient.get<FormResponse[]>(
+        `/admin/responses?limit=${limit}&page=${page}`
+      );
+      return response;
+    } catch (error) {
+      console.error('Error fetching all form responses:', error);
+      return [];
     }
   },
 
@@ -103,6 +149,24 @@ const adminService = {
     } catch (error) {
       console.error(`Error deleting topic ${id}:`, error);
       throw error;
+    }
+  },
+  
+  // Search templates with admin privileges (includes private templates)
+  searchTemplates: async (query: string): Promise<Template[]> => {
+    try {
+      const response = await apiClient.get<Template[]>(`/admin/templates/search?query=${encodeURIComponent(query)}`);
+      return response;
+    } catch (error) {
+      console.error('Error searching templates as admin:', error);
+      // Fall back to regular search endpoint
+      try {
+        const response = await apiClient.get<Template[]>(`/templates/search?query=${encodeURIComponent(query)}`);
+        return response;
+      } catch (fallbackError) {
+        console.error('Fallback search also failed:', fallbackError);
+        return [];
+      }
     }
   },
 

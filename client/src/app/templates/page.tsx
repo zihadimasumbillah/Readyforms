@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import { toast } from '@/components/ui/use-toast';
+import { Navbar } from '@/components/navbar';
 
 export default function TemplatesPage() {
   const [templates, setTemplates] = useState<Template[]>([]);
@@ -90,24 +91,27 @@ export default function TemplatesPage() {
   };
 
   return (
-    <div className="container mx-auto py-10">
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-3xl font-bold">Form Templates</h1>
-          <p className="text-muted-foreground mt-1">
-            Browse ready-made templates or create your own
-          </p>
+    <>
+      <Navbar />
+      <div className="container mx-auto py-10">
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-3xl font-bold">Form Templates</h1>
+            <p className="text-muted-foreground mt-1">
+              Browse ready-made templates or create your own
+            </p>
+          </div>
+          <Button onClick={handleCreateTemplate}>
+            Create Template
+          </Button>
         </div>
-        <Button onClick={handleCreateTemplate}>
-          Create Template
-        </Button>
-      </div>
 
-      <TemplateGallery 
-        templates={templates} 
-        topics={topics}
-        loading={loading}
-      />
-    </div>
+        <TemplateGallery 
+          templates={templates} 
+          topics={topics}
+          loading={loading}
+        />
+      </div>
+    </>
   );
 }

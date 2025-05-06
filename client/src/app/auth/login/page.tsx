@@ -150,6 +150,9 @@ export default function LoginPage() {
               Sign up
             </Link>
           </div>
+          <Link href="/" className="text-sm text-center text-muted-foreground underline">
+            Back to home
+          </Link>
         </CardFooter>
       </Card>
     </div>

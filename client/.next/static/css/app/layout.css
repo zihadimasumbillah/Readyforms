@@ -1338,6 +1338,9 @@ video {
 .cursor-wait {
   cursor: wait;
 }
+.cursor-not-allowed {
+  cursor: not-allowed;
+}
 .touch-none {
   touch-action: none;
 }

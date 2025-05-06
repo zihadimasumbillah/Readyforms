@@ -19,12 +19,31 @@ interface HealthCheckResult {
   uptime: number;
 }
 
+interface DbVersionInfo {
+  version: string;
+  current_database: string;
+  current_user: string;
+}
+
+interface DbStats {
+  user_count: number;
+  template_count: number;
+  response_count: number;
+}
+
 /**
  * Check endpoints health
  * @route GET /api/health/check
  */
+interface EndpointStatus {
+  name: string;
+  status: string;
+  responseTime: number;
+  message?: string;
+}
+
 export const checkEndpoints = catchAsync(async (_req: Request, res: Response) => {
-  const results = [];
+  const results: EndpointStatus[] = [];
   let overallStatus = 'healthy';
   
   try {
@@ -144,23 +163,20 @@ export const getSystemHealth = catchAsync(async (_req: Request, res: Response) =
     // Get database metrics
     let dbMetrics = {};
     try {
-      interface DbVersionInfo {
-        version: string;
-        current_database: string;
-        current_user: string;
-      }
       const dbStatus = await sequelize.query('SELECT version(), current_database(), current_user');
-      const dbInfo = dbStatus[0] as DbVersionInfo[];
+      const dbInfo = dbStatus[0] as unknown as DbVersionInfo[];
+      
       dbMetrics = {
         connected: true,
-        version: dbInfo[0].version,
-        database: dbInfo[0].current_database,
-        user: dbInfo[0].current_user
+        version: dbInfo[0]?.version || 'unknown',
+        database: dbInfo[0]?.current_database || 'unknown',
+        user: dbInfo[0]?.current_user || 'unknown'
       };
     } catch (error) {
+      const err = error as Error;
       dbMetrics = {
         connected: false,
-        error: (error as Error).message
+        error: err.message || 'Unknown database error'
       };
     }
     
@@ -171,9 +187,11 @@ export const getSystemHealth = catchAsync(async (_req: Request, res: Response) =
       database: dbMetrics
     });
   } catch (error) {
+    const err = error as Error;
     console.error('Error getting system health:', error);
     res.status(500).json({ 
       message: 'Server error while getting system health',
+      error: err.message || 'Unknown error',
       timestamp: new Date().toISOString()
     });
   }
@@ -221,7 +239,7 @@ export const getHealth = catchAsync(async (req: Request, res: Response) => {
         connected: false,
         responseTime: Date.now() - startTime
       },
-      error: typedError.message,
+      error: typedError.message || 'Unknown error',
       uptime: process.uptime()
     };
     
@@ -249,21 +267,15 @@ export const getDatabaseHealth = catchAsync(async (req: Request, res: Response) 
     `);
     
     // Cast to proper type
-    interface DbStats {
-      user_count: number;
-      template_count: number;
-      response_count: number;
-    }
-    
     const typedDbStats = dbStats as unknown as DbStats[];
     
     return res.status(200).json({
       status: 'connected',
       responseTime: Date.now() - startTime,
       statistics: {
-        users: typedDbStats[0].user_count,
-        templates: typedDbStats[0].template_count,
-        responses: typedDbStats[0].response_count
+        users: typedDbStats[0]?.user_count ?? 0,
+        templates: typedDbStats[0]?.template_count ?? 0,
+        responses: typedDbStats[0]?.response_count ?? 0
       }
     });
   } catch (error) {
@@ -271,7 +283,7 @@ export const getDatabaseHealth = catchAsync(async (req: Request, res: Response) 
     return res.status(503).json({
       status: 'disconnected',
       responseTime: Date.now() - startTime,
-      error: typedError.message
+      error: typedError.message || 'Unknown database error'
     });
   }
 });

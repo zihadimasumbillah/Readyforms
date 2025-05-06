@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,8 @@ import { Template } from "@/types";
 import { cn } from "@/lib/utils";
 import { Eye, Edit, Heart, MessageSquare } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
+import likeService from "@/lib/api/like-service";
+import commentService from "@/lib/api/comment-service";
 
 interface TemplateCardProps {
   template: Template;
@@ -20,6 +22,38 @@ interface TemplateCardProps {
 export function TemplateCard({ template, onClick, className, showStats = true }: TemplateCardProps) {
   const { user } = useAuth();
   const isOwner = user && template.userId === user.id;
+  const isAdmin = user?.isAdmin;
+  
+  const [likesCount, setLikesCount] = useState<number>(template.likesCount || 0);
+  const [commentsCount, setCommentsCount] = useState<number>(template.commentsCount || 0);
+  
+  // Load likes and comments count if not provided with the template
+  useEffect(() => {
+    const fetchCounts = async () => {
+      if (showStats) {
+        try {
+          // Only fetch if not already provided in template data
+          if (template.likesCount === undefined) {
+            const likeCount = await likeService.getLikeCount(template.id);
+            setLikesCount(likeCount);
+          } else {
+            setLikesCount(template.likesCount);
+          }
+          
+          if (template.commentsCount === undefined) {
+            const comments = await commentService.getCommentsByTemplate(template.id);
+            setCommentsCount(comments.length);
+          } else {
+            setCommentsCount(template.commentsCount);
+          }
+        } catch (error) {
+          console.error("Error fetching template stats:", error);
+        }
+      }
+    };
+    
+    fetchCounts();
+  }, [template.id, template.likesCount, template.commentsCount, showStats]);
   
   // Filter out test templates
   const isTestTemplate = 
@@ -60,7 +94,7 @@ export function TemplateCard({ template, onClick, className, showStats = true }:
         </div>
         <div className="flex items-center mt-2 text-xs text-muted-foreground">
           <span>
-            Created {creationDate} {template.user && `by ${template.user.name}`}
+            Created {creationDate} {template.user?.name && `by ${template.user.name}`}
           </span>
         </div>
         
@@ -69,11 +103,11 @@ export function TemplateCard({ template, onClick, className, showStats = true }:
             <div className="flex items-center gap-4">
               <div className="flex items-center text-muted-foreground">
                 <Heart className="h-3.5 w-3.5 mr-1" />
-                <span>{template.likesCount || 0}</span>
+                <span>{likesCount}</span>
               </div>
               <div className="flex items-center text-muted-foreground">
                 <MessageSquare className="h-3.5 w-3.5 mr-1" />
-                <span>{template.commentsCount || 0}</span>
+                <span>{commentsCount}</span>
               </div>
             </div>
           </div>
@@ -100,7 +134,8 @@ export function TemplateCard({ template, onClick, className, showStats = true }:
           )}
         </Button>
         
-        {isOwner && (
+        {/* Show Edit button if user is owner or admin */}
+        {(isOwner || isAdmin) && (
           <Button 
             variant="outline" 
             size="sm"

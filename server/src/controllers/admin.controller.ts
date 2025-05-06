@@ -9,6 +9,10 @@ interface StatisticsResult {
   public_templates: number;
 }
 
+interface ActiveUsersResult {
+  active_users: number;
+}
+
 /**
  * Get admin dashboard stats
  * @route GET /api/admin/stats
@@ -41,10 +45,6 @@ export const getAdminStats = catchAsync(async (_req: Request, res: Response) => 
     // Count active users (users who have submitted a form response in the last 30 days)
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    
-    interface ActiveUsersResult {
-      active_users: number;
-    }
     
     const activeUsers = await sequelize.query(
       `SELECT COUNT(DISTINCT "userId") as active_users
@@ -80,9 +80,6 @@ export const getAdminStats = catchAsync(async (_req: Request, res: Response) => 
 export const getSystemActivity = catchAsync(async (req: Request, res: Response) => {
   try {
     const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 10;
-    
-    // This is a simplified example - in a real app, you would have an activity log table
-    // For this example, we'll combine recent templates, responses, and user registrations
     
     // Get recent templates
     const templates = await Template.findAll({

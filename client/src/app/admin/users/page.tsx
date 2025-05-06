@@ -430,7 +430,7 @@ export default function AdminUsersPage() {
                             
                             <DropdownMenuSeparator />
                             
-                            {/* Toggle block status */}
+                            {/* Toggle block status - disable for self */}
                             {userItem.blocked ? (
                               <DropdownMenuItem
                                 onClick={() => confirmAction(userItem, 'unblock')}
@@ -443,21 +443,22 @@ export default function AdminUsersPage() {
                               <DropdownMenuItem
                                 onClick={() => confirmAction(userItem, 'block')}
                                 disabled={processingId === userItem.id || userItem.id === user.id}
-                                className="text-red-600"
+                                className={userItem.id === user.id ? "text-muted-foreground cursor-not-allowed" : "text-red-600"}
                               >
                                 <UserX className="h-4 w-4 mr-2" />
-                                Block User
+                                {userItem.id === user.id ? "Cannot Block Yourself" : "Block User"}
                               </DropdownMenuItem>
                             )}
                             
-                            {/* Toggle admin status */}
+                            {/* Toggle admin status - disable for self */}
                             {userItem.isAdmin ? (
                               <DropdownMenuItem
                                 onClick={() => confirmAction(userItem, 'removeAdmin')}
                                 disabled={processingId === userItem.id || userItem.id === user.id}
+                                className={userItem.id === user.id ? "text-muted-foreground cursor-not-allowed" : ""}
                               >
                                 <ShieldOff className="h-4 w-4 mr-2" />
-                                Remove Admin Role
+                                {userItem.id === user.id ? "Cannot Remove Own Admin" : "Remove Admin Role"}
                               </DropdownMenuItem>
                             ) : (
                               <DropdownMenuItem
