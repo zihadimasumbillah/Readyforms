@@ -1,19 +1,23 @@
 import { Router } from 'express';
-import { getAllTemplates, getTemplateById, createTemplate, 
-         updateTemplate, deleteTemplate, searchTemplates } from '../controllers/template.controller';
+import { 
+  createTemplate,
+  getAllTemplates,
+  getTemplateById,
+  updateTemplate,
+  deleteTemplate,
+  searchTemplates
+} from '../controllers/template.controller';
 import { authMiddleware } from '../middleware/auth.middleware';
+import { isAdmin } from '../middleware/admin.middleware';
 
 const router = Router();
 
-// Public routes
-router.get('/', getAllTemplates);
+router.get('/', getAllTemplates); 
 router.get('/search', searchTemplates);
+router.get('/admin/all', authMiddleware, isAdmin, getAllTemplates);
 router.get('/:id', getTemplateById);
-
-// Protected routes
-router.use(authMiddleware);
-router.post('/', createTemplate);
-router.put('/:id', updateTemplate);
-router.delete('/:id', deleteTemplate);
+router.post('/', authMiddleware, createTemplate);
+router.put('/:id', authMiddleware, updateTemplate);
+router.delete('/:id', authMiddleware, deleteTemplate);
 
 export default router;

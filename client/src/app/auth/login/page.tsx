@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -13,7 +13,8 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { toast } from '@/components/ui/use-toast';
 
-// Validation schema
+export const dynamic = 'force-dynamic';
+
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
@@ -23,10 +24,30 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login } = useAuth();
+  const searchParams = useSearchParams();
+  const redirectUrl = searchParams.get('redirect');
+  const { login, isAuthenticated } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
 
-  // Initialize form
+  useEffect(() => {
+    if (redirectUrl) {
+      localStorage.setItem('redirectAfterLogin', redirectUrl);
+    }
+  }, [redirectUrl]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      const storedRedirect = localStorage.getItem('redirectAfterLogin');
+      const destinationUrl = storedRedirect || '/dashboard';
+
+      if (storedRedirect) {
+        localStorage.removeItem('redirectAfterLogin');
+      }
+
+      router.replace(destinationUrl);
+    }
+  }, [isAuthenticated, router]);
+
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
@@ -38,8 +59,6 @@ export default function LoginPage() {
   const onSubmit = async (data: LoginFormValues) => {
     try {
       setIsLoading(true);
-      
-      // Check for empty fields to provide better feedback
       if (!data.email || !data.password) {
         toast({
           title: "Missing Information",
@@ -48,19 +67,25 @@ export default function LoginPage() {
         });
         return;
       }
-      
-      await login(data.email, data.password);
+      await login(data.email, data.password, true);
       
       toast({
         title: "Success",
         description: "You have been logged in successfully",
       });
       
-      router.push('/dashboard');
+      
+      const storedRedirect = localStorage.getItem('redirectAfterLogin');
+      const destinationUrl = storedRedirect || '/dashboard';
+
+      if (storedRedirect) {
+        localStorage.removeItem('redirectAfterLogin');
+      }
+
+      router.replace(destinationUrl);
     } catch (error) {
       console.error('Login error:', error);
-      
-      // Provide a user-friendly error message
+
       let errorMessage = "Login failed. Please try again.";
       
       if (error instanceof Error) {

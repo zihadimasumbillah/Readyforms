@@ -5,11 +5,11 @@ import catchAsync from '../utils/catchAsync';
 
 const router = Router();
 
-// Public routes
+// Public routes - ensure paths are properly formatted
 router.get('/template/:templateId', catchAsync(getLikesByTemplate));
 router.get('/count/:templateId', catchAsync(countLikes));
 
-// Protected routes
+// Protected routes - ensure paths are properly formatted
 router.get('/check/:templateId', catchAsync(authMiddleware), catchAsync(checkLike));
 router.post('/template/:templateId', catchAsync(authMiddleware), catchAsync(toggleLike));
 router.delete('/template/:templateId', catchAsync(authMiddleware), catchAsync(toggleLike));

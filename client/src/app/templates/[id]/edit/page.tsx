@@ -15,6 +15,10 @@ import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import { Skeleton } from "@/components/ui/skeleton";
 
+// Mark this page as dynamic to prevent static generation
+export const dynamic = 'force-dynamic';
+export const dynamicParams = true;
+
 export default function EditTemplatePage({ params }: { params: { id: string } }) {
   const [template, setTemplate] = useState<Template | null>(null);
   const [topics, setTopics] = useState<Topic[]>([]);
@@ -26,138 +30,145 @@ export default function EditTemplatePage({ params }: { params: { id: string } })
     const fetchData = async () => {
       try {
         setLoading(true);
-        
-        // Fetch template and topics in parallel
-        const [templateData, topicsData] = await Promise.all([
-          templateService.getTemplateById(params.id),
-          topicService.getAllTopics(),
-        ]);
-        
+        // Fetch the template by ID
+        const templateData = await templateService.getTemplate(params.id);
         setTemplate(templateData);
+        
+        // Fetch available topics for the dropdown
+        const topicsData = await topicService.getAllTopics();
         setTopics(topicsData);
+        
+        // If user is not the owner or admin, redirect to view page
+        if (user && templateData && templateData.userId !== user.id && !user.isAdmin) {
+          toast({
+            title: "Access Denied",
+            description: "You don't have permission to edit this template.",
+            variant: "destructive"
+          });
+          router.push(`/templates/${params.id}`);
+        }
       } catch (error) {
-        console.error("Error fetching data:", error);
+        console.error("Error fetching template data:", error);
         toast({
           title: "Error",
-          description: "Failed to load template data. Please try again.",
+          description: "Failed to load template. Please try again.",
           variant: "destructive"
         });
-        router.push('/dashboard/templates');
+        router.push("/templates");
       } finally {
         setLoading(false);
       }
     };
-
+    
     fetchData();
-  }, [params.id, router]);
-
-  const handleUpdateTemplate = async (formData: any) => {
+  }, [params.id, router, user]);
+  
+  const handleSubmit = async (formData: any) => {
     try {
-      if (!template) return;
-      
-      // Check if at least one field is enabled
-      const hasEnabledField = Object.keys(formData).some(key => 
-        key.endsWith('State') && formData[key] === true
-      );
-      
-      if (!hasEnabledField) {
+      // Make sure we have template and version for optimistic locking
+      if (!template || template.version === undefined) {
         toast({
-          title: "Validation Error",
-          description: "Please add at least one question to your template",
+          title: "Error",
+          description: "Template information is missing. Please try again.",
           variant: "destructive"
         });
         return;
       }
-
-      const result = await templateService.updateTemplate(template.id, formData, template.version);
       
-      // Update the local template with the new version
-      setTemplate({
-        ...template,
-        ...result,
-      });
+      // Add the version to the form data for optimistic locking
+      const dataWithVersion = {
+        ...formData,
+        version: template.version
+      };
       
+      await templateService.updateTemplate(params.id, dataWithVersion);
       toast({
         title: "Success",
-        description: "Template updated successfully",
+        description: "Template updated successfully."
       });
-      
-      router.push(`/templates/${template.id}`);
+      router.push(`/templates/${params.id}`);
     } catch (error) {
       console.error("Error updating template:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update template. Please try again.",
-        variant: "destructive"
-      });
+      
+      // Handle optimistic locking error specifically
+      if (error.response?.status === 409) {
+        toast({
+          title: "Update Conflict",
+          description: "This template has been modified by someone else. Please refresh and try again.",
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to update template. Please try again.",
+          variant: "destructive"
+        });
+      }
     }
   };
-
-  // Ensure user is logged in and is the template owner
-  useEffect(() => {
-    if (!user) {
-      router.push('/auth/login');
-      return;
-    }
-    
-    if (template && template.userId !== user.id && !user.isAdmin) {
-      toast({
-        title: "Access denied",
-        description: "You don't have permission to edit this template",
-        variant: "destructive"
-      });
-      router.push('/dashboard/templates');
-    }
-  }, [user, template, router]);
-
+  
   if (!user) {
-    return null;
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold mb-2">Authentication Required</h2>
+          <p className="mb-4">Please log in to edit templates.</p>
+          <Button onClick={() => router.push('/auth/login')}>Log In</Button>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <>
+    <div className="min-h-screen bg-muted/40">
       <Navbar />
-      <main className="container py-6">
-        <div className="flex items-center mb-6">
-          <Button variant="outline" size="icon" className="mr-4" asChild>
-            <Link href={`/templates/${params.id}`}>
-              <ChevronLeft className="h-4 w-4" />
-            </Link>
-          </Button>
-          <h1 className="text-2xl font-bold">
-            {loading ? <Skeleton className="h-8 w-48" /> : `Edit Template: ${template?.title}`}
-          </h1>
+      <div className="container py-6 max-w-5xl">
+        <div className="mb-6">
+          <Link 
+            href={`/templates/${params.id}`} 
+            className="flex items-center text-sm text-muted-foreground hover:text-primary"
+          >
+            <ChevronLeft className="h-4 w-4 mr-1" />
+            Back to Template
+          </Link>
         </div>
-
+        
         <Card>
           <CardHeader>
-            <CardTitle>Edit Template</CardTitle>
+            <CardTitle className="text-2xl">Edit Template</CardTitle>
             <CardDescription>
-              Modify your existing template
+              Update your form template below.
             </CardDescription>
           </CardHeader>
           <CardContent>
             {loading ? (
               <div className="space-y-4">
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <Skeleton key={i} className="h-12 w-full" />
-                ))}
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-[200px]" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-[150px]" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-[120px]" />
+                  <Skeleton className="h-32 w-full" />
+                </div>
               </div>
-            ) : template ? (
-              <TemplateForm 
-                topics={topics}
-                initialValues={template}
-                onSubmit={handleUpdateTemplate}
-                isEditMode={true}
-              />
             ) : (
-              <div className="text-center py-8">
-                <p className="text-lg text-muted-foreground">Template not found</p>
-              </div>
+              template && (
+                <TemplateForm
+                  initialData={template}
+                  topics={topics}
+                  onSubmit={handleSubmit}
+                  submitButtonLabel="Update Template"
+                />
+              )
             )}
           </CardContent>
         </Card>
-      </main>
-    </>
+      </div>
+    </div>
   );
 }

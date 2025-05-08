@@ -6,7 +6,6 @@ import catchAsync from '../utils/catchAsync';
 
 const router = Router();
 
-// All admin routes require admin privileges
 router.use(catchAsync(authMiddleware));
 router.use(catchAsync(adminMiddleware));
 

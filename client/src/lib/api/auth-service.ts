@@ -1,12 +1,15 @@
 import apiClient from './api-client';
 
-export interface LoginCredentials {
-  email: string;
-  password: string;
-}
-
+// Types for request/response data
 export interface RegisterData {
   name: string;
+  email: string;
+  password: string;
+  language?: string;
+  theme?: string;
+}
+
+export interface LoginData {
   email: string;
   password: string;
 }
@@ -18,80 +21,135 @@ export interface User {
   isAdmin: boolean;
   language?: string;
   theme?: string;
+  createdAt?: string;
+  lastLoginAt?: string;
 }
 
 export interface AuthResponse {
+  message: string;
   token: string;
   user: User;
 }
 
-const authService = {
-  /**
-   * Login user
-   */
-  login: async (credentials: LoginCredentials): Promise<AuthResponse> => {
+class AuthService {
+  async register(data: RegisterData): Promise<AuthResponse> {
     try {
-      // Validate inputs before sending to backend
-      if (!credentials || !credentials.email || !credentials.password) {
-        throw new Error('Email and password are required');
-      }
-      
-      const response = await apiClient.post<AuthResponse>('/auth/login', credentials);
-      return response;
-    } catch (error) {
-      // Better error logging
-      if (error instanceof Error) {
-        console.error('Login error:', error.message);
-      } else {
-        console.error('Login error:', error);
-      }
-      throw error;
-    }
-  },
-
-  /**
-   * Register user
-   */
-  register: async (data: RegisterData): Promise<AuthResponse> => {
-    try {
-      // Validate inputs before sending to backend
-      if (!data || !data.name || !data.email || !data.password) {
-        throw new Error('Name, email, and password are required');
-      }
-      
       const response = await apiClient.post<AuthResponse>('/auth/register', data);
-      return response;
+      // Store auth data in localStorage
+      this.setAuthData(response.data);
+      return response.data;
     } catch (error) {
       console.error('Registration error:', error);
+      // Enhance error handling to expose the specific error message from the API
+      if (error.response && error.response.data && error.response.data.message) {
+        const errorMessage = error.response.data.message;
+        throw new Error(errorMessage);
+      }
       throw error;
     }
-  },
+  }
 
-  /**
-   * Get current user info
-   */
-  getCurrentUser: async (): Promise<User> => {
+  async login(data: LoginData): Promise<AuthResponse> {
     try {
-      const response = await apiClient.get<{ user: User }>('/auth/me');
-      return response.user;
+      console.log('Login attempt:', { email: data.email, passwordLength: data.password?.length });
+      
+      const response = await apiClient.post<AuthResponse>('/auth/login', data);
+      console.log('Login successful, storing auth data');
+      this.setAuthData(response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Login error details:', error.response?.data || error.message);
+      // Enhance error handling to expose the specific error message from the API
+      if (error.response && error.response.data && error.response.data.message) {
+        const errorMessage = error.response.data.message;
+        throw new Error(errorMessage);
+      }
+      throw error;
+    }
+  }
+
+  async getCurrentUser(): Promise<User> {
+    try {
+      const response = await apiClient.get<User>('/auth/me');
+      return response.data;
     } catch (error) {
       console.error('Get current user error:', error);
       throw error;
     }
-  },
+  }
 
-  /**
-   * Update user preferences
-   */
-  updatePreferences: async (preferences: { language?: string; theme?: string }): Promise<{ user: { language: string; theme: string } }> => {
+  async updatePreferences(preferences: {
+    language?: string;
+    theme?: string;
+  }): Promise<User> {
     try {
-      const response = await apiClient.put<{ user: { language: string; theme: string } }>('/auth/preferences', preferences);
-      return response;
+      const response = await apiClient.put<{ user: User }>(
+        '/auth/preferences',
+        preferences
+      );
+      
+      // Update the stored user data to reflect preferences change
+      const currentData = this.getAuthData();
+      if (currentData) {
+        this.setAuthData({
+          ...currentData,
+          user: response.data.user
+        });
+      }
+      
+      return response.data.user;
     } catch (error) {
       console.error('Update preferences error:', error);
       throw error;
     }
   }
-};
 
+  // Get the stored auth data from localStorage
+  getAuthData(): AuthResponse | null {
+    if (typeof window === 'undefined') return null;
+    
+    try {
+      const authDataString = localStorage.getItem('readyforms_auth');
+      if (!authDataString) return null;
+      return JSON.parse(authDataString);
+    } catch (error) {
+      console.error('Error retrieving auth data:', error);
+      return null;
+    }
+  }
+
+  // Store auth data in localStorage
+  setAuthData(authData: AuthResponse): void {
+    if (typeof window === 'undefined') return;
+    
+    try {
+      localStorage.setItem('readyforms_auth', JSON.stringify(authData));
+    } catch (error) {
+      console.error('Error storing auth data:', error);
+    }
+  }
+
+  // Clear auth data from localStorage
+  clearAuthData(): void {
+    if (typeof window === 'undefined') return;
+    
+    try {
+      localStorage.removeItem('readyforms_auth');
+    } catch (error) {
+      console.error('Error clearing auth data:', error);
+    }
+  }
+
+  // Check if the user is authenticated
+  isAuthenticated(): boolean {
+    return !!this.getAuthData();
+  }
+
+  // Logout
+  logout(): void {
+    this.clearAuthData();
+  }
+}
+
+const authService = new AuthService();
 export default authService;

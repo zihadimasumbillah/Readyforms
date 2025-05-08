@@ -1,29 +1,35 @@
 import { Request, Response } from 'express';
-import { Template, User, Topic, FormResponse, Comment, Like } from '../models';
+import { Template, User, Topic, FormResponse, Comment, Like, Tag, TemplateTag } from '../models';
 import { Op } from 'sequelize';
 import catchAsync from '../utils/catchAsync';
 import { validate as isUuid } from 'uuid';
 import { optimisticUpdate, optimisticDelete, handleOptimisticLockError } from '../utils/optimistic-locking';
 
-// Get all templates
 export const getAllTemplates = catchAsync(async (req: Request, res: Response) => {
+  const { limit = 10, page = 1 } = req.query;
+ 
+  const pageNumber = Math.max(1, parseInt(page as string) || 1);
+  const limitNumber = Math.max(1, Math.min(50, parseInt(limit as string) || 10)); 
+  const offset = (pageNumber - 1) * limitNumber;
+  
   const templates = await Template.findAll({
     where: { isPublic: true },
     include: [
       { model: User, attributes: ['id', 'name'] },
-      { model: Topic, attributes: ['id', 'name'] }
+      { model: Topic, attributes: ['id', 'name'] },
+      { model: Tag }
     ],
-    order: [['createdAt', 'DESC']]
+    order: [['createdAt', 'DESC']],
+    limit: limitNumber,
+    offset: offset
   });
   
   res.status(200).json(templates);
 });
 
-// Get template by ID
 export const getTemplateById = catchAsync(async (req: Request, res: Response) => {
   const { id } = req.params;
-  
-  // Validate UUID format
+
   if (!isUuid(id)) {
     return res.status(400).json({ 
       message: 'Invalid template ID format. Please provide a valid UUID.' 
@@ -33,15 +39,15 @@ export const getTemplateById = catchAsync(async (req: Request, res: Response) =>
   const template = await Template.findByPk(id, {
     include: [
       { model: User, attributes: ['id', 'name'] },
-      { model: Topic, attributes: ['id', 'name'] }
+      { model: Topic, attributes: ['id', 'name'] },
+      { model: Tag }
     ]
   });
   
   if (!template) {
     return res.status(404).json({ message: 'Template not found' });
   }
-  
-  // Check if template is private and not owned by the user
+
   if (!template.isPublic && 
       (!req.user || (template.userId !== req.user.id && !req.user.isAdmin))) {
     return res.status(403).json({ message: 'Access denied to this template' });
@@ -50,7 +56,6 @@ export const getTemplateById = catchAsync(async (req: Request, res: Response) =>
   res.status(200).json(template);
 });
 
-// Create new template
 export const createTemplate = catchAsync(async (req: Request, res: Response) => {
   try {
     const { 
@@ -58,6 +63,7 @@ export const createTemplate = catchAsync(async (req: Request, res: Response) => 
       description, 
       isPublic, 
       topicId,
+      tags,
       customString1State,
       customString1Question,
       customString2State,
@@ -92,21 +98,18 @@ export const createTemplate = catchAsync(async (req: Request, res: Response) => 
       customCheckbox4Question,
       questionOrder
     } = req.body;
-    
-    // Validate request
+
     if (!title || !topicId) {
       return res.status(400).json({ message: 'Title and topic are required' });
     }
-    
-    // Validate that at least one field is enabled
+
     if (!customString1State && !customString2State && !customString3State && !customString4State &&
         !customText1State && !customText2State && !customText3State && !customText4State &&
         !customInt1State && !customInt2State && !customInt3State && !customInt4State &&
         !customCheckbox1State && !customCheckbox2State && !customCheckbox3State && !customCheckbox4State) {
       return res.status(400).json({ message: 'At least one form field is required' });
     }
-    
-    // Ensure user is authenticated
+
     if (!req.user) {
       return res.status(401).json({ message: 'Not authenticated' });
     }
@@ -151,15 +154,42 @@ export const createTemplate = catchAsync(async (req: Request, res: Response) => 
       customCheckbox4Question: customCheckbox4Question || '',
       questionOrder: questionOrder || '[]'
     });
+
+    if (tags && Array.isArray(tags) && tags.length > 0) {
+      const tagPromises = tags.map(async (tagName) => {
+        const [tag] = await Tag.findOrCreate({
+          where: { name: tagName.trim() },
+          defaults: { name: tagName.trim() }
+        });
+        return tag;
+      });
+      
+      const resolvedTags = await Promise.all(tagPromises);
+      await Promise.all(
+        resolvedTags.map(tag => 
+          TemplateTag.create({
+            tagId: tag.id,
+            templateId: template.id
+          })
+        )
+      );
+    }
+  
+    const completeTemplate = await Template.findByPk(template.id, {
+      include: [
+        { model: User, attributes: ['id', 'name'] },
+        { model: Topic, attributes: ['id', 'name'] },
+        { model: Tag }
+      ]
+    });
     
-    res.status(201).json(template);
+    res.status(201).json(completeTemplate);
   } catch (error) {
     console.error('Error creating template:', error);
     res.status(500).json({ message: 'Server error while creating template' });
   }
 });
 
-// Update template
 export const updateTemplate = catchAsync(async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -169,6 +199,7 @@ export const updateTemplate = catchAsync(async (req: Request, res: Response) => 
       isPublic, 
       topicId,
       version,
+      tags,
       customString1State,
       customString1Question,
       customString2State,
@@ -204,38 +235,32 @@ export const updateTemplate = catchAsync(async (req: Request, res: Response) => 
       questionOrder
     } = req.body;
     
-    // Validate UUID format
     if (!isUuid(id)) {
       return res.status(400).json({ 
         message: 'Invalid template ID format. Please provide a valid UUID.' 
       });
     }
-    
-    // Validate version for optimistic locking
+
     if (version === undefined) {
       return res.status(400).json({ 
         message: 'Version field is required for optimistic locking' 
       });
     }
-    
-    // Validate other required fields
+
     if (!title || !topicId) {
       return res.status(400).json({ message: 'Title and topic are required' });
     }
     
-    // Find the template
     const template = await Template.findByPk(id);
     
     if (!template) {
       return res.status(404).json({ message: 'Template not found' });
     }
-    
-    // Ensure user is authenticated
+
     if (!req.user) {
       return res.status(401).json({ message: 'Not authenticated' });
     }
-    
-    // Check if user is owner or admin
+
     const isOwner = template.userId === req.user.id;
     const isAdmin = req.user.isAdmin === true;
     
@@ -244,8 +269,7 @@ export const updateTemplate = catchAsync(async (req: Request, res: Response) => 
         message: 'Access denied. You must be the template owner or an admin to update this template.' 
       });
     }
-    
-    // Prepare update data
+
     const updateData = {
       title,
       description: description || '',
@@ -285,19 +309,57 @@ export const updateTemplate = catchAsync(async (req: Request, res: Response) => 
       customCheckbox4Question: customCheckbox4Question || '',
       questionOrder: questionOrder || template.questionOrder
     };
-    
-    // Use optimistic locking for the update
+
     const updatedTemplate = await optimisticUpdate<Template>(
       Template,
       id,
       version,
       updateData
     );
+
+    if (tags !== undefined) {
+      await TemplateTag.destroy({
+        where: { templateId: id }
+      });
+      
+      if (Array.isArray(tags) && tags.length > 0) {
+        const tagPromises = tags.map(async (tagName) => {
+          const [tag] = await Tag.findOrCreate({
+            where: { name: tagName.trim() },
+            defaults: { name: tagName.trim() }
+          });
+          return tag;
+        });
+        
+        const resolvedTags = await Promise.all(tagPromises);
+
+        await Promise.all(
+          resolvedTags.map(tag => 
+            TemplateTag.create({
+              tagId: tag.id,
+              templateId: id
+            })
+          )
+        );
+      }
+    }
+
+    const completeTemplate = await Template.findByPk(id, {
+      include: [
+        { model: User, attributes: ['id', 'name'] },
+        { model: Topic, attributes: ['id', 'name'] },
+        { model: Tag }
+      ]
+    });
+    
+    if (!completeTemplate) {
+      return res.status(404).json({ message: 'Template not found after update' });
+    }
     
     res.status(200).json({
       message: 'Template updated successfully',
-      template: updatedTemplate,
-      version: updatedTemplate.version // Explicitly include the version in the response
+      template: completeTemplate,
+      version: completeTemplate.version
     });
   } catch (error) {
     if (handleOptimisticLockError(error, res)) return;
@@ -307,13 +369,9 @@ export const updateTemplate = catchAsync(async (req: Request, res: Response) => 
   }
 });
 
-// Delete template
 export const deleteTemplate = catchAsync(async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    
-    // Get version from body, query params, or headers to handle various client implementations
-    // Parse values to ensure they're handled consistently
     let version;
     if (req.body && req.body.version !== undefined) {
       version = Number(req.body.version);
@@ -322,15 +380,13 @@ export const deleteTemplate = catchAsync(async (req: Request, res: Response) => 
     } else if (req.headers && req.headers['x-version'] !== undefined) {
       version = Number(req.headers['x-version']);
     }
-    
-    // Validate UUID format
+
     if (!isUuid(id)) {
       return res.status(400).json({ 
         message: 'Invalid template ID format. Please provide a valid UUID.' 
       });
     }
-    
-    // Validate version for optimistic locking
+
     if (version === undefined || isNaN(version)) {
       return res.status(400).json({ 
         message: 'Version field is required for optimistic locking. Please provide it in the request body, query parameters, or X-Version header.' 
@@ -342,13 +398,11 @@ export const deleteTemplate = catchAsync(async (req: Request, res: Response) => 
     if (!template) {
       return res.status(404).json({ message: 'Template not found' });
     }
-    
-    // Ensure user is authenticated
+
     if (!req.user) {
       return res.status(401).json({ message: 'Not authenticated' });
     }
-    
-    // Check if user is owner or admin
+
     const isOwner = template.userId === req.user.id;
     const isAdmin = req.user.isAdmin === true;
     
@@ -357,13 +411,11 @@ export const deleteTemplate = catchAsync(async (req: Request, res: Response) => 
         message: 'Access denied. You must be the template owner or an admin to delete this template.' 
       });
     }
-    
-    // Delete associated records first
+
     await Comment.destroy({ where: { templateId: id } });
     await Like.destroy({ where: { templateId: id } });
     await FormResponse.destroy({ where: { templateId: id } });
-    
-    // Use optimistic locking for the delete
+
     await optimisticDelete(Template, id, version);
     
     res.status(200).json({ message: 'Template deleted successfully' });
@@ -375,28 +427,60 @@ export const deleteTemplate = catchAsync(async (req: Request, res: Response) => 
   }
 });
 
-// Search templates
 export const searchTemplates = catchAsync(async (req: Request, res: Response) => {
   try {
-    const { query } = req.query;
+    const { query, tag, topicId, limit = 10, page = 1, sort } = req.query;
     
-    if (!query || typeof query !== 'string') {
-      return res.status(400).json({ message: 'Search query is required' });
+    const whereConditions: any = {
+      isPublic: true,
+    };
+
+    if (query && typeof query === 'string') {
+      whereConditions[Op.or] = [
+        { title: { [Op.iLike]: `%${query}%` } },
+        { description: { [Op.iLike]: `%${query}%` } }
+      ];
+    }
+d
+    if (topicId && typeof topicId === 'string') {
+      if (isUuid(topicId)) {
+        whereConditions.topicId = topicId;
+      } else {
+        return res.status(400).json({ message: 'Invalid topic ID format' });
+      }
     }
     
+    const includeConditions: any[] = [
+      { model: User, attributes: ['id', 'name'] },
+      { model: Topic, attributes: ['id', 'name'] },
+      { model: Tag }
+    ];
+    
+    if (tag && typeof tag === 'string') {
+      includeConditions[2] = {
+        model: Tag,
+        where: { name: tag },
+        required: true
+      };
+    }
+
+    let order: any[] = [];
+    if (sort === 'oldest') {
+      order = [['createdAt', 'ASC']];
+    } else {
+      order = [['createdAt', 'DESC']];
+    }
+
+    const pageNumber = Math.max(1, parseInt(page as string) || 1);
+    const limitNumber = Math.max(1, Math.min(50, parseInt(limit as string) || 10));
+    const offset = (pageNumber - 1) * limitNumber;
+    
     const templates = await Template.findAll({
-      where: {
-        isPublic: true,
-        [Op.or]: [
-          { title: { [Op.iLike]: `%${query}%` } },
-          { description: { [Op.iLike]: `%${query}%` } }
-        ]
-      },
-      include: [
-        { model: User, attributes: ['id', 'name'] },
-        { model: Topic, attributes: ['id', 'name'] }
-      ],
-      order: [['createdAt', 'DESC']]
+      where: whereConditions,
+      include: includeConditions,
+      order: order,
+      limit: limitNumber,
+      offset: offset
     });
     
     res.status(200).json(templates);

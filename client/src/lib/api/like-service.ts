@@ -1,73 +1,65 @@
 import apiClient from './api-client';
 
-const likeService = {
-  /**
-   * Check if current user has liked a template
-   */
-  checkLike: async (templateId: string): Promise<boolean> => {
-    try {
-      const response = await apiClient.get(`/likes/check/${templateId}`);
-      return response.liked;
-    } catch (error) {
-      console.error(`Check like error for template ${templateId}:`, error);
-      return false;
-    }
-  },
+interface LikeResponse {
+  liked: boolean;
+  message?: string;
+}
 
-  /**
-   * Get like count for a template
-   */
-  getLikeCount: async (templateId: string): Promise<number> => {
-    try {
-      const response = await apiClient.get(`/likes/count/${templateId}`);
-      return response.count;
-    } catch (error) {
-      console.error(`Get like count error for template ${templateId}:`, error);
-      return 0;
-    }
-  },
+interface LikesCountResponse {
+  count: number;
+}
 
-  /**
-   * Like a template
-   */
-  likeTemplate: async (templateId: string): Promise<void> => {
-    try {
-      await apiClient.post(`/likes/template/${templateId}`);
-    } catch (error) {
-      console.error(`Like template error for template ${templateId}:`, error);
-      throw error;
-    }
-  },
+interface LikesByTemplateResponse {
+  templateId: string;
+  likesCount: number;
+  likes: any[];
+}
 
-  /**
-   * Unlike a template
-   */
-  unlikeTemplate: async (templateId: string): Promise<void> => {
+class LikeService {
+  async toggleLike(templateId: string): Promise<LikeResponse> {
     try {
-      await apiClient.delete(`/likes/template/${templateId}`);
+      const response = await apiClient.post<LikeResponse>(`/likes/template/${templateId}`);
+      return response.data;
     } catch (error) {
-      console.error(`Unlike template error for template ${templateId}:`, error);
-      throw error;
-    }
-  },
-
-  /**
-   * Toggle like for a template
-   */
-  toggleLike: async (templateId: string, isCurrentlyLiked: boolean): Promise<boolean> => {
-    try {
-      if (isCurrentlyLiked) {
-        await apiClient.delete(`/likes/template/${templateId}`);
-        return false;
-      } else {
-        await apiClient.post(`/likes/template/${templateId}`);
-        return true;
-      }
-    } catch (error) {
-      console.error(`Toggle like error for template ${templateId}:`, error);
+      console.error('Error toggling like:', error);
       throw error;
     }
   }
-};
 
+  async checkLike(templateId: string): Promise<LikeResponse> {
+    try {
+      const response = await apiClient.get<LikeResponse>(`/likes/check/${templateId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error checking like:', error);
+      throw error;
+    }
+  }
+
+  async countLikes(templateId: string): Promise<LikesCountResponse> {
+    try {
+      const response = await apiClient.get<LikesCountResponse>(`/likes/count/${templateId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error counting likes:', error);
+      throw error;
+    }
+  }
+
+  async getLikesByTemplate(templateId: string): Promise<LikesByTemplateResponse> {
+    try {
+      const response = await apiClient.get<LikesByTemplateResponse>(`/likes/template/${templateId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error getting likes by template:', error);
+      throw error;
+    }
+  }
+}
+
+// Create and export service instance
+const likeService = new LikeService();
+
+// Export both the class and the instance
+export { LikeService, likeService };
 export default likeService;

@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useState, useEffect } from "react";
 import authService, { User } from "@/lib/api/auth-service";
 
 interface AuthContextType {
@@ -8,53 +8,47 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string) => Promise<void>;
+  register: (name: string, email: string, password: string, replaceHistory?: boolean) => Promise<void>;
   logout: () => void;
+  updateUserPreferences: (preferences: { theme?: string; language?: string }) => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext<AuthContextType | null>(null);
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  // Initialize user from localStorage to prevent brief unauthenticated states during page loads
-  const [user, setUser] = useState<User | null>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const savedUser = localStorage.getItem('user');
-        return savedUser ? JSON.parse(savedUser) : null;
-      } catch (error) {
-        console.error('Error parsing stored user data:', error);
-        return null;
-      }
-    }
-    return null;
-  });
-  const [isLoading, setIsLoading] = useState(true);
+export function useAuth() {
+  return useContext(AuthContext);
+}
 
-  // Check for stored auth on mount
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+
   useEffect(() => {
     const checkAuth = async () => {
+      setIsLoading(true);
       try {
-        // Check if token exists
-        const token = localStorage.getItem("token");
-        if (!token) {
-          setIsLoading(false);
-          return;
-        }
+        const authData = authService.getAuthData();
 
-        // Fetch current user
-        const currentUser = await authService.getCurrentUser();
-        // Store the refreshed user details
-        localStorage.setItem("user", JSON.stringify(currentUser));
-        setUser(currentUser);
+        if (authData && authData.token) {
+          try {
+            const currentUser = await authService.getCurrentUser();
+            setUser(currentUser);
+            setIsAuthenticated(true);
+          } catch (error) {
+            console.error("Error refreshing user data:", error);
+            authService.clearAuthData();
+            setUser(null);
+            setIsAuthenticated(false);
+          }
+        } else {
+          setUser(null);
+          setIsAuthenticated(false);
+        }
       } catch (error) {
         console.error("Auth check error:", error);
-        // Don't clear tokens on network errors to prevent unnecessary logouts
-        if ((error as any)?.status === 401) {
-          // Only clear on actual auth errors, not network issues
-          localStorage.removeItem("token");
-          localStorage.removeItem("user");
-          setUser(null);
-        }
+        setUser(null);
+        setIsAuthenticated(false);
       } finally {
         setIsLoading(false);
       }
@@ -63,91 +57,67 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     checkAuth();
   }, []);
 
-  // Login function
   const login = async (email: string, password: string) => {
+    setIsLoading(true);
     try {
-      // Validate inputs
-      if (!email || !password) {
-        throw new Error("Email and password are required");
-      }
-      
-      // Call login API
-      const response = await authService.login({
-        email,
-        password,
-      });
-
-      // Store token and user
-      localStorage.setItem("token", response.token);
-      localStorage.setItem("user", JSON.stringify(response.user));
-      
-      // Update state
+      const response = await authService.login({ email, password });
       setUser(response.user);
+      setIsAuthenticated(true);
     } catch (error) {
-      // Log and rethrow
       console.error("Login error in context:", error);
+      setUser(null);
+      setIsAuthenticated(false);
       throw error;
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // Register function
-  const register = async (name: string, email: string, password: string) => {
+  const register = async (name: string, email: string, password: string, replaceHistory?: boolean) => {
+    setIsLoading(true);
     try {
-      // Validate inputs
-      if (!name || !email || !password) {
-        throw new Error("Name, email, and password are required");
-      }
-      
-      // Call register API
       const response = await authService.register({
         name,
         email,
         password,
       });
-
-      // Store token and user
-      localStorage.setItem("token", response.token);
-      localStorage.setItem("user", JSON.stringify(response.user));
-      
-      // Update state
       setUser(response.user);
+      setIsAuthenticated(true);
     } catch (error) {
-      // Log and rethrow
       console.error("Register error in context:", error);
+      setUser(null);
+      setIsAuthenticated(false);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const logout = () => {
+    authService.logout();
+    setUser(null);
+    setIsAuthenticated(false);
+  };
+
+  const updateUserPreferences = async (preferences: { theme?: string; language?: string }) => {
+    try {
+      const updatedUser = await authService.updatePreferences(preferences);
+      setUser(updatedUser);
+    } catch (error) {
+      console.error("Error updating preferences:", error);
       throw error;
     }
   };
 
-  // Logout function
-  const logout = () => {
-    // Clear storage
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    
-    // Clear state
-    setUser(null);
+  const value = {
+    user,
+    isAuthenticated,
+    isLoading,
+    login,
+    register,
+    logout,
+    updateUserPreferences,
   };
 
-  return (
-    <AuthContext.Provider
-      value={{
-        user,
-        isAuthenticated: !!user,
-        isLoading,
-        login,
-        register,
-        logout,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
-  );
-}
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
-  return context;
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

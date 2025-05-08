@@ -3,7 +3,6 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-// Create Sequelize instance
 const sequelize = new Sequelize(
   process.env.DB_NAME || 'readyforms',
   process.env.DB_USER || 'postgres',
@@ -21,7 +20,6 @@ const sequelize = new Sequelize(
   }
 );
 
-// Add QueryTypes to Sequelize type
 declare module 'sequelize' {
   interface Sequelize {
     QueryTypes: {
@@ -36,7 +34,6 @@ declare module 'sequelize' {
   }
 }
 
-// Define QueryTypes property
 sequelize.QueryTypes = {
   SELECT: 'SELECT',
   INSERT: 'INSERT',

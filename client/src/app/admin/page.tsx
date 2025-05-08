@@ -13,10 +13,9 @@ import { useAuth } from "@/contexts/auth-context";
 import { Users, FileText, MessageSquare, Heart, ChevronRight, ShieldAlert, ActivityIcon, ChevronsLeft, ChevronsRight } from "lucide-react";
 import { toast } from '@/components/ui/use-toast';
 
-// This allows us to display aggregated data for the dashboard
 interface ActivitySummary {
   count: number;
-  change: number; // percent change from last period
+  change: number; 
 }
 
 interface AdminDashboardState {
@@ -41,7 +40,6 @@ interface AdminDashboardState {
 }
 
 export default function AdminDashboardPage() {
-  // State to manage admin dashboard data
   const [state, setState] = useState<AdminDashboardState>({
     stats: {
       users: 0,
@@ -64,7 +62,9 @@ export default function AdminDashboardPage() {
   });
 
   const router = useRouter();
-  const { user, logout } = useAuth();
+  const auth = useAuth();
+  const user = auth?.user;
+  const logout = auth?.logout;
 
   const handleLogout = () => {
     if (logout) {
@@ -78,7 +78,6 @@ export default function AdminDashboardPage() {
       try {
         setState(prev => ({ ...prev, loading: true, error: null }));
         
-        // Check if user is admin
         if (!user?.isAdmin) {
           toast({
             title: "Access denied",
@@ -88,19 +87,13 @@ export default function AdminDashboardPage() {
           router.push('/dashboard');
           return;
         }
-        
-        // Fetch admin dashboard stats
         const dashboardStats = await adminService.getDashboardStats();
-        
-        // Fetch activity data
-        const activity = await adminService.getSystemActivity(5); // Get latest 5 activities
-        
-        // Calculate activity summaries (this would ideally come from the backend)
-        // For now, we'll simulate some data
+        const activity = await adminService.getSystemActivity(5); 
+
         const activitySummaries = {
           users: { 
             count: dashboardStats.activeUsers, 
-            change: Math.floor(Math.random() * 20) - 5 // Random number between -5 and 15
+            change: Math.floor(Math.random() * 20) - 5
           },
           templates: { 
             count: dashboardStats.templates, 
@@ -134,11 +127,9 @@ export default function AdminDashboardPage() {
       }
     };
 
-    // Only fetch data if user is authenticated
     if (user) {
       fetchDashboardData();
     } else {
-      // Redirect to login if no user is found
       router.push('/auth/login');
     }
   }, [user, router]);
@@ -173,8 +164,7 @@ export default function AdminDashboardPage() {
         return <FileText className="h-4 w-4" />;
     }
   };
-
-  // If user is not available or not admin, display a loading state
+  
   if (!user) {
     return (
       <div className="flex items-center justify-center min-h-screen">

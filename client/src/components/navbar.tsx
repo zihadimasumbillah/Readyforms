@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { 
   BookTemplate,
   Menu,
@@ -22,11 +22,13 @@ import {
 } from "@/components/ui/navigation-menu";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { useHasMounted } from "@/hooks/use-mounted";
 
 export function Navbar() {
   const { user } = useAuth();
   const pathname = usePathname();
   const [isScrolled, setIsScrolled] = useState(false);
+  const hasMounted = useHasMounted();
 
   const isActive = (path: string) => pathname === path;
 
@@ -45,6 +47,26 @@ export function Navbar() {
     { title: "Features", href: "/features" },
     { title: "Pricing", href: "/pricing" },
   ];
+
+  // Don't render links until client-side hydration is complete
+  if (!hasMounted) {
+    return (
+      <header className={cn(
+        "sticky top-0 z-40 w-full transition-all duration-200",
+        "bg-background/95 backdrop-blur-sm border-b shadow-sm"
+      )}>
+        <div className="container flex h-16 items-center justify-between p-4">
+          <div className="flex gap-6 items-center">
+            <div className="flex items-center gap-2">
+              <BookTemplate className="h-6 w-6" />
+              <span className="text-lg font-semibold">ReadyForms</span>
+            </div>
+          </div>
+          <div></div>
+        </div>
+      </header>
+    );
+  }
 
   return (
     <header className={cn(
@@ -66,15 +88,16 @@ export function Navbar() {
               <NavigationMenuList>
                 {navItems.map((item) => (
                   <NavigationMenuItem key={item.href}>
-                    <NavigationMenuLink
-                      href={item.href}
-                      className={cn(
-                        navigationMenuTriggerStyle(),
-                        isActive(item.href) && "font-medium bg-accent"
-                      )}
-                    >
-                      {item.title}
-                    </NavigationMenuLink>
+                    <Link href={item.href} legacyBehavior passHref>
+                      <NavigationMenuLink
+                        className={cn(
+                          navigationMenuTriggerStyle(),
+                          isActive(item.href) && "font-medium bg-accent"
+                        )}
+                      >
+                        {item.title}
+                      </NavigationMenuLink>
+                    </Link>
                   </NavigationMenuItem>
                 ))}
               </NavigationMenuList>
@@ -87,23 +110,19 @@ export function Navbar() {
           <ThemeToggle />
           
           {user ? (
-            <Button asChild size="sm">
-              <Link href="/dashboard">
-                <User className="h-4 w-4 mr-2" />
-                Dashboard
-              </Link>
-            </Button>
+            <Link href="/dashboard" className={cn(buttonVariants({ size: "sm" }), "gap-2")}>
+              <User className="h-4 w-4" />
+              Dashboard
+            </Link>
           ) : (
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="sm" asChild>
-                <Link href="/auth/login">
-                  <LogIn className="h-4 w-4 mr-1" />
-                  Log In
-                </Link>
-              </Button>
-              <Button size="sm" asChild>
-                <Link href="/auth/register">Sign Up</Link>
-              </Button>
+              <Link href="/auth/login" className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "gap-1")}>
+                <LogIn className="h-4 w-4" />
+                Log In
+              </Link>
+              <Link href="/auth/register" className={cn(buttonVariants({ size: "sm" }))}>
+                Sign Up
+              </Link>
             </div>
           )}
         </div>
@@ -147,20 +166,18 @@ export function Navbar() {
                 </nav>
                 <div className="border-t py-4 flex flex-col gap-2">
                   {user ? (
-                    <Button asChild>
-                      <Link href="/dashboard">
-                        <User className="h-4 w-4 mr-2" />
-                        Dashboard
-                      </Link>
-                    </Button>
+                    <Link href="/dashboard" className={cn(buttonVariants(), "w-full gap-2")}>
+                      <User className="h-4 w-4" />
+                      Dashboard
+                    </Link>
                   ) : (
                     <>
-                      <Button variant="outline" asChild className="w-full">
-                        <Link href="/auth/login">Log In</Link>
-                      </Button>
-                      <Button asChild className="w-full">
-                        <Link href="/auth/register">Sign Up</Link>
-                      </Button>
+                      <Link href="/auth/login" className={cn(buttonVariants({ variant: "outline" }), "w-full")}>
+                        Log In
+                      </Link>
+                      <Link href="/auth/register" className={cn(buttonVariants(), "w-full")}>
+                        Sign Up
+                      </Link>
                     </>
                   )}
                 </div>

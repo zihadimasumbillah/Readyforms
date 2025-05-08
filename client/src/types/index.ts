@@ -13,6 +13,15 @@ export interface User {
   updatedAt: string;
 }
 
+// Form field type definition
+export interface FormField {
+  id: string;
+  label: string;
+  type: "string" | "text" | "int" | "checkbox";
+  required: boolean;
+  value?: any;
+}
+
 // Topic type definition
 export interface Topic {
   id: string;
@@ -36,6 +45,11 @@ export interface Template {
   version: number;
   createdAt: string;
   updatedAt: string;
+
+  // Quiz-related fields
+  isQuiz?: boolean;
+  showScoreImmediately?: boolean;
+  scoringCriteria?: string;
   
   // Custom field states
   customString1State: boolean;
@@ -84,6 +98,9 @@ export interface Template {
   likesCount?: number;
   commentsCount?: number;
   responsesCount?: number;
+
+  // Index signature for dynamic access (needed for our component)
+  [key: string]: any;
 }
 
 // Form Response type definition
@@ -94,6 +111,12 @@ export interface FormResponse {
   createdAt: string;
   updatedAt: string;
   version: number;
+  
+  // Scoring fields
+  score?: number;
+  totalPossiblePoints?: number;
+  scoreViewed?: boolean;
+  percentScore?: number;
   
   // Custom field answers
   customString1Answer?: string;

@@ -1,6 +1,20 @@
 import { Request, Response } from 'express';
 import { Template, User, FormResponse, Like, Comment, Topic, sequelize } from '../models';
 import catchAsync from '../utils/catchAsync';
+import { QueryTypes } from 'sequelize';
+
+interface ActiveUserCount {
+  active_users: number;
+}
+
+interface DashboardData {
+  userCount: number;
+  templateCount: number;
+  responseCount: number;
+  activeUsers: number;
+  recentTemplates: any[];
+  recentResponses: any[];
+}
 
 interface StatisticsResult {
   active_users: number;
@@ -14,223 +28,180 @@ interface ActiveUsersResult {
 }
 
 /**
- * Get admin dashboard stats
- * @route GET /api/admin/stats
+ * @route GET /api/admin/dashboard
  */
-export const getAdminStats = catchAsync(async (_req: Request, res: Response) => {
+export const getDashboardData = catchAsync(async (req: Request, res: Response) => {
   try {
-    // Count total users
-    const usersCount = await User.count();
-    
-    // Count admin users
-    const adminCount = await User.count({
-      where: { isAdmin: true }
+    const userCount = await User.count();
+    const templateCount = await Template.count();
+    const responseCount = await FormResponse.count();
+
+    const recentTemplates = await Template.findAll({
+      order: [['createdAt', 'DESC']],
+      limit: 5,
+      include: [{ model: User, attributes: ['id', 'name', 'email'] }]
     });
     
-    // Count templates
-    const templatesCount = await Template.count();
-    
-    // Count form responses
-    const responsesCount = await FormResponse.count();
-    
-    // Count likes
-    const likesCount = await Like.count();
-    
-    // Count comments
-    const commentsCount = await Comment.count();
-    
-    // Count topics
-    const topicsCount = await Topic.count();
-    
-    // Count active users (users who have submitted a form response in the last 30 days)
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    
-    const activeUsers = await sequelize.query(
-      `SELECT COUNT(DISTINCT "userId") as active_users
-       FROM form_responses
-       WHERE "createdAt" > :thirtyDaysAgo`,
-      {
-        replacements: { thirtyDaysAgo },
-        type: sequelize.QueryTypes.SELECT
-      }
-    ) as ActiveUsersResult[];
-    
-    // Send stats
-    res.status(200).json({
-      users: usersCount,
-      templates: templatesCount,
-      responses: responsesCount,
-      likes: likesCount,
-      comments: commentsCount,
-      activeUsers: activeUsers[0]?.active_users || 0,
-      topicsCount,
-      adminCount
+    const recentResponses = await FormResponse.findAll({
+      order: [['createdAt', 'DESC']],
+      limit: 5,
+      include: [
+        { model: User, attributes: ['id', 'name', 'email'] },
+        { model: Template, attributes: ['id', 'title'] }
+      ]
     });
+    
+    const [activeUsersResult] = await sequelize.query(
+      `SELECT COUNT(*) as active_users FROM "Users" WHERE "lastLoginAt" > NOW() - INTERVAL '7 days'`,
+      { type: QueryTypes.SELECT }
+    ) as ActiveUserCount[];
+    
+    const dashboardData: DashboardData = {
+      userCount,
+      templateCount,
+      responseCount,
+      activeUsers: activeUsersResult.active_users,
+      recentTemplates,
+      recentResponses
+    };
+    
+    res.json(dashboardData);
   } catch (error) {
-    console.error('Error getting admin stats:', error);
-    res.status(500).json({ message: 'Server error while getting admin stats' });
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+    console.error('Admin dashboard error:', errorMessage);
+    res.status(500).json({ message: 'Failed to retrieve dashboard data' });
   }
 });
 
 /**
- * Get system activity for admin dashboard
+ * @route GET /api/admin/stats
+ */
+export const getAdminStats = catchAsync(async (req: Request, res: Response) => {
+  try {
+    const stats = {
+      totalUsers: await User.count(),
+      newUsersLast30Days: await User.count({
+        where: sequelize.literal("\"createdAt\" > NOW() - INTERVAL '30 days'")
+      }),
+      totalTemplates: await Template.count(),
+      totalResponses: await FormResponse.count(),
+      responseRate: 0 
+    };
+    
+    if (stats.totalTemplates > 0) {
+      stats.responseRate = stats.totalResponses / stats.totalTemplates;
+    }
+    
+    res.json(stats);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+    console.error('Admin stats error:', errorMessage);
+    res.status(500).json({ message: 'Failed to retrieve admin stats' });
+  }
+});
+
+/**
  * @route GET /api/admin/activity
  */
 export const getSystemActivity = catchAsync(async (req: Request, res: Response) => {
   try {
-    const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 10;
-    
-    // Get recent templates
-    const templates = await Template.findAll({
-      include: [{ model: User, attributes: ['id', 'name'] }],
-      limit,
-      order: [['createdAt', 'DESC']]
+    const userActivity = await User.findAll({
+      attributes: ['id', 'name', 'email', 'createdAt'],
+      order: [['createdAt', 'DESC']],
+      limit: 10
     });
     
-    // Get recent form responses
-    const responses = await FormResponse.findAll({
+    const templateActivity = await Template.findAll({
+      attributes: ['id', 'title', 'createdAt'],
+      include: [{ model: User, attributes: ['name', 'email'] }],
+      order: [['createdAt', 'DESC']],
+      limit: 10
+    });
+    
+    const responseActivity = await FormResponse.findAll({
+      attributes: ['id', 'createdAt'],
       include: [
-        { model: Template, attributes: ['id', 'title'] },
-        { model: User, attributes: ['id', 'name'] }
+        { model: User, attributes: ['name', 'email'] },
+        { model: Template, attributes: ['title'] }
       ],
-      limit,
-      order: [['createdAt', 'DESC']]
+      order: [['createdAt', 'DESC']],
+      limit: 10
     });
     
-    // Get recent user registrations
-    const users = await User.findAll({
-      limit,
-      order: [['createdAt', 'DESC']]
+    res.json({
+      userActivity,
+      templateActivity,
+      responseActivity
     });
-    
-    // Combine and format activities
-    const activities = [
-      ...templates.map(template => ({
-        id: template.id,
-        type: 'template',
-        action: 'created',
-        title: template.title,
-        user: template.user?.name || 'Unknown',
-        timestamp: template.createdAt
-      })),
-      ...responses.map(response => ({
-        id: response.id,
-        type: 'response',
-        action: 'submitted',
-        title: response.template?.title || 'Unknown',
-        user: response.user?.name || 'Unknown',
-        timestamp: response.createdAt
-      })),
-      ...users.map(user => ({
-        id: user.id,
-        type: 'user',
-        action: 'registered',
-        title: '',
-        user: user.name,
-        timestamp: user.createdAt
-      }))
-    ]
-    // Sort combined activities by timestamp
-    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-    // Limit to requested number
-    .slice(0, limit);
-    
-    res.status(200).json(activities);
   } catch (error) {
-    console.error('Error getting system activity:', error);
-    res.status(500).json({ message: 'Server error while getting system activity' });
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+    console.error('System activity error:', errorMessage);
+    res.status(500).json({ message: 'Failed to retrieve system activity' });
   }
 });
 
 /**
- * Get all templates (admin only)
  * @route GET /api/admin/templates
  */
-export const getAllTemplates = catchAsync(async (_req: Request, res: Response) => {
+export const getAllTemplates = catchAsync(async (req: Request, res: Response) => {
   try {
-    // Get all templates with enhanced information
     const templates = await Template.findAll({
       include: [
-        { model: User, attributes: ['id', 'name'] },
-        { model: Topic, attributes: ['id', 'name'] }
+        { model: User, attributes: ['id', 'name', 'email'] }
       ],
-      attributes: {
-        include: [
-          [
-            sequelize.literal(`(
-              SELECT COUNT(*)
-              FROM form_responses
-              WHERE form_responses."templateId" = "Template"."id"
-            )`),
-            'responsesCount'
-          ],
-          [
-            sequelize.literal(`(
-              SELECT COUNT(*)
-              FROM likes
-              WHERE likes."templateId" = "Template"."id"
-            )`),
-            'likesCount'
-          ]
-        ]
-      },
       order: [['createdAt', 'DESC']]
     });
     
-    res.status(200).json(templates);
+    res.json(templates);
   } catch (error) {
-    console.error('Error getting all templates:', error);
-    res.status(500).json({ message: 'Server error while getting all templates' });
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+    console.error('Get all templates error:', errorMessage);
+    res.status(500).json({ message: 'Failed to retrieve templates' });
   }
 });
 
 /**
- * Get system statistics
- * @route GET /api/admin/statistics
- */
-export const getStatistics = catchAsync(async (req: Request, res: Response) => {
-  try {
-    // Only admins can access this (checked by middleware)
-    
-    // Get statistics via raw SQL query for efficiency
-    const [results] = await sequelize.query(`
-      SELECT 
-        (SELECT COUNT(*) FROM "Users" WHERE "blocked" = false) as active_users,
-        (SELECT COUNT(*) FROM "Templates") as total_templates,
-        (SELECT COUNT(*) FROM "FormResponses") as total_responses,
-        (SELECT COUNT(*) FROM "Templates" WHERE "isPublic" = true) as public_templates
-    `);
-    
-    // Cast results to proper interface
-    const stats = results as unknown as StatisticsResult[];
-    
-    if (!stats.length) {
-      return res.status(500).json({ message: 'Failed to retrieve statistics' });
-    }
-    
-    res.status(200).json({
-      statistics: {
-        activeUsers: stats[0].active_users,
-        totalTemplates: stats[0].total_templates,
-        totalResponses: stats[0].total_responses,
-        publicTemplates: stats[0].public_templates
-      }
-    });
-  } catch (error) {
-    console.error('Error getting admin statistics:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
-
-/**
- * Get all users with full details (admin only)
  * @route GET /api/admin/users
  */
 export const getAllUsers = catchAsync(async (req: Request, res: Response) => {
   const users = await User.findAll({
-    attributes: { exclude: ['password'] }
+    attributes: ['id', 'name', 'email', 'isAdmin', 'createdAt', 'lastLoginAt']
   });
   
-  res.status(200).json(users);
+  res.json(users);
+});
+
+/**
+ * @route PUT /api/admin/users/:id
+ */
+export const updateUser = catchAsync(async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { isAdmin } = req.body;
+  
+  const user = await User.findByPk(id);
+  
+  if (!user) {
+    return res.status(404).json({ message: 'User not found' });
+  }
+  
+  await user.update({ isAdmin });
+  
+  res.json({ message: 'User updated successfully', user });
+});
+
+/**
+ * @route DELETE /api/admin/users/:id
+ */
+export const deleteUser = catchAsync(async (req: Request, res: Response) => {
+  const { id } = req.params;
+  
+  const user = await User.findByPk(id);
+  
+  if (!user) {
+    return res.status(404).json({ message: 'User not found' });
+  }
+  
+  await user.destroy();
+  
+  res.json({ message: 'User deleted successfully' });
 });

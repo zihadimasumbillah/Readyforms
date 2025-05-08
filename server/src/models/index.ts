@@ -5,16 +5,16 @@ import { Template } from './Template';
 import { FormResponse } from './FormResponse';
 import { Comment } from './Comment';
 import { Like } from './Like';
+import { Tag } from './Tag';
+import { TemplateTag } from './TemplateTag';
 import config from '../config/db.config';
 import 'pg';
 
-// Initialize Sequelize with models
 const sequelize = new Sequelize({
   ...config,
-  models: [User, Topic, Template, FormResponse, Comment, Like]
+  models: [User, Topic, Template, FormResponse, Comment, Like, Tag, TemplateTag]
 });
 
-// Test database connection function
 export const testConnection = async () => {
   try {
     await sequelize.authenticate();
@@ -26,7 +26,6 @@ export const testConnection = async () => {
   }
 };
 
-// Function to sync the database
 export const syncDatabase = async (force: boolean = false) => {
   try {
     await sequelize.sync({ force });
@@ -45,5 +44,7 @@ export {
   Template,
   FormResponse,
   Comment,
-  Like
+  Like,
+  Tag,
+  TemplateTag
 };

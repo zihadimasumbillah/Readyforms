@@ -1,21 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { useAuth } from "@/contexts/auth-context";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { useToast } from "@/components/ui/use-toast";
-import { AlertCircle } from "lucide-react";
+import { toast } from "@/components/ui/use-toast";
+import { useAuth } from "@/contexts/auth-context";
 
+// Form validation schema
 const registerSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
-  email: z.string().email("Please enter a valid email address"),
+  email: z.string().email("Invalid email address"),
   password: z.string().min(6, "Password must be at least 6 characters"),
   confirmPassword: z.string().min(6, "Password must be at least 6 characters"),
 }).refine((data) => data.password === data.confirmPassword, {
@@ -26,11 +26,26 @@ const registerSchema = z.object({
 type RegisterFormData = z.infer<typeof registerSchema>;
 
 export default function RegisterPage() {
-  const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-  const { register: registerUser } = useAuth();
-  const { toast } = useToast();
+  const { register: registerUser, isAuthenticated } = useAuth() || {};
+  const router = useRouter();
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      // Get redirect URL if available, otherwise go to dashboard
+      const storedRedirect = localStorage.getItem('redirectAfterLogin');
+      const destinationUrl = storedRedirect || '/dashboard';
+      
+      // Clear stored redirect
+      if (storedRedirect) {
+        localStorage.removeItem('redirectAfterLogin');
+      }
+      
+      router.replace(destinationUrl);
+    }
+  }, [isAuthenticated, router]);
 
   const { register, handleSubmit, formState: { errors } } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
@@ -48,21 +63,44 @@ export default function RegisterPage() {
     
     try {
       if (registerUser) {
-        await registerUser(data.name, data.email, data.password);
+        // Pass true to replaceHistory to prevent back navigation
+        await registerUser(data.name, data.email, data.password, true);
+        
         toast({
           title: "Registration successful",
           description: "Your account has been created successfully!",
         });
-        router.push("/dashboard");
-        router.refresh();
+        
+        // Get redirect URL if available, otherwise go to dashboard
+        const storedRedirect = localStorage.getItem('redirectAfterLogin');
+        const destinationUrl = storedRedirect || '/dashboard';
+        
+        // Clear stored redirect
+        if (storedRedirect) {
+          localStorage.removeItem('redirectAfterLogin');
+        }
+        
+        // Replace the current route to prevent back navigation
+        router.replace(destinationUrl);
       }
     } catch (err: any) {
       console.error("Registration error:", err);
-      setFormError(err.message || "Failed to register. Please try again.");
+      
+      // Extract more specific error message when available
+      let errorMessage = "Failed to register. Please try again.";
+      
+      if (err.message === "User already exists with this email") {
+        errorMessage = "An account with this email already exists. Please use a different email or sign in.";
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
+      setFormError(errorMessage);
+      
       toast({
         variant: "destructive",
         title: "Registration failed",
-        description: err.message || "Failed to create account. Please try with a different email.",
+        description: errorMessage,
       });
     } finally {
       setIsLoading(false);
@@ -135,32 +173,30 @@ export default function RegisterPage() {
                 disabled={isLoading}
               />
               {errors.confirmPassword && (
-                <p className="text-sm text-destructive">{errors.confirmPassword.message}</p>
+                <p className="text-sm text-destructive">
+                  {errors.confirmPassword.message}
+                </p>
               )}
             </div>
-            
+
             {formError && (
-              <div className="rounded-md bg-destructive/15 p-3 flex items-center gap-2 text-sm text-destructive">
-                <AlertCircle className="h-4 w-4" />
-                <p>{formError}</p>
+              <div className="p-3 bg-destructive/10 border border-destructive/20 text-destructive rounded-md text-sm">
+                {formError}
               </div>
             )}
-            
+
             <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? "Registering..." : "Register"}
+              {isLoading ? "Creating Account..." : "Create Account"}
             </Button>
           </form>
         </CardContent>
-        <CardFooter className="flex flex-col gap-2">
-          <div className="text-center text-sm">
+        <CardFooter className="flex justify-center">
+          <p className="text-sm text-muted-foreground">
             Already have an account?{" "}
-            <Link href="/auth/login" className="text-primary underline">
-              Login
+            <Link href="/auth/login" className="underline underline-offset-4 hover:text-primary">
+              Sign in
             </Link>
-          </div>
-          <Link href="/" className="text-sm text-muted-foreground underline">
-            Back to home
-          </Link>
+          </p>
         </CardFooter>
       </Card>
     </div>

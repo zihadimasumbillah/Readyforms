@@ -5,7 +5,7 @@ import { Template } from './Template';
 @Table({
   tableName: 'form_responses',
   timestamps: true,
-  version: true // Enable optimistic locking
+  version: true 
 })
 export class FormResponse extends Model {
   @Default(DataType.UUIDV4)
@@ -34,8 +34,29 @@ export class FormResponse extends Model {
 
   @BelongsTo(() => Template)
   template!: Template;
+  @Default(0)
+  @Column({
+    type: DataType.INTEGER,
+    allowNull: false,
+    comment: 'The score achieved for this response'
+  })
+  score!: number;
 
-  // String answer fields (up to 4)
+  @Default(0)
+  @Column({
+    type: DataType.INTEGER,
+    allowNull: false,
+    comment: 'The total possible points for this template'
+  })
+  totalPossiblePoints!: number;
+
+  @Column({
+    type: DataType.BOOLEAN,
+    defaultValue: false,
+    comment: 'Whether the user has viewed their score'
+  })
+  scoreViewed!: boolean;
+
   @Column({ 
     type: DataType.STRING, 
     allowNull: true 
@@ -60,7 +81,6 @@ export class FormResponse extends Model {
   })
   customString4Answer!: string;
 
-  // Text answer fields (up to 4)
   @Column({ 
     type: DataType.TEXT, 
     allowNull: true 
@@ -84,8 +104,6 @@ export class FormResponse extends Model {
     allowNull: true 
   })
   customText4Answer!: string;
-
-  // Integer answer fields (up to 4)
   @Column({ 
     type: DataType.INTEGER, 
     allowNull: true 
@@ -110,7 +128,6 @@ export class FormResponse extends Model {
   })
   customInt4Answer!: number;
 
-  // Checkbox answer fields (up to 4)
   @Column({ 
     type: DataType.BOOLEAN, 
     allowNull: true 

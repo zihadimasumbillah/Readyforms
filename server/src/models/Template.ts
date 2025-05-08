@@ -1,11 +1,13 @@
-import { Table, Column, Model, DataType, ForeignKey, BelongsTo, Default } from 'sequelize-typescript';
+import { Table, Column, Model, DataType, ForeignKey, BelongsTo, Default, BelongsToMany } from 'sequelize-typescript';
 import User from './User';
 import { Topic } from './Topic';
+import { Tag } from './Tag';
+import { TemplateTag } from './TemplateTag';
 
 @Table({
   tableName: 'templates',
   timestamps: true,
-  version: true // Enable optimistic locking
+  version: true 
 })
 export class Template extends Model {
   @Default(DataType.UUIDV4)
@@ -62,9 +64,32 @@ export class Template extends Model {
     type: DataType.TEXT,
     allowNull: true
   })
-  allowedUsers!: string; // Stored as JSON string of user IDs
+  allowedUsers!: string; 
 
-  // String question fields (up to 4)
+  @Default('{}')
+  @Column({
+    type: DataType.TEXT,
+    allowNull: true,
+    comment: 'JSON string containing scoring criteria for each question'
+  })
+  scoringCriteria!: string;
+
+  @Default(false)
+  @Column({
+    type: DataType.BOOLEAN,
+    allowNull: false,
+    comment: 'Whether this template is a quiz with scoring'
+  })
+  isQuiz!: boolean;
+
+  @Default(false)
+  @Column({
+    type: DataType.BOOLEAN,
+    allowNull: false,
+    comment: 'Whether to show scores immediately after submission'
+  })
+  showScoreImmediately!: boolean;
+
   @Default(false)
   @Column(DataType.BOOLEAN)
   customString1State!: boolean;
@@ -105,7 +130,6 @@ export class Template extends Model {
   })
   customString4Question!: string;
 
-  // Text question fields (up to 4)
   @Default(false)
   @Column(DataType.BOOLEAN)
   customText1State!: boolean;
@@ -146,7 +170,6 @@ export class Template extends Model {
   })
   customText4Question!: string;
 
-  // Integer question fields (up to 4)
   @Default(false)
   @Column(DataType.BOOLEAN)
   customInt1State!: boolean;
@@ -233,8 +256,9 @@ export class Template extends Model {
     type: DataType.TEXT,
     allowNull: true
   })
-  questionOrder!: string; // Store the order of questions as a JSON string
+  questionOrder!: string; 
 
-  // We don't use HasMany directly to avoid circular dependencies
-  // formResponses, comments, likes will be defined in their respective models
+  @BelongsToMany(() => Tag, () => TemplateTag)
+  tags!: Tag[];
+
 }

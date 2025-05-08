@@ -5,7 +5,7 @@ import { Template } from './Template';
 @Table({
   tableName: 'comments',
   timestamps: true,
-  version: true // Enable optimistic locking
+  version: true 
 })
 export class Comment extends Model {
   @Default(DataType.UUIDV4)

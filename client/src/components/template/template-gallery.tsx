@@ -20,9 +20,10 @@ interface TemplateGalleryProps {
   templates: Template[];
   topics: Topic[];
   loading?: boolean;
+  requireAuth?: boolean; // Added requireAuth prop
 }
 
-export function TemplateGallery({ templates = [], topics = [], loading = false }: TemplateGalleryProps) {
+export function TemplateGallery({ templates = [], topics = [], loading = false, requireAuth = false }: TemplateGalleryProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTopic, setSelectedTopic] = useState<string>('all');
   const [filteredTemplates, setFilteredTemplates] = useState<Template[]>(templates);

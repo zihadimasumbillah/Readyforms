@@ -5,7 +5,7 @@ import { Template } from './Template';
 @Table({
   tableName: 'likes',
   timestamps: true,
-  version: true, // Enable optimistic locking
+  version: true, 
   indexes: [
     {
       unique: true,

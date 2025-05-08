@@ -13,12 +13,18 @@ import { toast } from "@/components/ui/use-toast";
 import { useAuth } from "@/contexts/auth-context";
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
+import { useMounted } from "@/hooks/use-mounted";
+
+// Mark this page as dynamic to prevent static generation
+export const dynamic = 'force-dynamic';
+export const dynamicParams = true;
 
 export default function CreateTemplatePage() {
   const [topics, setTopics] = useState<Topic[]>([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const { user } = useAuth();
+  const isMounted = useMounted();
 
   useEffect(() => {
     const fetchTopics = async () => {
@@ -38,8 +44,10 @@ export default function CreateTemplatePage() {
       }
     };
 
-    fetchTopics();
-  }, []);
+    if (isMounted) {
+      fetchTopics();
+    }
+  }, [isMounted]);
 
   const handleCreateTemplate = async (formData: any) => {
     try {
@@ -85,9 +93,40 @@ export default function CreateTemplatePage() {
     }
   };
 
+  // Only redirect once the component is mounted in the browser
+  useEffect(() => {
+    if (isMounted && !user) {
+      router.push('/auth/login');
+    }
+  }, [isMounted, user, router]);
+
+  // If not mounted yet, render a loading state instead of null
+  if (!isMounted) {
+    return (
+      <>
+        <Navbar />
+        <main className="container py-6">
+          <div className="flex items-center justify-center h-[60vh]">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+          </div>
+        </main>
+      </>
+    );
+  }
+
+  // If mounted but no user, show nothing (redirection will happen via useEffect)
   if (!user) {
-    router.push('/auth/login');
-    return null;
+    return (
+      <>
+        <Navbar />
+        <main className="container py-6">
+          <div className="flex flex-col items-center justify-center h-[60vh]">
+            <p className="text-center mb-4">Authentication required. Redirecting to login page...</p>
+            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
+          </div>
+        </main>
+      </>
+    );
   }
 
   return (

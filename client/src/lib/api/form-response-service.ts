@@ -44,7 +44,7 @@ export const formResponseService = {
   // Create a new form response
   createResponse: async (data: FormResponseCreateData): Promise<FormResponse> => {
     try {
-      return await apiClient.post<FormResponse>('/form-responses', data);
+      return await apiClient.post<FormResponse>('/forms', data);
     } catch (error) {
       console.error('Error creating form response:', error);
       throw error;
@@ -54,7 +54,7 @@ export const formResponseService = {
   // Get responses for a specific form template
   getResponsesByTemplate: async (templateId: string): Promise<FormResponse[]> => {
     try {
-      return await apiClient.get<FormResponse[]>(`/form-responses/template/${templateId}`);
+      return await apiClient.get<FormResponse[]>(`/forms/template/${templateId}`);
     } catch (error) {
       console.error('Error fetching form responses by template:', error);
       throw error;
@@ -64,7 +64,7 @@ export const formResponseService = {
   // Get a specific form response by ID
   getResponseById: async (id: string): Promise<FormResponse> => {
     try {
-      return await apiClient.get<FormResponse>(`/form-responses/${id}`);
+      return await apiClient.get<FormResponse>(`/forms/${id}`);
     } catch (error) {
       console.error('Error fetching form response:', error);
       throw error;
@@ -74,7 +74,7 @@ export const formResponseService = {
   // Get responses submitted by the current user
   getUserResponses: async (): Promise<FormResponse[]> => {
     try {
-      return await apiClient.get<FormResponse[]>('/form-responses/user');
+      return await apiClient.get<FormResponse[]>('/forms/user');
     } catch (error) {
       console.error('Error fetching user form responses:', error);
       throw error;
@@ -84,7 +84,7 @@ export const formResponseService = {
   // Get responses by user ID (admin only)
   getResponsesByUser: async (userId: string): Promise<FormResponse[]> => {
     try {
-      return await apiClient.get<FormResponse[]>(`/form-responses/user/${userId}`);
+      return await apiClient.get<FormResponse[]>(`/forms/user/${userId}`);
     } catch (error) {
       console.error('Error fetching form responses by user:', error);
       throw error;
@@ -94,7 +94,7 @@ export const formResponseService = {
   // Get aggregate data for a template
   getAggregateData: async (templateId: string): Promise<AggregateData> => {
     try {
-      return await apiClient.get<AggregateData>(`/form-responses/template/${templateId}/aggregate`);
+      return await apiClient.get<AggregateData>(`/forms/template/${templateId}/aggregate`);
     } catch (error) {
       console.error('Error fetching aggregate data:', error);
       throw error;
@@ -114,7 +114,7 @@ export const formResponseService = {
       if (filters.limit) queryParams.append('limit', filters.limit.toString());
       
       const queryString = queryParams.toString();
-      return await apiClient.get<FormResponse[]>(`/form-responses/search?${queryString}`);
+      return await apiClient.get<FormResponse[]>(`/forms/search?${queryString}`);
     } catch (error) {
       console.error('Error searching form responses:', error);
       throw error;
@@ -124,7 +124,7 @@ export const formResponseService = {
   // Export responses as CSV (for data analysis)
   exportResponsesAsCsv: async (templateId: string): Promise<Blob> => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/form-responses/template/${templateId}/export`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/forms/template/${templateId}/export`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },

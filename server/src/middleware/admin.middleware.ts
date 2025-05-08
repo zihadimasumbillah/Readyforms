@@ -1,11 +1,22 @@
 import { Request, Response, NextFunction } from 'express';
-import catchAsync from '../utils/catchAsync';
+import { RequestHandler } from 'express-serve-static-core';
 
-export const adminMiddleware = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-  // Check if user exists and is admin
-  if (!req.user || !req.user.isAdmin) {
-    return res.status(403).json({ message: 'Access denied. Admin privileges required.' });
+export const isAdmin: RequestHandler = (req: Request, res: Response, next: NextFunction): void => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ message: 'Authentication required' });
+      return;
+    }
+    
+    if (!req.user.isAdmin) {
+      res.status(403).json({ message: 'Admin privileges required' });
+      return;
+    }
+    
+    next();
+  } catch (error) {
+    res.status(500).json({ message: 'Authorization error' });
+    return;
   }
-  
-  next();
-});
+};
+export const adminMiddleware = isAdmin;

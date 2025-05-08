@@ -7,7 +7,6 @@ const router = Router();
 
 router.get('/template/:templateId', catchAsync(getCommentsByTemplate));
 
-// Protected routes
 router.post('/', catchAsync(authMiddleware), catchAsync(createComment));
 router.delete('/:id', catchAsync(authMiddleware), catchAsync(deleteComment));
 

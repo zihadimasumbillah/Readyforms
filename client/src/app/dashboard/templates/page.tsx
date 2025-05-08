@@ -138,6 +138,7 @@ export default function TemplatesPage() {
       }}
       onLogout={handleLogout}
     >
+        
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">My Templates</h1>
         <Button onClick={() => router.push("/templates/create")}>

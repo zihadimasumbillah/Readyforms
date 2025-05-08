@@ -3,7 +3,6 @@ import { Template, FormResponse, Like, Comment, sequelize } from '../models';
 import catchAsync from '../utils/catchAsync';
 
 /**
- * Get user dashboard stats
  * @route GET /api/dashboard/stats
  */
 export const getUserStats = catchAsync(async (req: Request, res: Response) => {
@@ -11,26 +10,22 @@ export const getUserStats = catchAsync(async (req: Request, res: Response) => {
     if (!req.user) {
       return res.status(401).json({ message: 'Not authenticated' });
     }
-    
-    // Count templates created by user
+
     const templatesCount = await Template.count({
       where: { userId: req.user.id }
     });
     
-    // Count responses by user
     const responsesCount = await FormResponse.count({
       where: { userId: req.user.id }
     });
     
-    // Count likes on user's templates
     const likesCount = await Like.count({
       include: [{
         model: Template,
         where: { userId: req.user.id }
       }]
     });
-    
-    // Count comments on user's templates
+
     const commentsCount = await Comment.count({
       include: [{
         model: Template,
@@ -51,7 +46,6 @@ export const getUserStats = catchAsync(async (req: Request, res: Response) => {
 });
 
 /**
- * Get user templates
  * @route GET /api/dashboard/templates
  */
 export const getUserTemplates = catchAsync(async (req: Request, res: Response) => {
@@ -59,8 +53,7 @@ export const getUserTemplates = catchAsync(async (req: Request, res: Response) =
     if (!req.user) {
       return res.status(401).json({ message: 'Not authenticated' });
     }
-    
-    // Get templates created by user with form response count
+
     const templates = await Template.findAll({
       where: { userId: req.user.id },
       attributes: {
@@ -97,8 +90,7 @@ export const getUserResponses = catchAsync(async (req: Request, res: Response) =
     if (!req.user) {
       return res.status(401).json({ message: 'Not authenticated' });
     }
-    
-    // Get form responses submitted by user
+
     const responses = await FormResponse.findAll({
       where: { userId: req.user.id },
       include: [{ association: 'template', attributes: ['id', 'title'] }],
@@ -113,7 +105,6 @@ export const getUserResponses = catchAsync(async (req: Request, res: Response) =
 });
 
 /**
- * Get recent activity
  * @route GET /api/dashboard/activity
  */
 export const getRecentActivity = catchAsync(async (req: Request, res: Response) => {
@@ -123,11 +114,6 @@ export const getRecentActivity = catchAsync(async (req: Request, res: Response) 
     }
     
     const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 5;
-    
-    // This is a simplified example - in a real app, you would have an activity log table
-    // For this example, we'll combine recent responses to user's templates and recent comments
-    
-    // Get recent responses to user's templates
     const responses = await FormResponse.findAll({
       include: [{
         model: Template,
@@ -148,15 +134,13 @@ export const getRecentActivity = catchAsync(async (req: Request, res: Response) 
       limit,
       order: [['createdAt', 'DESC']]
     });
-    
-    // Combine and format activities
     const activities = [
       ...responses.map(response => ({
         id: response.id,
         type: 'response',
         templateId: response.templateId,
         templateTitle: response.template.title,
-        userName: 'A user', // In a real app, include the user's name
+        userName: 'A user', 
         timestamp: response.createdAt
       })),
       ...comments.map(comment => ({
@@ -164,14 +148,12 @@ export const getRecentActivity = catchAsync(async (req: Request, res: Response) 
         type: 'comment',
         templateId: comment.templateId,
         templateTitle: comment.template.title,
-        userName: 'A user', // In a real app, include the user's name
+        userName: 'A user', 
         content: comment.content,
         timestamp: comment.createdAt
       }))
     ]
-    // Sort combined activities by timestamp
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-    // Limit to requested number
     .slice(0, limit);
     
     res.status(200).json(activities);

@@ -165,7 +165,7 @@ export function TemplateForm({
     toast({
       title: "Maximum fields reached",
       description: `You can have at most 4 ${type.toLowerCase()} questions.`,
-      variant: "warning"
+      variant: "default"
     });
   };
 
@@ -202,7 +202,7 @@ export function TemplateForm({
       setSaving(true);
       
       // Prepare the payload with all necessary fields
-      const payload = {
+      const payload: Record<string, any> = {
         ...data,
         version: template.version,
         questionOrder: JSON.stringify(questionOrder),

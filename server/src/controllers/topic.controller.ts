@@ -13,7 +13,6 @@ export const getAllTopics = catchAsync(async (_req: Request, res: Response) => {
 });
 
 /**
- * Get topic by ID
  * @route GET /api/topics/:id
  */
 export const getTopicById = async (req: Request, res: Response): Promise<void> => {
@@ -35,7 +34,6 @@ export const getTopicById = async (req: Request, res: Response): Promise<void> =
 };
 
 /**
- * Create a new topic (admin only)
  * @route POST /api/topics
  */
 export const createTopic = async (req: Request, res: Response): Promise<void> => {
@@ -46,8 +44,6 @@ export const createTopic = async (req: Request, res: Response): Promise<void> =>
       res.status(400).json({ message: 'Topic name is required' });
       return;
     }
-    
-    // Check if topic with same name exists
     const existingTopic = await Topic.findOne({ where: { name } });
     
     if (existingTopic) {
@@ -71,7 +67,6 @@ export const createTopic = async (req: Request, res: Response): Promise<void> =>
 };
 
 /**
- * Update topic (admin only)
  * @route PUT /api/topics/:id
  */
 export const updateTopic = async (req: Request, res: Response): Promise<void> => {
@@ -88,8 +83,7 @@ export const updateTopic = async (req: Request, res: Response): Promise<void> =>
       res.status(400).json({ message: 'version field is required for optimistic locking' });
       return;
     }
-    
-    // Check if another topic with the same name exists (except this one)
+
     const existingTopic = await Topic.findOne({
       where: { name },
       attributes: ['id']
@@ -118,7 +112,6 @@ export const updateTopic = async (req: Request, res: Response): Promise<void> =>
 };
 
 /**
- * Delete topic (admin only)
  * @route DELETE /api/topics/:id
  */
 export const deleteTopic = async (req: Request, res: Response): Promise<void> => {
@@ -131,14 +124,11 @@ export const deleteTopic = async (req: Request, res: Response): Promise<void> =>
       return;
     }
     
-    // First check if topic exists
     const topic = await Topic.findByPk(id);
     if (!topic) {
       res.status(404).json({ message: 'Topic not found' });
       return;
     }
-
-    // Check if templates are using this topic
     const templatesCount = await Template.count({ 
       where: { topicId: id } 
     });
@@ -149,8 +139,6 @@ export const deleteTopic = async (req: Request, res: Response): Promise<void> =>
       });
       return;
     }
-    
-    // Now it's safe to delete the topic
     await optimisticDelete(Topic, id, version);
     
     res.status(200).json({

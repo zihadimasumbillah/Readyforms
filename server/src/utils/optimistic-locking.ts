@@ -1,9 +1,6 @@
-import { Model, ModelStatic, WhereOptions } from 'sequelize';
+import { Model, ModelStatic, ValidationError } from 'sequelize';
 import { Response } from 'express';
 
-/**
- * Class representing an optimistic locking error
- */
 export class OptimisticLockError extends Error {
   constructor(message: string) {
     super(message);
@@ -12,88 +9,96 @@ export class OptimisticLockError extends Error {
 }
 
 /**
- * Updates a record with optimistic locking
- * 
- * @param model The Sequelize model class
- * @param id The primary key of the record to update
- * @param version The current version of the record
- * @param data The data to update
- * @returns The updated record
- * @throws OptimisticLockError if the record has been modified by another transaction
+ * @param model 
+ * @param id 
+ * @param version
+ * @param data 
+ * @returns 
+ * @throws 
  */
 export async function optimisticUpdate<T extends Model>(
   model: ModelStatic<T>,
-  id: string | number,
-  version: number,
-  data: Record<string, any>
+  id: string,
+  version: number | string,
+  data: any
 ): Promise<T> {
-  const result = await model.update(
-    data,
-    {
-      where: {
-        id,
-        version
-      } as WhereOptions<any>,
-      returning: true
-    }
-  );
+
+  const versionNum = typeof version === 'string' ? parseInt(version, 10) : version;
   
-  // Check if any rows were affected
-  const [affectedCount, affectedRows] = result;
+  if (isNaN(versionNum)) {
+    throw new Error('Invalid version number');
+  }
+
+  const record = await model.findByPk(id);
   
-  if (affectedCount === 0) {
-    throw new OptimisticLockError(
-      'Optimistic locking error: The record has been modified by another transaction.'
-    );
+  if (!record) {
+    throw new Error('Record not found');
   }
   
-  return affectedRows[0];
+  if (record.getDataValue('version') !== versionNum) {
+    throw new OptimisticLockError('Record has been modified by another user');
+  }
+  
+  await record.update(data);
+  
+  return record;
 }
 
 /**
- * Deletes a record with optimistic locking
- * 
- * @param model The Sequelize model class
- * @param id The primary key of the record to delete
- * @param version The current version of the record
- * @returns The number of deleted records (should be 1)
- * @throws OptimisticLockError if the record has been modified by another transaction
+ * @param model
+ * @param id 
+ * @param version 
+ * @throws 
  */
 export async function optimisticDelete<T extends Model>(
   model: ModelStatic<T>,
-  id: string | number,
-  version: number
-): Promise<number> {
-  const affectedCount = await model.destroy({
-    where: {
-      id,
-      version
-    } as WhereOptions<any>
-  });
+  id: string,
+  version: number | string
+): Promise<void> {
+  const versionNum = typeof version === 'string' ? parseInt(version, 10) : version;
   
-  if (affectedCount === 0) {
-    throw new OptimisticLockError(
-      'Optimistic locking error: The record has been modified by another transaction.'
-    );
+  if (isNaN(versionNum)) {
+    throw new Error('Invalid version number');
   }
+
+  const record = await model.findByPk(id);
   
-  return affectedCount;
+  if (!record) {
+    throw new Error('Record not found');
+  }
+
+  if (record.getDataValue('version') !== versionNum) {
+    throw new OptimisticLockError('Record has been modified by another user');
+  }
+
+  await record.destroy();
 }
 
 /**
- * Handles optimistic locking errors in Express controllers
- * 
- * @param error The error to handle
- * @param res The Express response object
- * @returns true if the error was handled, false otherwise
+ * @param error 
+ * @param res 
+ * @returns 
  */
-export function handleOptimisticLockError(error: any, res: Response): boolean {
+export function handleOptimisticLockError(error: unknown, res: Response): boolean {
   if (error instanceof OptimisticLockError) {
     res.status(409).json({
-      message: error.message,
-      error: 'OPTIMISTIC_LOCK_ERROR'
+      message: 'Conflict: The record has been modified by another user. Please reload and try again.',
+      error: 'OptimisticLockError'
     });
     return true;
   }
+  
+  if (error instanceof ValidationError) {
+    res.status(400).json({
+      message: 'Validation error',
+      errors: error.errors.map(e => ({
+        message: e.message,
+        path: e.path,
+        type: e.type
+      }))
+    });
+    return true;
+  }
+  
   return false;
 }

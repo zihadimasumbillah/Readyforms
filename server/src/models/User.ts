@@ -47,12 +47,16 @@ class User extends Model {
   @Column(DataType.STRING)
   theme?: string;
 
-  // Instance methods
+  @Column(DataType.DATE)
+  lastLoginAt?: Date;
   async validatePassword(password: string): Promise<boolean> {
-    return bcrypt.compare(password, this.password);
+    try {
+      return await bcrypt.compare(password, this.password);
+    } catch (error) {
+      console.error('Password validation error:', error);
+      return false;
+    }
   }
-
-  // Hooks using decorator pattern
   @BeforeCreate
   static async hashPasswordBeforeCreate(instance: User) {
     if (instance.password) {

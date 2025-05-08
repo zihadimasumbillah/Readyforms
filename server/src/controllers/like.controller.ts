@@ -4,7 +4,6 @@ import { Template } from '../models/Template';
 import catchAsync from '../utils/catchAsync';
 
 /**
- * Toggle like for a template (like if not liked, unlike if already liked)
  * @route POST|DELETE /api/likes/template/:templateId
  */
 export const toggleLike = async (req: Request, res: Response) => {
@@ -12,22 +11,19 @@ export const toggleLike = async (req: Request, res: Response) => {
     if (!req.user) {
       return res.status(401).json({ message: 'Not authenticated' });
     }
-    
-    // Get templateId from route params instead of request body
+
     const { templateId } = req.params;
     
     if (!templateId) {
       return res.status(400).json({ message: 'Template ID is required' });
     }
     
-    // Verify that the template exists
     const template = await Template.findByPk(templateId);
     
     if (!template) {
       return res.status(404).json({ message: 'Template not found' });
     }
     
-    // Check if user has already liked this template
     const existingLike = await Like.findOne({
       where: {
         userId: req.user.id,
@@ -35,7 +31,6 @@ export const toggleLike = async (req: Request, res: Response) => {
       }
     });
     
-    // If like exists, remove it (unlike)
     if (existingLike) {
       await existingLike.destroy();
       
@@ -45,7 +40,6 @@ export const toggleLike = async (req: Request, res: Response) => {
       });
     }
     
-    // Otherwise, add a new like
     await Like.create({
       userId: req.user.id,
       templateId
@@ -62,7 +56,6 @@ export const toggleLike = async (req: Request, res: Response) => {
 };
 
 /**
- * Check if the current user has liked a template
  * @route GET /api/likes/check/:templateId
  */
 export const checkLike = async (req: Request, res: Response) => {
@@ -72,15 +65,12 @@ export const checkLike = async (req: Request, res: Response) => {
     }
     
     const { templateId } = req.params;
-    
-    // Verify that the template exists
     const template = await Template.findByPk(templateId);
     
     if (!template) {
       return res.status(404).json({ message: 'Template not found' });
     }
     
-    // Check if user has liked this template
     const like = await Like.findOne({
       where: {
         userId: req.user.id,
@@ -98,21 +88,18 @@ export const checkLike = async (req: Request, res: Response) => {
 };
 
 /**
- * Count likes for a template
  * @route GET /api/likes/count/:templateId
  */
 export const countLikes = async (req: Request, res: Response) => {
   try {
     const { templateId } = req.params;
     
-    // Verify that the template exists
     const template = await Template.findByPk(templateId);
     
     if (!template) {
       return res.status(404).json({ message: 'Template not found' });
     }
-    
-    // Count likes for this template
+
     const count = await Like.count({
       where: {
         templateId
@@ -129,13 +116,11 @@ export const countLikes = async (req: Request, res: Response) => {
 };
 
 /**
- * Get likes by template
  * @route GET /api/likes/template/:templateId
  */
 export const getLikesByTemplate = catchAsync(async (req: Request, res: Response) => {
   const { templateId } = req.params;
-  
-  // Check if template exists
+
   const template = await Template.findByPk(templateId);
   if (!template) {
     return res.status(404).json({ message: 'Template not found' });

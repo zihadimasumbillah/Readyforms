@@ -24,6 +24,8 @@ import {
 import { toast } from "@/components/ui/use-toast";
 import Link from "next/link";
 
+export const dynamic = 'force-dynamic';
+export const dynamicParams = true;
 
 type FormField = {
   question: string;
@@ -36,7 +38,9 @@ export default function ResponseDetailPage({ params }: { params: { id: string } 
   const [loading, setLoading] = useState(true);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const router = useRouter();
-  const { user, logout } = useAuth();
+  const auth = useAuth();
+  const user = auth?.user;
+  const logout = auth?.logout;
 
   const handleLogout = () => {
     if (logout) {
@@ -83,15 +87,10 @@ export default function ResponseDetailPage({ params }: { params: { id: string } 
       });
     }
   };
-
-  // Get question fields from the form response
   const getFormFields = (): FormField[] => {
     if (!response || !response.template) return [];
 
     const fields: FormField[] = [];
-
-    // Using a type-safe approach for dynamic property access
-    // Extract string fields
     for (let i = 1; i <= 4; i++) {
       const questionKey = `customString${i}Question`;
       const answerKey = `customString${i}Answer`;
@@ -109,8 +108,6 @@ export default function ResponseDetailPage({ params }: { params: { id: string } 
         });
       }
     }
-
-    // Extract text fields
     for (let i = 1; i <= 4; i++) {
       const questionKey = `customText${i}Question`;
       const answerKey = `customText${i}Answer`;
@@ -128,8 +125,6 @@ export default function ResponseDetailPage({ params }: { params: { id: string } 
         });
       }
     }
-
-    // Extract integer fields
     for (let i = 1; i <= 4; i++) {
       const questionKey = `customInt${i}Question`;
       const answerKey = `customInt${i}Answer`;
@@ -147,8 +142,6 @@ export default function ResponseDetailPage({ params }: { params: { id: string } 
         });
       }
     }
-
-    // Extract checkbox fields
     for (let i = 1; i <= 4; i++) {
       const questionKey = `customCheckbox${i}Question`;
       const answerKey = `customCheckbox${i}Answer`;

@@ -1,172 +1,276 @@
 import { Request, Response } from 'express';
-import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-import User from '../models/User';
+import jwt, { SignOptions } from 'jsonwebtoken';
+import { User } from '../models';
+import jwtConfig from '../config/jwt.config';
 import catchAsync from '../utils/catchAsync';
-import { JWT_SECRET, JWT_EXPIRES_IN } from '../config/jwt.config';
+import sequelize from 'sequelize';
+import { Op } from 'sequelize';
 
-/**
- * User registration
- * @route POST /api/auth/register
- */
-export const register = async (req: Request, res: Response) => {
+interface AuthenticatedRequest extends Request {
+  user?: {
+    id: string;
+    email: string;
+    isAdmin: boolean;
+    [key: string]: any;
+  };
+}
+
+interface UserAttributes {
+  id: string;
+  name: string;
+  email: string;
+  password: string;
+  isAdmin: boolean;
+  blocked?: boolean;
+  language: string;
+  theme: string;
+  lastLoginAt?: Date;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+const generateToken = (payload: object): string => {
+  const options: SignOptions = {
+    expiresIn: jwtConfig.expiresIn as SignOptions['expiresIn'],
+  };
+  return jwt.sign(payload, jwtConfig.secret, options);
+};
+
+export const register = catchAsync(async (req: Request, res: Response) => {
+  const { name, email, password, language = 'en', theme = 'light' } = req.body;
+
   try {
-    const { name, email, password } = req.body;
-    
-    // Check if email already exists
     const existingUser = await User.findOne({ where: { email } });
-    
     if (existingUser) {
-      return res.status(400).json({ message: 'Email is already registered' });
+      return res.status(400).json({ message: 'User already exists with this email' });
     }
-    
-    // Create new user
+
+    const hashedPassword = await bcrypt.hash(password, 10);
     const user = await User.create({
       name,
       email,
-      password, // Password will be hashed by the model hook
-      language: 'en', // Default language
-      theme: 'light' // Default theme
+      password: hashedPassword,
+      language,
+      theme
     });
-    
-    // Generate JWT token
-    const token = jwt.sign(
-      { id: user.id },
-      JWT_SECRET,
-      { expiresIn: JWT_EXPIRES_IN } as jwt.SignOptions
-    );
-    
-    // Return user data and token without the password
-    const userData = user.toJSON();
-    delete userData.password;
-    
-    return res.status(201).json({
+
+    const token = generateToken({ id: user.id, email: user.email, isAdmin: user.isAdmin });
+
+    res.status(201).json({
       message: 'User registered successfully',
       token,
-      user: userData
-    });
-  } catch (error) {
-    console.error('Registration error:', error);
-    return res.status(500).json({ message: 'Server error during registration' });
-  }
-};
-
-/**
- * User login
- * @route POST /api/auth/login
- */
-export const login = async (req: Request, res: Response) => {
-  try {
-    const { email, password } = req.body;
-    
-    // Find user by email
-    const user = await User.findOne({ where: { email } });
-    
-    if (!user) {
-      return res.status(400).json({ message: 'Invalid credentials' });
-    }
-    
-    // Check if user is blocked
-    if (user.blocked) {
-      return res.status(403).json({ message: 'Account is disabled' });
-    }
-    
-    // Validate password
-    const isPasswordValid = await user.validatePassword(password);
-    
-    if (!isPasswordValid) {
-      return res.status(400).json({ message: 'Invalid credentials' });
-    }
-    
-    // Generate JWT token
-    const token = jwt.sign(
-      { id: user.id },
-      JWT_SECRET,
-      { expiresIn: JWT_EXPIRES_IN } as jwt.SignOptions
-    );
-    
-    // Return user data and token without the password
-    const userData = user.toJSON();
-    delete userData.password;
-    
-    return res.status(200).json({
-      message: 'Logged in successfully',
-      token,
-      user: userData
-    });
-  } catch (error) {
-    console.error('Login error:', error);
-    return res.status(500).json({ message: 'Server error during login' });
-  }
-};
-
-/**
- * Get current user info
- * @route GET /api/auth/me
- */
-export const getMe = async (req: Request, res: Response) => {
-  try {
-    // User is already attached to the request by the auth middleware
-    if (!req.user) {
-      return res.status(401).json({ message: 'Not authenticated' });
-    }
-    
-    // Return user data without the password
-    const userData = req.user.toJSON();
-    delete userData.password;
-    
-    return res.status(200).json({
-      user: userData
-    });
-  } catch (error) {
-    console.error('Get user error:', error);
-    return res.status(500).json({ message: 'Server error' });
-  }
-};
-
-/**
- * Update user preferences
- * @route PUT /api/auth/preferences
- */
-export const updatePreferences = async (req: Request, res: Response) => {
-  try {
-    if (!req.user) {
-      return res.status(401).json({ message: 'Not authenticated' });
-    }
-    
-    const { language, theme } = req.body;
-    
-    // Update user preferences
-    await req.user.update({
-      language: language || req.user.language,
-      theme: theme || req.user.theme
-    });
-    
-    return res.status(200).json({
-      message: 'Preferences updated successfully',
       user: {
-        language: req.user.language,
-        theme: req.user.theme
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        isAdmin: user.isAdmin,
+        language: user.language,
+        theme: user.theme
       }
     });
   } catch (error) {
-    console.error('Update preferences error:', error);
-    return res.status(500).json({ message: 'Server error' });
+    console.error('Error registering user:', error);
+    res.status(500).json({ message: 'Error creating user account' });
   }
-};
+});
 
-/**
- * Get current logged in user
- * @route GET /api/auth/current-user
- */
-export const getCurrentUser = catchAsync(async (req: Request, res: Response) => {
-  const user = await User.findByPk(req.user.id, {
-    attributes: { exclude: ['password'] }
-  });
-  
-  if (!user) {
-    return res.status(404).json({ message: 'User not found' });
+export const login = catchAsync(async (req: Request, res: Response) => {
+  const { email, password } = req.body;
+
+  try {
+    if (!email || !password) {
+      return res.status(400).json({ message: 'Email and password are required' });
+    }
+
+    console.log(`Login attempt for: ${email}`);
+    const user = await User.findOne({
+      where: {
+        email: {
+          [Op.iLike]: email 
+        }
+      }
+    });
+
+    if (!user) {
+      console.error(`Login failed: No user found with email ${email}`);
+      return res.status(400).json({ message: 'Invalid credentials' });
+    }
+
+    console.log(`Found user: ${user.email} (ID: ${user.id})`);
+    
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`Password from request: ${password}`);
+      console.log(`Password hash from DB: ${user.password.substring(0, 20)}...`);
+    }
+
+    let isPasswordValid = false;
+    try {
+      isPasswordValid = await bcrypt.compare(password, user.password);
+      console.log(`Password match result: ${isPasswordValid}`);
+    } catch (error) {
+      console.error('Error during password comparison:', error);
+      return res.status(500).json({ message: 'Error verifying credentials' });
+    }
+    
+    if (!isPasswordValid) {
+      console.error(`Login failed: Invalid password for user ${email}`);
+      return res.status(400).json({ message: 'Invalid credentials' });
+    }
+
+    if (user.blocked) {
+      return res.status(403).json({ message: 'Your account has been blocked. Please contact admin.' });
+    }
+
+    await User.update({ lastLoginAt: new Date() }, { where: { id: user.id } });
+
+    const token = generateToken({ 
+      id: user.id, 
+      email: user.email, 
+      isAdmin: user.isAdmin 
+    });
+
+    console.log(`Login successful for user: ${user.email}`);
+
+    res.json({
+      message: 'Login successful',
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        isAdmin: user.isAdmin,
+        language: user.language || 'en',
+        theme: user.theme || 'light'
+      }
+    });
+  } catch (error) {
+    console.error('Error during login:', error);
+    res.status(500).json({ message: 'Server error during login' });
   }
+});
+
+export const getCurrentUser = catchAsync(async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({ message: 'Not authenticated' });
+    }
+
+    const userId = req.user.id;
+    console.log(`Getting current user with ID: ${userId}`);
+    
+    try {
+      const user = await User.findByPk(userId, {
+        attributes: ['id', 'name', 'email', 'isAdmin', 'language', 'theme', 'createdAt', 'lastLoginAt'],
+        raw: true 
+      });
   
-  res.status(200).json(user);
+      if (!user) {
+        console.log(`User not found for ID: ${userId}`);
+        return res.status(404).json({ message: 'User not found' });
+      }
+  
+      console.log(`Successfully found user: ${user.email}`);
+      res.json(user);
+    } catch (error) {
+      const dbError = error as Error; 
+      console.error(`Database error getting user ${userId}:`, dbError);
+      res.status(500).json({ 
+        message: 'Database error retrieving user profile',
+        error: process.env.NODE_ENV === 'development' ? dbError.message : undefined
+      });
+    }
+  } catch (error) {
+    console.error('Unexpected error getting current user:', error);
+    res.status(500).json({ message: 'Server error retrieving user profile' });
+  }
+});
+
+export const updateProfile = catchAsync(async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({ message: 'Not authenticated' });
+    }
+
+    const { name } = req.body;
+    const userId = req.user.id;
+
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    await User.update({ name: name || user.name }, { where: { id: userId } });
+
+    const updatedUser = await User.findByPk(userId, {
+      attributes: ['id', 'name', 'email', 'isAdmin', 'language', 'theme']
+    });
+
+    res.json({
+      message: 'Profile updated successfully',
+      user: updatedUser
+    });
+  } catch (error) {
+    console.error('Error updating profile:', error);
+    res.status(500).json({ message: 'Server error updating profile' });
+  }
+});
+
+export const updatePreferences = catchAsync(async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({ message: 'Not authenticated' });
+    }
+
+    const { language, theme } = req.body;
+    const userId = req.user.id;
+
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    await User.update({ language, theme }, { where: { id: userId } });
+
+    const updatedUser = await User.findByPk(userId, {
+      attributes: ['id', 'name', 'email', 'isAdmin', 'language', 'theme']
+    });
+
+    res.json({
+      message: 'Preferences updated successfully',
+      user: updatedUser
+    });
+  } catch (error) {
+    console.error('Error updating preferences:', error);
+    res.status(500).json({ message: 'Server error updating preferences' });
+  }
+});
+
+export const changePassword = catchAsync(async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({ message: 'Not authenticated' });
+    }
+
+    const { currentPassword, newPassword } = req.body;
+    const userId = req.user.id;
+
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const isPasswordValid = await bcrypt.compare(currentPassword, user.password);
+    if (!isPasswordValid) {
+      return res.status(401).json({ message: 'Current password is incorrect' });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await User.update({ password: hashedPassword }, { where: { id: userId } });
+
+    res.json({ message: 'Password changed successfully' });
+  } catch (error) {
+    console.error('Error changing password:', error);
+    res.status(500).json({ message: 'Server error changing password' });
+  }
 });

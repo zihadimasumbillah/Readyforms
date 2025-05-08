@@ -10,38 +10,31 @@ export interface SystemActivity {
   timestamp: string;
 }
 
-// Export the service as a default export and as a named export for flexibility
 const adminService = {
-  // Toggle user block status (admin only)
   toggleUserBlock: async (userId: string): Promise<User> => {
     try {
-      const response = await apiClient.put<{user: User}>(`/users/${userId}/block`);
+      const response = await apiClient.put<{user: User}>(`/admin/users/${userId}/block`);
       return response.user;
     } catch (error) {
       console.error('Error toggling user block status:', error);
       throw error;
     }
   },
-
-  // Toggle user admin status (admin only)
   toggleUserAdmin: async (userId: string): Promise<User> => {
     try {
-      const response = await apiClient.put<{user: User}>(`/users/${userId}/admin`);
+      const response = await apiClient.put<{user: User}>(`/admin/users/${userId}/admin`);
       return response.user;
     } catch (error) {
       console.error('Error toggling user admin status:', error);
       throw error;
     }
   },
-
-  // Get all templates (admin only)
   getAllTemplates: async (): Promise<Template[]> => {
     try {
       const response = await apiClient.get<Template[]>('/admin/templates');
       return response;
     } catch (error) {
       console.error('Error fetching all templates:', error);
-      // If admin endpoint fails, try to get all templates from regular endpoint
       try {
         const response = await apiClient.get<Template[]>('/templates');
         return response;
@@ -52,19 +45,16 @@ const adminService = {
     }
   },
   
-  // Get template by ID with admin privileges (includes private templates)
   getTemplateById: async (id: string): Promise<Template> => {
     try {
       const response = await apiClient.get<Template>(`/admin/templates/${id}`);
       return response;
     } catch (error) {
       console.error(`Error fetching template ${id} as admin:`, error);
-      // Fall back to regular template endpoint
       return await apiClient.get<Template>(`/templates/${id}`);
     }
   },
-  
-  // Update any template as admin (regardless of ownership)
+
   updateTemplate: async (id: string, templateData: any): Promise<Template> => {
     try {
       const response = await apiClient.put<Template>(`/admin/templates/${id}`, templateData);
@@ -75,7 +65,6 @@ const adminService = {
     }
   },
   
-  // Delete any template as admin (regardless of ownership)
   deleteTemplate: async (id: string, version: number): Promise<void> => {
     try {
       await apiClient.delete(`/admin/templates/${id}`, { data: { version } });
@@ -98,10 +87,9 @@ const adminService = {
     }
   },
 
-  // Get all users (admin only)
   getAllUsers: async (): Promise<User[]> => {
     try {
-      const response = await apiClient.get<User[]>('/users');
+      const response = await apiClient.get<User[]>('/admin/users');
       return response;
     } catch (error) {
       console.error('Error fetching all users:', error);
@@ -109,10 +97,9 @@ const adminService = {
     }
   },
 
-  // Get all topics (admin only for full access)
   getAllTopics: async (): Promise<Topic[]> => {
     try {
-      const response = await apiClient.get<Topic[]>('/topics');
+      const response = await apiClient.get<Topic[]>('/admin/topics');
       return response;
     } catch (error) {
       console.error('Error fetching topics:', error);
@@ -120,10 +107,9 @@ const adminService = {
     }
   },
 
-  // Create a new topic (admin only)
   createTopic: async (name: string, description?: string): Promise<Topic> => {
     try {
-      const response = await apiClient.post<Topic>('/topics', { name, description });
+      const response = await apiClient.post<Topic>('/admin/topics', { name, description });
       return response;
     } catch (error) {
       console.error('Error creating topic:', error);
@@ -131,10 +117,9 @@ const adminService = {
     }
   },
 
-  // Update a topic (admin only)
   updateTopic: async (id: string, name: string, description: string, version: number): Promise<Topic> => {
     try {
-      const response = await apiClient.put<Topic>(`/topics/${id}`, { name, description, version });
+      const response = await apiClient.put<Topic>(`/admin/topics/${id}`, { name, description, version });
       return response;
     } catch (error) {
       console.error(`Error updating topic ${id}:`, error);
@@ -142,24 +127,21 @@ const adminService = {
     }
   },
 
-  // Delete a topic (admin only)
   deleteTopic: async (id: string, version: number): Promise<void> => {
     try {
-      await apiClient.delete(`/topics/${id}`, { data: { version } });
+      await apiClient.delete(`/admin/topics/${id}`, { data: { version } });
     } catch (error) {
       console.error(`Error deleting topic ${id}:`, error);
       throw error;
     }
   },
   
-  // Search templates with admin privileges (includes private templates)
   searchTemplates: async (query: string): Promise<Template[]> => {
     try {
       const response = await apiClient.get<Template[]>(`/admin/templates/search?query=${encodeURIComponent(query)}`);
       return response;
     } catch (error) {
       console.error('Error searching templates as admin:', error);
-      // Fall back to regular search endpoint
       try {
         const response = await apiClient.get<Template[]>(`/templates/search?query=${encodeURIComponent(query)}`);
         return response;
@@ -169,8 +151,6 @@ const adminService = {
       }
     }
   },
-
-  // Get admin dashboard stats
   getDashboardStats: async (): Promise<any> => {
     try {
       const response = await apiClient.get<any>('/admin/stats');
@@ -189,8 +169,7 @@ const adminService = {
       };
     }
   },
-  
-  // Get system activity for admin dashboard
+
   getSystemActivity: async (limit: number = 10): Promise<SystemActivity[]> => {
     try {
       const url = limit ? `/admin/activity?limit=${limit}` : '/admin/activity';
@@ -203,6 +182,5 @@ const adminService = {
   }
 };
 
-// Export both as default and named export
 export { adminService };
 export default adminService;

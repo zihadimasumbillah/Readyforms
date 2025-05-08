@@ -98,6 +98,8 @@ interface AggregateData {
   text2_count: number;
   text3_count: number;
   text4_count: number;
+  // Add index signature to allow string indexing
+  [key: string]: number | null;
 }
 
 // Colors for charts
@@ -114,7 +116,9 @@ export default function TemplateResponsesPage({ params }: { params: { id: string
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [activeTab, setActiveTab] = useState('responses');
   
-  const { user, logout } = useAuth();
+  const auth = useAuth();
+  const user = auth?.user;
+  const logout = auth?.logout;
   const router = useRouter();
 
   const handleLogout = () => {
@@ -136,9 +140,23 @@ export default function TemplateResponsesPage({ params }: { params: { id: string
       ]);
       
       setTemplate(templateData);
-      setResponses(responsesData);
-      setFilteredResponses(responsesData);
-      setAggregateData(aggregateDataResult);
+      setResponses(responsesData.map(response => ({
+        ...response,
+        user: response.user || {
+          id: response.userId || '',
+          name: 'Unknown',
+          email: 'No email'
+        }
+      })));
+      setFilteredResponses(responsesData.map(response => ({
+        ...response,
+        user: response.user || {
+          id: response.userId || '',
+          name: 'Unknown',
+          email: 'No email'
+        }
+      })));
+      setAggregateData(aggregateDataResult as AggregateData);
     } catch (error) {
       console.error("Error fetching data:", error);
       toast({
@@ -153,7 +171,6 @@ export default function TemplateResponsesPage({ params }: { params: { id: string
 
   useEffect(() => {
     if (user) {
-      // Check if user is admin
       if (!user.isAdmin) {
         toast({
           title: "Access denied",
@@ -166,7 +183,6 @@ export default function TemplateResponsesPage({ params }: { params: { id: string
       
       fetchData();
     } else {
-      // Redirect to login if no user is found
       router.push('/auth/login');
     }
   }, [user, params.id, router]);
@@ -345,7 +361,7 @@ export default function TemplateResponsesPage({ params }: { params: { id: string
       if (template[stateKey] && aggregateData[avgKey] !== null) {
         numberData.push({
           question: template[questionKey] || `Number ${i}`,
-          average: parseFloat(aggregateData[avgKey].toFixed(2))
+          average: parseFloat(aggregateData[avgKey]!.toFixed(2))
         });
       }
     }

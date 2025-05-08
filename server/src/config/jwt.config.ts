@@ -1,10 +1,22 @@
 import dotenv from 'dotenv';
+import { SignOptions } from 'jsonwebtoken';
 
-// Load environment variables
 dotenv.config();
 
-// Get JWT settings from environment variables with fallback values
-const JWT_SECRET = process.env.JWT_SECRET || '19e0260abefbad542c10cee4e836e1c609ae1c497913b1f962c3231cebc12636da92e757874a9f2fc896e70eff2600865188a1df338ae40e5062e614e0a924bc';
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
+const jwtSecret = process.env.JWT_SECRET ?? 'readyforms-secret-key';
+const jwtExpiresIn = process.env.JWT_EXPIRES_IN ?? '24h';
+const jwtRefreshSecret = process.env.JWT_REFRESH_SECRET ?? 'readyforms-refresh-secret-key';
+const jwtRefreshExpiresIn = process.env.JWT_REFRESH_EXPIRES_IN ?? '7d';
 
-export { JWT_SECRET, JWT_EXPIRES_IN };
+const jwtConfig = {
+  secret: jwtSecret,
+  expiresIn: jwtExpiresIn as SignOptions['expiresIn'],
+  refreshSecret: jwtRefreshSecret,
+  refreshExpiresIn: jwtRefreshExpiresIn as SignOptions['expiresIn']
+};
+
+
+export const JWT_SECRET: string = jwtSecret;
+export const JWT_EXPIRES_IN: SignOptions['expiresIn'] = jwtExpiresIn as SignOptions['expiresIn'];
+
+export default jwtConfig;

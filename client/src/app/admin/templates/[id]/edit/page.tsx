@@ -89,6 +89,9 @@ const templateSchema = z.object({
   topicId: z.string().min(1, "Topic is required"),
   isPublic: z.boolean(),
   allowedUsers: z.string().optional(),
+  isQuiz: z.boolean().optional(),
+  showScoreImmediately: z.boolean().optional(),
+  scoringCriteria: z.string().optional(),
 });
 
 interface QuestionFieldProps {
@@ -182,7 +185,9 @@ export default function EditTemplatePage({ params }: { params: { id: string } })
   const [questionOrder, setQuestionOrder] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState('general');
   
-  const { user, logout } = useAuth();
+  const auth = useAuth();
+  const user = auth?.user;
+  const logout = auth?.logout;
   const router = useRouter();
   const form = useForm<z.infer<typeof templateSchema>>({
     resolver: zodResolver(templateSchema),
@@ -192,6 +197,9 @@ export default function EditTemplatePage({ params }: { params: { id: string } })
       topicId: '',
       isPublic: true,
       allowedUsers: '',
+      isQuiz: false,
+      showScoreImmediately: false,
+      scoringCriteria: '',
     },
   });
 
@@ -228,6 +236,9 @@ export default function EditTemplatePage({ params }: { params: { id: string } })
           topicId: templateData.topicId || '',
           isPublic: templateData.isPublic !== undefined ? templateData.isPublic : true,
           allowedUsers: templateData.allowedUsers ? templateData.allowedUsers : '',
+          isQuiz: templateData.isQuiz || false,
+          showScoreImmediately: templateData.showScoreImmediately || false,
+          scoringCriteria: templateData.scoringCriteria || '',
         });
 
         // Set question order
@@ -351,7 +362,7 @@ export default function EditTemplatePage({ params }: { params: { id: string } })
     toast({
       title: "Maximum fields reached",
       description: `You can have at most 4 ${type.toLowerCase()} questions.`,
-      variant: "warning"
+      variant: "default"
     });
   };
 
@@ -389,8 +400,15 @@ export default function EditTemplatePage({ params }: { params: { id: string } })
     try {
       setSaving(true);
       
+      // Define a properly typed payload interface
+      interface TemplatePayload extends z.infer<typeof templateSchema> {
+        version: number;
+        questionOrder: string;
+        [key: string]: any; // Allow string-indexed properties
+      }
+      
       // Prepare the payload
-      const payload = {
+      const payload: TemplatePayload = {
         ...data,
         version: template.version,
         questionOrder: JSON.stringify(questionOrder),
@@ -403,8 +421,9 @@ export default function EditTemplatePage({ params }: { params: { id: string } })
           const stateKey = `${fieldName}State`;
           const questionKey = `${fieldName}Question`;
           
-          payload[stateKey] = template[stateKey] || false;
-          payload[questionKey] = template[questionKey] || '';
+          // Use type assertion for template access
+          payload[stateKey] = (template as any)[stateKey] || false;
+          payload[questionKey] = (template as any)[questionKey] || '';
         });
       }
       
@@ -616,6 +635,76 @@ export default function EditTemplatePage({ params }: { params: { id: string } })
                       </FormItem>
                     )}
                   />
+
+                  <FormField
+                    control={form.control}
+                    name="isQuiz"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel>
+                            Is this a quiz?
+                          </FormLabel>
+                          <FormDescription>
+                            Enable quiz-related options for this template.
+                          </FormDescription>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+
+                  {form.watch("isQuiz") && (
+                    <>
+                      <FormField
+                        control={form.control}
+                        name="showScoreImmediately"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                            <FormControl>
+                              <Checkbox
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                              />
+                            </FormControl>
+                            <div className="space-y-1 leading-none">
+                              <FormLabel>
+                                Show score immediately after submission
+                              </FormLabel>
+                              <FormDescription>
+                                Display the score to the user right after they submit the quiz.
+                              </FormDescription>
+                            </div>
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="scoringCriteria"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Scoring Criteria (JSON format)</FormLabel>
+                            <FormControl>
+                              <Textarea 
+                                placeholder='{"question1": {"answer": "A", "points": 10}}' 
+                                {...field} 
+                              />
+                            </FormControl>
+                            <FormDescription>
+                              Define the scoring criteria for the quiz in JSON format.
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </>
+                  )}
                 </form>
               </Form>
             </CardContent>

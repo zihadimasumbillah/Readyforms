@@ -161,7 +161,7 @@ export default function HomePage() {
                     templates && templates.length > 0 ? (
                       templates.slice(0, 4).map((template) => (
                         <Link 
-                          href={isAuthenticated ? `/templates/${template.id}` : `/auth/login?redirect=/templates/${template.id}`}
+                          href={`/templates/${template.id}`}
                           key={template.id}
                           className="bg-background hover:bg-accent/50 transition-colors p-3 rounded-md border shadow-sm group"
                         >
@@ -244,6 +244,7 @@ export default function HomePage() {
                 templates={filteredTemplates} 
                 loading={loading}
                 requireAuth={true}
+                topics={[]} // Added the required topics prop with an empty array
               />
               
               {filteredTemplates.length > 0 && (

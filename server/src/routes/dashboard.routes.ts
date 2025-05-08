@@ -5,7 +5,6 @@ import catchAsync from '../utils/catchAsync';
 
 const router = Router();
 
-// All dashboard routes require authentication
 router.use(catchAsync(authMiddleware));
 
 router.get('/stats', catchAsync(getUserStats));
