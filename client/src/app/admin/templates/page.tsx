@@ -69,7 +69,9 @@ export default function AdminTemplatesPage() {
   const [templateToDelete, setTemplateToDelete] = useState<Template | null>(null);
   const [processingId, setProcessingId] = useState<string | null>(null);
   
-  const { user, logout } = useAuth();
+  const auth = useAuth();
+  const user = auth?.user;
+  const logout = auth?.logout;
   const router = useRouter();
 
   const handleLogout = () => {

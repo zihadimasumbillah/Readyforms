@@ -23,7 +23,9 @@ export default function DashboardPage() {
     comments: 0,
   });
   const [recentTemplates, setRecentTemplates] = useState<Template[]>([]);
-  const { user, logout } = useAuth();
+  const auth = useAuth();
+  const user = auth?.user;
+  const logout = auth?.logout;
   const router = useRouter();
 
   const handleLogout = () => {

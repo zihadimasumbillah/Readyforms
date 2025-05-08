@@ -41,7 +41,9 @@ export default function TemplatesPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [templateToDelete, setTemplateToDelete] = useState<Template | null>(null);
   const router = useRouter();
-  const { user, logout } = useAuth();
+  const auth = useAuth();
+  const user = auth?.user;
+  const logout = auth?.logout;
 
   const handleLogout = () => {
     if (logout) {

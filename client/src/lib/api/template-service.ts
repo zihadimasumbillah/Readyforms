@@ -33,6 +33,11 @@ class TemplateService {
     const response = await apiClient.get<Template[]>(`/templates/search?query=${encodeURIComponent(query)}`);
     return response.data;
   }
+
+  async getById(id: string): Promise<Template> {
+    const response = await apiClient.get(`/templates/${id}`);
+    return response.data;
+  }
 }
 
 // Create and export service instance

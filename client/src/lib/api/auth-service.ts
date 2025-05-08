@@ -38,12 +38,16 @@ class AuthService {
       // Store auth data in localStorage
       this.setAuthData(response.data);
       return response.data;
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Registration error:', error);
       // Enhance error handling to expose the specific error message from the API
-      if (error.response && error.response.data && error.response.data.message) {
-        const errorMessage = error.response.data.message;
-        throw new Error(errorMessage);
+      if (error && typeof error === 'object' && 'response' in error && 
+          error.response && typeof error.response === 'object' && 
+          'data' in error.response && error.response.data && 
+          typeof error.response.data === 'object' && 
+          'message' in error.response.data) {
+            const errorMessage = error.response.data.message;
+            throw new Error(errorMessage as string);
       }
       throw error;
     }
@@ -57,12 +61,16 @@ class AuthService {
       console.log('Login successful, storing auth data');
       this.setAuthData(response.data);
       return response.data;
-    } catch (error) {
-      console.error('Login error details:', error.response?.data || error.message);
+    } catch (error: unknown) {
+      console.error('Login error details:', error);
       // Enhance error handling to expose the specific error message from the API
-      if (error.response && error.response.data && error.response.data.message) {
-        const errorMessage = error.response.data.message;
-        throw new Error(errorMessage);
+      if (error && typeof error === 'object' && 'response' in error && 
+          error.response && typeof error.response === 'object' && 
+          'data' in error.response && error.response.data && 
+          typeof error.response.data === 'object' && 
+          'message' in error.response.data) {
+            const errorMessage = error.response.data.message;
+            throw new Error(errorMessage as string);
       }
       throw error;
     }
@@ -72,7 +80,7 @@ class AuthService {
     try {
       const response = await apiClient.get<User>('/auth/me');
       return response.data;
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Get current user error:', error);
       throw error;
     }
@@ -98,7 +106,7 @@ class AuthService {
       }
       
       return response.data.user;
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Update preferences error:', error);
       throw error;
     }

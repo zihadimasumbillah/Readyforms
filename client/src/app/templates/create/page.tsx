@@ -23,7 +23,8 @@ export default function CreateTemplatePage() {
   const [topics, setTopics] = useState<Topic[]>([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
-  const { user } = useAuth();
+  const auth = useAuth();
+  const user = auth?.user;
   const isMounted = useMounted();
 
   useEffect(() => {
@@ -159,6 +160,7 @@ export default function CreateTemplatePage() {
                 topics={topics}
                 onSubmit={handleCreateTemplate}
                 isEditMode={false}
+                submitButtonLabel="Create Template"
               />
             )}
           </CardContent>

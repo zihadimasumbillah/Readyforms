@@ -18,7 +18,7 @@ export default function HomePage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filteredTemplates, setFilteredTemplates] = useState<Template[]>([]);
   const [sortMethod, setSortMethod] = useState<'recent' | 'popular' | 'recommended'>('recommended');
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated = false } = useAuth() || {};
 
   useEffect(() => {
     const fetchTemplates = async () => {

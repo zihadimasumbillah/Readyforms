@@ -1,253 +1,286 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/contexts/auth-context';
-import { Template } from '@/types';
-import templateService from '@/lib/api/template-service';
-import { likeService } from '@/lib/api/like-service';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Heart, MessageSquare, ArrowLeft, Edit } from 'lucide-react';
+import { Heart, Share, MessageSquare, AlertTriangle, ArrowLeft, Edit } from 'lucide-react';
+import { templateService } from '@/lib/api/template-service';
+import { likeService } from '@/lib/api/like-service';
+import { useAuth } from '@/contexts/auth-context';
 import { toast } from '@/components/ui/use-toast';
+import Link from 'next/link';
 
-// Force dynamic rendering to prevent static generation errors
-export const dynamic = 'force-dynamic';
-export const dynamicParams = true;
-
-// Required for static export with dynamic routes
-export async function generateStaticParams() {
-  try {
-  } catch (error) {
-    console.error("Error in generateStaticParams:", error);
-    return [];
-  }
+interface TemplateDetailsProps {
+  params: {
+    id: string;
+  };
 }
 
-export default function TemplatePage({ params }: { params: { id: string } }) {
-  const [template, setTemplate] = useState<Template | null>(null);
-  const [isLiked, setIsLiked] = useState(false);
-  const [likesCount, setLikesCount] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
+export default function TemplateDetailsPage({ params }: TemplateDetailsProps) {
+  const { id } = params;
+  const [template, setTemplate] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [liked, setLiked] = useState(false);
+  const [likeCount, setLikeCount] = useState(0);
   const router = useRouter();
-  const { user, isAuthenticated } = useAuth() || {};
+  const auth = useAuth();
+  const user = auth?.user;
 
   useEffect(() => {
     const fetchTemplate = async () => {
       try {
-        setIsLoading(true);
-        const data = await templateService.getTemplateById(params.id);
+        setLoading(true);
+        const data = await templateService.getTemplateById(id);
         setTemplate(data);
-        
-        // Get likes count
-        const likes = await likeService.countLikes(params.id);
-        setLikesCount(likes.count);
-        
+
+        // Get like count
+        const likesData = await likeService.getLikeCount(id);
+        setLikeCount(likesData || 0);
+
         // Check if user has liked this template
-        if (isAuthenticated) {
-          const likeStatus = await likeService.checkLike(params.id);
-          setIsLiked(likeStatus.liked);
+        if (user) {
+          const likeStatus = await likeService.checkLikeStatus(id);
+          setLiked(likeStatus);
         }
-        
-      } catch (error) {
-        console.error("Error fetching template:", error);
-        setError("Failed to load template. It may not exist or you don't have permission to view it.");
-        toast({
-          title: "Error",
-          description: "Failed to load the template",
-          variant: "destructive",
-        });
+      } catch (err) {
+        console.error('Error fetching template:', err);
+        setError('Failed to load template. It may have been deleted or you don\'t have permission to view it.');
       } finally {
-        setIsLoading(false);
+        setLoading(false);
       }
     };
 
-    fetchTemplate();
-  }, [params.id, isAuthenticated]);
+    if (id) {
+      fetchTemplate();
+    }
+  }, [id, user]);
 
-  const handleLikeTemplate = async () => {
-    if (!isAuthenticated) {
+  const handleLikeToggle = async () => {
+    if (!user) {
       toast({
-        title: "Authentication Required",
-        description: "Please log in to like templates",
-        variant: "default",
+        title: "Authentication required",
+        description: "Please log in to like this template",
+        variant: "destructive",
       });
-      router.push('/auth/login');
       return;
     }
 
     try {
-      const result = await likeService.toggleLike(params.id);
-      setIsLiked(result.liked);
-      
-      // Update likes count
-      const likes = await likeService.countLikes(params.id);
-      setLikesCount(likes.count);
-      
-    } catch (error) {
-      console.error("Error liking template:", error);
+      const response = await likeService.toggleLike(id);
+      setLiked(response.liked);
+      setLikeCount(prev => response.liked ? prev + 1 : prev - 1);
+
+      toast({
+        title: response.liked ? "Template liked" : "Template unliked",
+        description: response.liked ? "This template has been added to your likes" : "This template has been removed from your likes",
+      });
+    } catch (err) {
+      console.error('Error toggling like:', err);
       toast({
         title: "Error",
-        description: "Failed to update like status",
+        description: "Something went wrong. Please try again.",
         variant: "destructive",
       });
     }
   };
 
   const handleFillForm = () => {
-    router.push(`/forms/${params.id}/respond`);
+    router.push(`/templates/${id}/fill`);
   };
 
-  if (isLoading) {
+  const handleViewResponses = () => {
+    router.push(`/templates/${id}/responses`);
+  };
+
+  if (loading) {
     return (
-      <div className="container mx-auto py-6 px-4 md:px-6">
-        <div className="mb-6">
-          <Button variant="ghost" onClick={() => router.back()}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
+      <div className="container mx-auto p-6 max-w-4xl">
+        <div className="flex items-center mb-6">
+          <Button variant="ghost" onClick={() => router.back()} className="mr-2">
+            <ArrowLeft className="h-4 w-4 mr-1" />
             Back
           </Button>
+          <h1 className="text-2xl font-bold">Loading template...</h1>
         </div>
-        <div className="grid gap-6">
-          <Skeleton className="h-12 w-3/4" />
-          <Skeleton className="h-6 w-1/2" />
-          <Skeleton className="h-64 w-full" />
+
+        <div className="space-y-4">
+          <div className="h-8 w-1/3 bg-muted animate-pulse rounded-md"></div>
+          <div className="h-4 w-1/2 bg-muted animate-pulse rounded-md"></div>
+          <div className="h-64 bg-muted animate-pulse rounded-md"></div>
         </div>
       </div>
     );
   }
 
-  if (error || !template) {
+  if (error) {
     return (
-      <div className="container mx-auto py-6 px-4 md:px-6">
-        <div className="mb-6">
-          <Button variant="ghost" onClick={() => router.back()}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
+      <div className="container mx-auto p-6 max-w-4xl">
+        <div className="flex items-center mb-6">
+          <Button variant="ghost" onClick={() => router.back()} className="mr-2">
+            <ArrowLeft className="h-4 w-4 mr-1" />
             Back
           </Button>
         </div>
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center text-center py-12">
-            <h2 className="text-xl font-bold mb-2">Template Not Found</h2>
-            <p className="text-muted-foreground mb-4">
-              {error || "The template you're looking for doesn't exist or has been removed."}
-            </p>
-            <Button asChild>
-              <Link href="/templates">Browse Templates</Link>
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
 
-  const isOwner = user && template.userId === user.id;
-
-  return (
-    <div className="container mx-auto py-6 px-4 md:px-6">
-      <div className="mb-6">
-        <Button variant="ghost" onClick={() => router.back()}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back
-        </Button>
-      </div>
-      <div className="grid gap-6">
-        <Card>
+        <Card className="border-red-200 bg-red-50 dark:bg-red-900/10">
           <CardHeader>
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <CardTitle className="text-2xl mb-2">{template.title}</CardTitle>
-                <CardDescription>{template.description}</CardDescription>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {template.topic && (
-                    <Badge variant="outline">{template.topic.name}</Badge>
-                  )}
-                  {template.isQuiz && (
-                    <Badge variant="secondary">Quiz</Badge>
-                  )}
-                  {!template.isPublic && (
-                    <Badge variant="destructive">Private</Badge>
-                  )}
-                </div>
-              </div>
-              <div className="flex gap-2 items-center">
-                <Button
-                  variant={isLiked ? "default" : "outline"}
-                  size="icon"
-                  onClick={handleLikeTemplate}
-                >
-                  <Heart className={`h-4 w-4 ${isLiked ? "fill-current" : ""}`} />
-                  <span className="sr-only">Like</span>
-                </Button>
-                <span className="text-sm text-muted-foreground">{likesCount}</span>
-              </div>
-            </div>
+            <CardTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-red-500" />
+              Error Loading Template
+            </CardTitle>
+            <CardDescription>
+              {error}
+            </CardDescription>
           </CardHeader>
-          <CardContent>
-            <div>
-              <h3 className="text-lg font-semibold mb-2">Form Fields</h3>
-              <div className="grid gap-4">
-                {template.questionOrder && JSON.parse(template.questionOrder).map(fieldId => {
-                  const fieldStateKey = `${fieldId}State` as keyof Template;
-                  const fieldQuestionKey = `${fieldId}Question` as keyof Template;
-
-                  if (template[fieldStateKey]) {
-                    return (
-                      <Card key={fieldId} className="overflow-hidden">
-                        <CardHeader className="px-4 py-2 bg-muted/50">
-                          <CardTitle className="text-sm">{String(template[fieldQuestionKey] || '')}</CardTitle>
-                        </CardHeader>
-                        <CardContent className="px-4 py-2 text-sm text-muted-foreground">
-                          <div className="h-8 flex items-center">
-                            {fieldId.includes('customString') && (
-                              <span>Text input field (short)</span>
-                            )}
-                            {fieldId.includes('customText') && (
-                              <span>Text input field (long)</span>
-                            )}
-                            {fieldId.includes('customInt') && (
-                              <span>Number input field</span>
-                            )}
-                            {fieldId.includes('customCheckbox') && (
-                              <span>Checkbox field (Yes/No)</span>
-                            )}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    );
-                  }
-                  return null;
-                })}
-              </div>
-            </div>
-          </CardContent>
-          <CardFooter className="flex justify-between border-t pt-5">
-            <div className="text-sm text-muted-foreground">
-              Created by: <span className="font-medium">{template.user?.name}</span>
-            </div>
-            <div className="flex gap-2">
-              {isOwner && (
-                <Button variant="outline" asChild>
-                  <Link href={`/templates/${template.id}/edit`}>
-                    <Edit className="h-4 w-4 mr-1" />
-                    Edit Template
-                  </Link>
-                </Button>
-              )}
-              <Button variant="outline" asChild>
-                <Link href={`/templates/${template.id}/responses`}>
-                  <MessageSquare className="h-4 w-4 mr-1" />
-                  View Responses
-                </Link>
-              </Button>
-              <Button onClick={handleFillForm}>Fill Form</Button>
-            </div>
+          <CardFooter>
+            <Button variant="outline" onClick={() => router.push('/templates')}>
+              Browse Templates
+            </Button>
           </CardFooter>
         </Card>
       </div>
+    );
+  }
+
+  if (!template) {
+    return null;
+  }
+
+  const isOwner = user && template.userId === user.id;
+  const questionsData = (template.questionOrder && typeof template.questionOrder === 'string') 
+    ? JSON.parse(template.questionOrder) 
+    : [];
+
+  const getQuestionText = (fieldType: string, index: number) => {
+    const field = `${fieldType}${index}Question`;
+    return template[field] || `${fieldType} Question ${index}`;
+  };
+
+  return (
+    <div className="container mx-auto p-6 max-w-4xl">
+      <div className="flex items-center mb-6">
+        <Button variant="ghost" onClick={() => router.back()} className="mr-2">
+          <ArrowLeft className="h-4 w-4 mr-1" />
+          Back
+        </Button>
+      </div>
+
+      <Card className="border-t-4 border-t-primary">
+        <CardHeader>
+          <div className="flex justify-between items-start">
+            <div>
+              <CardTitle className="text-2xl">{template.title}</CardTitle>
+              <CardDescription className="mt-1">
+                {template.description || 'No description provided'}
+              </CardDescription>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleLikeToggle}
+                className="flex items-center gap-1"
+              >
+                <Heart className={`h-4 w-4 ${liked ? 'fill-red-500 text-red-500' : ''}`} />
+                <span>{likeCount}</span>
+              </Button>
+
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => navigator.clipboard.writeText(window.location.href)}
+                className="flex items-center gap-1"
+              >
+                <Share className="h-4 w-4" />
+                Share
+              </Button>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2 mt-2">
+            {template.topic && (
+              <Badge variant="outline" className="bg-muted/50">
+                {template.topic.name}
+              </Badge>
+            )}
+            {template.tags && template.tags.map((tag: any) => (
+              <Badge key={tag.id} variant="secondary" className="bg-primary/10">
+                {tag.name}
+              </Badge>
+            ))}
+            {template.isQuiz && (
+              <Badge>Quiz</Badge>
+            )}
+          </div>
+        </CardHeader>
+
+        <CardContent className="space-y-6">
+          <div className="bg-muted/30 rounded-md p-4">
+            <h3 className="text-lg font-semibold mb-2">Questions</h3>
+            <div className="space-y-2">
+              {questionsData.length > 0 ? (
+                questionsData.map((questionKey: string, index: number) => {
+                  const fieldType = questionKey.replace(/[0-9]/g, '');
+                  const fieldIndex = questionKey.replace(/[^0-9]/g, '');
+
+                  return (
+                    <div key={index} className="p-3 bg-card border rounded-md">
+                      <p className="font-medium">
+                        {index + 1}. {getQuestionText(fieldType, parseInt(fieldIndex, 10))}
+                      </p>
+                      <div className="mt-1 text-sm text-muted-foreground">
+                        {fieldType === 'customString' && <span>Short text answer</span>}
+                        {fieldType === 'customText' && <span>Long text answer</span>}
+                        {fieldType === 'customInt' && <span>Number answer</span>}
+                        {fieldType === 'customCheckbox' && <span>Yes/No answer</span>}
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <p className="text-muted-foreground">No questions defined for this template.</p>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between text-sm text-muted-foreground">
+            <div>
+              Created by <span className="font-medium">{template.user?.name || 'Unknown user'}</span>
+            </div>
+            <div>
+              Created {new Date(template.createdAt).toLocaleDateString()}
+            </div>
+          </div>
+        </CardContent>
+
+        <CardFooter className="flex flex-wrap gap-2 justify-between">
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={handleFillForm}>
+              Fill in Form
+            </Button>
+
+            <Button variant="outline" onClick={handleViewResponses}>
+              <MessageSquare className="h-4 w-4 mr-2" />
+              View Responses
+            </Button>
+          </div>
+
+          {isOwner && (
+            <div>
+              <Button variant="outline" asChild>
+                <Link href={`/templates/${template.id}/edit`}>
+                  <Edit className="h-4 w-4 mr-2" />
+                  Edit Template
+                </Link>
+              </Button>
+            </div>
+          )}
+        </CardFooter>
+      </Card>
     </div>
   );
 }

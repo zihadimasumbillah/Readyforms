@@ -25,7 +25,8 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useHasMounted } from "@/hooks/use-mounted";
 
 export function Navbar() {
-  const { user } = useAuth();
+  const auth = useAuth();
+  const user = auth?.user;
   const pathname = usePathname();
   const [isScrolled, setIsScrolled] = useState(false);
   const hasMounted = useHasMounted();

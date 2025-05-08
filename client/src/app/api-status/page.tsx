@@ -16,9 +16,10 @@ export default function ApiStatusPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [endpointStatus, setEndpointStatus] = useState<HealthCheckResponse | null>(null);
-  
-  const { user, logout } = useAuth();
+  const auth = useAuth();
   const router = useRouter();
+  const user = auth?.user;
+  const logout = auth?.logout;
 
   const handleLogout = () => {
     if (logout) {

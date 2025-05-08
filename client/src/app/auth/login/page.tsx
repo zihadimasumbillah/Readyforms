@@ -26,7 +26,9 @@ export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectUrl = searchParams.get('redirect');
-  const { login, isAuthenticated } = useAuth();
+  const auth = useAuth();
+  const login = auth?.login;
+  const isAuthenticated = auth?.isAuthenticated;
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -67,7 +69,10 @@ export default function LoginPage() {
         });
         return;
       }
-      await login(data.email, data.password, true);
+      if (!login) {
+        throw new Error("Authentication service is not available");
+      }
+      await login(data.email, data.password);
       
       toast({
         title: "Success",

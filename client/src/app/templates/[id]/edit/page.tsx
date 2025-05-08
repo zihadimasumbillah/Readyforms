@@ -19,25 +19,20 @@ import { Skeleton } from "@/components/ui/skeleton";
 export const dynamic = 'force-dynamic';
 export const dynamicParams = true;
 
-// Required for static export with dynamic routes
-export async function generateStaticParams() {
-  // Return empty array to indicate no pages need pre-rendering at build time
-  return [];
-}
-
 export default function EditTemplatePage({ params }: { params: { id: string } }) {
   const [template, setTemplate] = useState<Template | null>(null);
   const [topics, setTopics] = useState<Topic[]>([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
-  const { user } = useAuth();
+  const auth = useAuth();
+  const user = auth?.user;
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
         // Fetch the template by ID
-        const templateData = await templateService.getTemplate(params.id);
+        const templateData = await templateService.getById(params.id);
         setTemplate(templateData);
         
         // Fetch available topics for the dropdown
@@ -93,7 +88,7 @@ export default function EditTemplatePage({ params }: { params: { id: string } })
         description: "Template updated successfully."
       });
       router.push(`/templates/${params.id}`);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating template:", error);
       
       // Handle optimistic locking error specifically

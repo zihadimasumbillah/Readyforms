@@ -1,186 +1,110 @@
 import apiClient from './api-client';
-import { FormResponse, Template, Topic, User } from '@/types';
+import { Template, User, Topic, FormResponse } from '@/types';
 
+// Define SystemActivity type that's missing
 export interface SystemActivity {
   id: string;
-  type: 'template' | 'response' | 'user' | 'like';
+  type: string;
   action: string;
-  title?: string;
-  user: string;
   timestamp: string;
+  user?: string;
+  title?: string;
+  details?: string;
 }
 
-const adminService = {
-  toggleUserBlock: async (userId: string): Promise<User> => {
-    try {
-      const response = await apiClient.put<{user: User}>(`/admin/users/${userId}/block`);
-      return response.user;
-    } catch (error) {
-      console.error('Error toggling user block status:', error);
-      throw error;
-    }
+export const adminService = {
+  // User management
+  async getAllUsers(): Promise<User[]> {
+    const response = await apiClient.get<User[]>('/admin/users');
+    return response.data;
   },
-  toggleUserAdmin: async (userId: string): Promise<User> => {
-    try {
-      const response = await apiClient.put<{user: User}>(`/admin/users/${userId}/admin`);
-      return response.user;
-    } catch (error) {
-      console.error('Error toggling user admin status:', error);
-      throw error;
-    }
+
+  async toggleUserBlock(userId: string): Promise<User> {
+    const response = await apiClient.put<{ user: User }>(`/admin/users/${userId}/block`);
+    return response.data.user;  // Return only the user object, not the wrapper
   },
-  getAllTemplates: async (): Promise<Template[]> => {
-    try {
-      const response = await apiClient.get<Template[]>('/admin/templates');
-      return response;
-    } catch (error) {
-      console.error('Error fetching all templates:', error);
-      try {
-        const response = await apiClient.get<Template[]>('/templates');
-        return response;
-      } catch (fallbackError) {
-        console.error('Fallback request also failed:', fallbackError);
-        return [];
-      }
-    }
+
+  async toggleUserAdmin(userId: string): Promise<User> {
+    const response = await apiClient.put<{ user: User }>(`/admin/users/${userId}/admin`);
+    return response.data.user;  // Return only the user object, not the wrapper
   },
   
-  getTemplateById: async (id: string): Promise<Template> => {
-    try {
-      const response = await apiClient.get<Template>(`/admin/templates/${id}`);
-      return response;
-    } catch (error) {
-      console.error(`Error fetching template ${id} as admin:`, error);
-      return await apiClient.get<Template>(`/templates/${id}`);
-    }
-  },
-
-  updateTemplate: async (id: string, templateData: any): Promise<Template> => {
-    try {
-      const response = await apiClient.put<Template>(`/admin/templates/${id}`, templateData);
-      return response;
-    } catch (error) {
-      console.error(`Error updating template ${id} as admin:`, error);
-      throw error;
-    }
+  // Template management
+  async getAllTemplates(): Promise<Template[]> {
+    const response = await apiClient.get<Template[]>('/admin/templates');
+    return response.data;
   },
   
-  deleteTemplate: async (id: string, version: number): Promise<void> => {
-    try {
-      await apiClient.delete(`/admin/templates/${id}`, { data: { version } });
-    } catch (error) {
-      console.error(`Error deleting template ${id} as admin:`, error);
-      throw error;
-    }
+  async getTopTemplates(limit: number = 5): Promise<Template[]> {
+    const response = await apiClient.get<Template[]>(`/admin/templates/top?limit=${limit}`);
+    return response.data;
+  },
+
+  async getTemplateById(id: string): Promise<Template> {
+    const response = await apiClient.get<Template>(`/admin/templates/${id}`);
+    return response.data;
+  },
+
+  async updateTemplate(id: string, data: Partial<Template>): Promise<Template> {
+    const response = await apiClient.put<Template>(`/admin/templates/${id}`, data);
+    return response.data;
+  },
+
+  async deleteTemplate(id: string): Promise<Template> {
+    const response = await apiClient.delete<Template>(`/admin/templates/${id}`);
+    return response.data;
   },
   
-  // Get all form responses across the system (admin only)
-  getAllFormResponses: async (limit: number = 100, page: number = 1): Promise<FormResponse[]> => {
-    try {
-      const response = await apiClient.get<FormResponse[]>(
-        `/admin/responses?limit=${limit}&page=${page}`
-      );
-      return response;
-    } catch (error) {
-      console.error('Error fetching all form responses:', error);
-      return [];
-    }
-  },
-
-  getAllUsers: async (): Promise<User[]> => {
-    try {
-      const response = await apiClient.get<User[]>('/admin/users');
-      return response;
-    } catch (error) {
-      console.error('Error fetching all users:', error);
-      return [];
-    }
-  },
-
-  getAllTopics: async (): Promise<Topic[]> => {
-    try {
-      const response = await apiClient.get<Topic[]>('/admin/topics');
-      return response;
-    } catch (error) {
-      console.error('Error fetching topics:', error);
-      return [];
-    }
-  },
-
-  createTopic: async (name: string, description?: string): Promise<Topic> => {
-    try {
-      const response = await apiClient.post<Topic>('/admin/topics', { name, description });
-      return response;
-    } catch (error) {
-      console.error('Error creating topic:', error);
-      throw error;
-    }
-  },
-
-  updateTopic: async (id: string, name: string, description: string, version: number): Promise<Topic> => {
-    try {
-      const response = await apiClient.put<Topic>(`/admin/topics/${id}`, { name, description, version });
-      return response;
-    } catch (error) {
-      console.error(`Error updating topic ${id}:`, error);
-      throw error;
-    }
-  },
-
-  deleteTopic: async (id: string, version: number): Promise<void> => {
-    try {
-      await apiClient.delete(`/admin/topics/${id}`, { data: { version } });
-    } catch (error) {
-      console.error(`Error deleting topic ${id}:`, error);
-      throw error;
-    }
+  // Analytics
+  async getDashboardStats(): Promise<any> {
+    const response = await apiClient.get('/admin/stats');
+    return response.data;
   },
   
-  searchTemplates: async (query: string): Promise<Template[]> => {
-    try {
-      const response = await apiClient.get<Template[]>(`/admin/templates/search?query=${encodeURIComponent(query)}`);
-      return response;
-    } catch (error) {
-      console.error('Error searching templates as admin:', error);
-      try {
-        const response = await apiClient.get<Template[]>(`/templates/search?query=${encodeURIComponent(query)}`);
-        return response;
-      } catch (fallbackError) {
-        console.error('Fallback search also failed:', fallbackError);
-        return [];
-      }
-    }
+  // Form Responses
+  async getAllFormResponses(): Promise<FormResponse[]> {
+    const response = await apiClient.get<FormResponse[]>('/admin/responses');
+    return response.data;
   },
-  getDashboardStats: async (): Promise<any> => {
-    try {
-      const response = await apiClient.get<any>('/admin/stats');
-      return response;
-    } catch (error) {
-      console.error('Error fetching admin dashboard stats:', error);
-      return {
-        users: 0,
-        templates: 0,
-        responses: 0,
-        likes: 0,
-        comments: 0,
-        activeUsers: 0,
-        topicsCount: 0,
-        adminCount: 0
-      };
-    }
+  
+  // Admin User Management
+  async getAllAdminUsers(): Promise<User[]> {
+    const response = await apiClient.get<User[]>('/admin/users');
+    return response.data;
   },
-
-  getSystemActivity: async (limit: number = 10): Promise<SystemActivity[]> => {
-    try {
-      const url = limit ? `/admin/activity?limit=${limit}` : '/admin/activity';
-      const response = await apiClient.get<SystemActivity[]>(url);
-      return response;
-    } catch (error) {
-      console.error('Error fetching system activity:', error);
-      return [];
-    }
+  
+  // Topics Management
+  async getAllTopics(): Promise<Topic[]> {
+    const response = await apiClient.get<Topic[]>('/admin/topics');
+    return response.data;
+  },
+  
+  async createTopic(name: string, description?: string): Promise<Topic> {
+    const response = await apiClient.post<Topic>('/admin/topics', { name, description });
+    return response.data;
+  },
+  
+  async updateTopic(id: string, data: Partial<Topic>): Promise<Topic> {
+    const response = await apiClient.put<Topic>(`/admin/topics/${id}`, data);
+    return response.data;
+  },
+  
+  // System Activity
+  async getSystemActivity(limit: number = 20): Promise<SystemActivity[]> {
+    const response = await apiClient.get<SystemActivity[]>(`/admin/activity?limit=${limit}`);
+    return response.data;
+  },
+  
+  // Dashboard data
+  async getRecentTemplates(): Promise<Template[]> {
+    const response = await apiClient.get<Template[]>('/admin/templates/recent');
+    return response.data;
+  },
+  
+  async getRecentResponses(): Promise<Template[]> {
+    const response = await apiClient.get<Template[]>('/admin/responses/recent');
+    return response.data;
   }
 };
 
-export { adminService };
 export default adminService;

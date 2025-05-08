@@ -17,7 +17,7 @@ export default function TemplatesPage() {
   const [topics, setTopics] = useState<Topic[]>([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
-  const { user } = useAuth();
+  const { user } = useAuth() || {};
 
   useEffect(() => {
     const fetchTemplates = async () => {

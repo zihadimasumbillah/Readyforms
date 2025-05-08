@@ -15,6 +15,14 @@ interface LikesByTemplateResponse {
   likes: any[];
 }
 
+interface LikeCountResponse {
+  count: number;
+}
+
+interface LikeStatusResponse {
+  liked: boolean;
+}
+
 class LikeService {
   async toggleLike(templateId: string): Promise<LikeResponse> {
     try {
@@ -53,6 +61,36 @@ class LikeService {
     } catch (error) {
       console.error('Error getting likes by template:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Get the number of likes for a template
+   * @param templateId - The ID of the template
+   * @returns Promise with the number of likes
+   */
+  async getLikeCount(templateId: string): Promise<number> {
+    try {
+      const response = await apiClient.get<LikeCountResponse>(`/likes/count/${templateId}`);
+      return response.data.count;
+    } catch (error) {
+      console.error('Error getting like count:', error);
+      return 0;
+    }
+  }
+
+  /**
+   * Check if the current logged-in user has liked a template
+   * @param templateId - The ID of the template
+   * @returns Promise with a boolean indicating if the user has liked the template
+   */
+  async checkLikeStatus(templateId: string): Promise<boolean> {
+    try {
+      const response = await apiClient.get<LikeStatusResponse>(`/likes/check/${templateId}`);
+      return response.data.liked;
+    } catch (error) {
+      console.error('Error checking like status:', error);
+      return false;
     }
   }
 }

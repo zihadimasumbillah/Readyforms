@@ -9,10 +9,8 @@ const nextConfig = {
     domains: ['localhost', 'picsum.photos', 'res.cloudinary.com'],
     unoptimized: true, // Required for static export
   },
-  // Static export configuration
-  output: 'export',
-  // Disable experimental options that are causing warnings
-  experimental: {}
+  // Add trailing slash to allow for proper path-based routing
+  trailingSlash: true,
 };
 
 module.exports = nextConfig;

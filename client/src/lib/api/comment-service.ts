@@ -19,7 +19,8 @@ const commentService = {
    */
   getCommentsByTemplate: async (templateId: string): Promise<Comment[]> => {
     try {
-      return await apiClient.get<Comment[]>(`/comments/template/${templateId}`);
+      const response = await apiClient.get<Comment[]>(`/comments/template/${templateId}`);
+      return response.data;
     } catch (error) {
       console.error(`Get comments error for template ${templateId}:`, error);
       throw error;

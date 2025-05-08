@@ -24,7 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Topic } from "@/types";
+import { Topic, Template } from "@/types";
 import {
   DndContext,
   closestCenter,
@@ -53,23 +53,26 @@ const templateSchema = z.object({
   allowedUsers: z.string().optional(),
 });
 
-interface TemplateFormProps {
+// Update the TemplateFormProps interface to include initialData and isEditMode
+export interface TemplateFormProps {
+  initialData?: Template; 
   topics: Topic[];
-  initialValues?: any;
-  onSubmit: (data: any) => Promise<void>;
-  isEditMode?: boolean;
+  onSubmit: (formData: any) => Promise<void>;
+  submitButtonLabel: string;
+  isEditMode?: boolean; // Add this property
 }
 
-export function TemplateForm({ 
-  topics, 
-  initialValues = {}, 
+export const TemplateForm: React.FC<TemplateFormProps> = ({
+  initialData,
+  topics,
   onSubmit,
-  isEditMode = false
-}: TemplateFormProps) {
-  const [template, setTemplate] = useState<any>(initialValues);
+  submitButtonLabel,
+  isEditMode = false // Add this with default value
+}) => {
+  const [template, setTemplate] = useState<any>(initialData || {});
   const [questionOrder, setQuestionOrder] = useState<string[]>(
-    initialValues.questionOrder ? 
-      JSON.parse(initialValues.questionOrder) : []
+    initialData?.questionOrder ? 
+      JSON.parse(initialData.questionOrder) : []
   );
   const [saving, setSaving] = useState(false);
 
@@ -77,11 +80,11 @@ export function TemplateForm({
   const form = useForm<z.infer<typeof templateSchema>>({
     resolver: zodResolver(templateSchema),
     defaultValues: {
-      title: initialValues.title || '',
-      description: initialValues.description || '',
-      topicId: initialValues.topicId || '',
-      isPublic: initialValues.isPublic !== undefined ? initialValues.isPublic : true,
-      allowedUsers: initialValues.allowedUsers || '',
+      title: initialData?.title || '',
+      description: initialData?.description || '',
+      topicId: initialData?.topicId || '',
+      isPublic: initialData?.isPublic !== undefined ? initialData.isPublic : true,
+      allowedUsers: initialData?.allowedUsers || '',
     },
   });
 
@@ -447,7 +450,7 @@ export function TemplateForm({
 
             <div className="flex justify-end space-x-2">
               <Button type="submit" disabled={saving}>
-                {saving ? 'Saving...' : isEditMode ? 'Update Template' : 'Create Template'}
+                {saving ? 'Saving...' : submitButtonLabel}
               </Button>
             </div>
           </form>
@@ -455,4 +458,4 @@ export function TemplateForm({
       </div>
     </div>
   );
-}
+};

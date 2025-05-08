@@ -12,7 +12,8 @@ import { ThemeToggle } from "@/components/theme-toggle";
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
   const pathname = usePathname();
-  const { user, isAuthenticated } = useAuth();
+  const auth = useAuth();
+  const isAuthenticated = auth?.isAuthenticated || false;
 
   const navigation = [
     { name: "Home", href: "/" },

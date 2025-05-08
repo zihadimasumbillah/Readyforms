@@ -20,7 +20,8 @@ interface TemplateCardProps {
 }
 
 export function TemplateCard({ template, onClick, className, showStats = true }: TemplateCardProps) {
-  const { user } = useAuth();
+  const auth = useAuth();
+  const user = auth?.user;
   const isOwner = user && template.userId === user.id;
   const isAdmin = user?.isAdmin;
   

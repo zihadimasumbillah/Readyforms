@@ -68,7 +68,9 @@ export default function AdminUsersPage() {
   const [modifyAction, setModifyAction] = useState<'block' | 'unblock' | 'admin' | 'removeAdmin' | null>(null);
   const [processingId, setProcessingId] = useState<string | null>(null);
   
-  const { user, logout } = useAuth();
+  const auth = useAuth();
+  const user = auth?.user;
+  const logout = auth?.logout;
   const router = useRouter();
 
   const handleLogout = () => {
@@ -149,32 +151,20 @@ export default function AdminUsersPage() {
     applyFilters(users, searchQuery, filterStatus, filterRole);
   }, [searchQuery, filterStatus, filterRole, users]);
 
-  const handleToggleBlock = async (targetUser: User) => {
-    // Prevent self-blocking
-    if (targetUser.id === user?.id) {
-      toast({
-        title: "Action not allowed",
-        description: "You cannot block your own account",
-        variant: "destructive"
-      });
-      return;
-    }
-    
+  const handleToggleBlock = async (userId: string) => {
     try {
-      setProcessingId(targetUser.id);
-      const updatedUser = await adminService.toggleUserBlock(targetUser.id);
+      setLoading(true);
+      const updatedUser = await adminService.toggleUserBlock(userId);
       
-      // Update users list
-      setUsers(users.map(u => u.id === updatedUser.id ? updatedUser : u));
-      
+      // Now updatedUser will be just the User object, not {user: User}
+      setUsers(users.map(user => 
+        user.id === updatedUser.id ? updatedUser : user
+      ));
+
       toast({
-        title: "Success",
-        description: `User ${updatedUser.blocked ? 'blocked' : 'unblocked'} successfully`,
-        variant: "default"
+        title: `User ${updatedUser.blocked ? 'blocked' : 'unblocked'}`,
+        description: `${updatedUser.name} has been ${updatedUser.blocked ? 'blocked' : 'unblocked'}.`
       });
-      
-      setModifyAction(null);
-      setUserToModify(null);
     } catch (error) {
       console.error("Error toggling user block status:", error);
       toast({
@@ -183,36 +173,24 @@ export default function AdminUsersPage() {
         variant: "destructive"
       });
     } finally {
-      setProcessingId(null);
+      setLoading(false);
     }
   };
 
-  const handleToggleAdmin = async (targetUser: User) => {
-    // Prevent self-modification
-    if (targetUser.id === user?.id) {
-      toast({
-        title: "Action not allowed",
-        description: "You cannot change your own admin status",
-        variant: "destructive"
-      });
-      return;
-    }
-    
+  const handleToggleAdmin = async (userId: string) => {
     try {
-      setProcessingId(targetUser.id);
-      const updatedUser = await adminService.toggleUserAdmin(targetUser.id);
+      setLoading(true);
+      const updatedUser = await adminService.toggleUserAdmin(userId);
       
-      // Update users list
-      setUsers(users.map(u => u.id === updatedUser.id ? updatedUser : u));
-      
+      // Now updatedUser will be just the User object, not {user: User}
+      setUsers(users.map(user => 
+        user.id === updatedUser.id ? updatedUser : user
+      ));
+
       toast({
-        title: "Success",
-        description: `User ${updatedUser.isAdmin ? 'promoted to admin' : 'demoted from admin'} successfully`,
-        variant: "default"
+        title: `Admin privileges ${updatedUser.isAdmin ? 'granted' : 'revoked'}`,
+        description: `${updatedUser.name} is ${updatedUser.isAdmin ? 'now' : 'no longer'} an administrator.`
       });
-      
-      setModifyAction(null);
-      setUserToModify(null);
     } catch (error) {
       console.error("Error toggling user admin status:", error);
       toast({
@@ -221,7 +199,7 @@ export default function AdminUsersPage() {
         variant: "destructive"
       });
     } finally {
-      setProcessingId(null);
+      setLoading(false);
     }
   };
 
@@ -239,9 +217,9 @@ export default function AdminUsersPage() {
     if (!userToModify) return;
     
     if (modifyAction === 'block' || modifyAction === 'unblock') {
-      handleToggleBlock(userToModify);
+      handleToggleBlock(userToModify.id);
     } else if (modifyAction === 'admin' || modifyAction === 'removeAdmin') {
-      handleToggleAdmin(userToModify);
+      handleToggleAdmin(userToModify.id);
     }
   };
 
