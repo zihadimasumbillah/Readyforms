@@ -37,7 +37,7 @@ const healthService = {
     try {
       // Use the admin health check endpoint
       const response = await apiClient.get<HealthCheckResponse>('/health/check');
-      return response;
+      return response.data;
     } catch (error) {
       console.error('Error checking endpoints:', error);
       // Return a fallback response
@@ -61,10 +61,34 @@ const healthService = {
   getSystemHealth: async (): Promise<any> => {
     try {
       const response = await apiClient.get<any>('/health/system');
-      return response;
+      return response.data;
     } catch (error) {
       console.error('Error getting system health:', error);
       return null;
+    }
+  },
+
+  /**
+   * Get the health status of the API and all its endpoints
+   * @returns Health check response
+   */
+  async getHealthStatus(): Promise<HealthCheckResponse> {
+    try {
+      // Use the admin health check endpoint
+      const response = await apiClient.get<HealthCheckResponse>('/health/check');
+      return response.data;
+    } catch (error) {
+      console.error('Error checking endpoints:', error);
+      // Return a fallback response
+      return {
+        status: 'unhealthy',
+        timestamp: new Date().toISOString(),
+        endpoints: [{
+          name: 'API',
+          status: 'unhealthy',
+          message: 'Could not connect to API'
+        }]
+      };
     }
   }
 };

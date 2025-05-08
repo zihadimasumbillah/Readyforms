@@ -1,4 +1,5 @@
 import apiClient from '../lib/api/api-client';
+import { AxiosError } from 'axios';
 
 /**
  * This is a utility function to diagnose auth issues in the browser console
@@ -43,24 +44,33 @@ export async function debugAuthStatus() {
       }
     }
     
-    // Check if we can access the current user
     try {
       const response = await apiClient.get('/auth/me');
       console.log('Current user API call successful:', response.data);
     } catch (error) {
-      console.error('Error fetching current user:', error.response?.data || error.message);
+      if (error instanceof AxiosError) {
+        console.error('Error fetching current user:', error.response?.data || error.message);
+      } else {
+        const err = error as Error;
+        console.error('Error fetching current user:', err.message || String(error));
+      }
     }
-    
+
     // Check API health
     try {
       const response = await apiClient.get('/health');
       console.log('API health:', response.data);
     } catch (error) {
-      console.error('API health check failed:', error.response?.data || error.message);
+      if (error instanceof AxiosError) {
+        console.error('API health check failed:', error.response?.data || error.message);
+      } else {
+        const err = error as Error;
+        console.error('API health check failed:', err.message || String(error));
+      }
     }
     
   } catch (error) {
-    console.error('Auth debug error:', error);
+    console.error('Auth debug error:', error instanceof Error ? error.message : String(error));
   }
   
   console.groupEnd();

@@ -1,143 +1,214 @@
 "use client";
 
-import * as React from "react";
+import { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { BookTemplate, Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Menu, LogIn, BookTemplate } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { ThemeToggle } from "@/components/theme-toggle";
+import {
+  NavigationMenu,
+  NavigationMenuItem,
+  NavigationMenuLink,
+  NavigationMenuList,
+  navigationMenuTriggerStyle,
+} from "@/components/ui/navigation-menu";
 
 export function Header() {
-  const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
+  const [open, setOpen] = useState(false);
+  const router = useRouter();
   const pathname = usePathname();
   const auth = useAuth();
+  const user = auth?.user;
   const isAuthenticated = auth?.isAuthenticated || false;
+  const logout = auth?.logout;
 
-  const navigation = [
-    { name: "Home", href: "/" },
-    { name: "Templates", href: "/templates" },
-    { name: "Pricing", href: "/pricing" },
-    { name: "About", href: "/about" },
+  const handleLogout = () => {
+    if (logout) {
+      logout();
+      router.push('/');
+    }
+  };
+
+  const navLinks = [
+    { href: "/", label: "Home" },
+    { href: "/templates", label: "Templates" },
+    { href: "/pricing", label: "Pricing" },
+    { href: "/about", label: "About" },
   ];
 
   return (
-    <header className="sticky top-0 z-30 border-b bg-background">
-      <nav className="container flex items-center justify-between px-4 py-4 md:px-6">
-        <Link href="/" className="flex items-center gap-2">
-          <BookTemplate className="h-6 w-6" />
-          <span className="text-lg font-bold">ReadyForms</span>
-        </Link>
-        
-        {/* Desktop navigation */}
-        <div className="hidden md:flex items-center gap-1">
-          {navigation.map((item) => (
-            <Link 
-              key={item.name} 
-              href={item.href}
-              className={cn(
-                "px-3 py-2 rounded-md text-sm font-medium transition-colors",
-                item.href === pathname 
-                  ? "bg-primary text-primary-foreground" 
-                  : "text-foreground hover:bg-accent hover:text-accent-foreground"
-              )}
-            >
-              {item.name}
-            </Link>
-          ))}
+    <header className="sticky top-0 z-40 w-full border-b bg-background">
+      <div className="container flex h-16 items-center">
+        <div className="flex items-center gap-2 mr-4 md:mr-8">
+          <Link href="/" className="flex items-center gap-2">
+            <BookTemplate className="h-6 w-6" />
+            <span className="text-lg font-semibold">ReadyForms</span>
+          </Link>
         </div>
-        
-        <div className="hidden md:flex items-center gap-4">
-          <ThemeToggle />
-          {isAuthenticated ? (
-            <div className="flex items-center gap-3">
-              <Button variant="outline" size="sm" asChild>
-                <Link href="/dashboard">Dashboard</Link>
-              </Button>
+
+        {/* Desktop Navigation */}
+        <NavigationMenu className="hidden md:flex">
+          <NavigationMenuList>
+            {navLinks.map((link) => (
+              <NavigationMenuItem key={link.href}>
+                <Link href={link.href} legacyBehavior passHref>
+                  <NavigationMenuLink
+                    className={cn(
+                      navigationMenuTriggerStyle(),
+                      pathname === link.href && "bg-accent text-accent-foreground"
+                    )}
+                  >
+                    {link.label}
+                  </NavigationMenuLink>
+                </Link>
+              </NavigationMenuItem>
+            ))}
+          </NavigationMenuList>
+        </NavigationMenu>
+
+        {/* Mobile Navigation Trigger */}
+        <Sheet open={open} onOpenChange={setOpen}>
+          <SheetTrigger asChild className="md:hidden mr-2">
+            <Button variant="outline" size="icon">
+              <Menu className="h-5 w-5" />
+              <span className="sr-only">Toggle menu</span>
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="left" className="w-[240px] sm:w-[300px]">
+            <div className="flex flex-col gap-4 mt-8">
+              {navLinks.map((link) => (
+                <Button
+                  key={link.href}
+                  variant="ghost"
+                  className={cn(
+                    "justify-start",
+                    pathname === link.href && "bg-accent text-accent-foreground"
+                  )}
+                  onClick={() => {
+                    router.push(link.href);
+                    setOpen(false);
+                  }}
+                >
+                  {link.label}
+                </Button>
+              ))}
+              <div className="mt-2 border-t pt-4">
+                {isAuthenticated ? (
+                  <>
+                    <Button 
+                      variant="outline" 
+                      className="w-full justify-start mb-2"
+                      onClick={() => {
+                        router.push('/dashboard');
+                        setOpen(false);
+                      }}
+                    >
+                      Dashboard
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      className="w-full justify-start"
+                      onClick={() => {
+                        handleLogout();
+                        setOpen(false);
+                      }}
+                    >
+                      Log out
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button 
+                      className="w-full justify-start mb-2"
+                      onClick={() => {
+                        router.push('/auth/login');
+                        setOpen(false);
+                      }}
+                    >
+                      Log in
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      className="w-full justify-start"
+                      onClick={() => {
+                        router.push('/auth/register');
+                        setOpen(false);
+                      }}
+                    >
+                      Sign up
+                    </Button>
+                  </>
+                )}
+              </div>
             </div>
-          ) : (
-            <div className="flex items-center gap-3">
-              <Button variant="outline" size="sm" asChild>
-                <Link href="/auth/login">Sign In</Link>
+          </SheetContent>
+        </Sheet>
+
+        <div className="ml-auto flex items-center gap-3">
+          <ThemeToggle />
+
+          {isAuthenticated ? (
+            <>
+              <Button
+                variant="outline"
+                className="hidden md:inline-flex"
+                onClick={() => router.push("/dashboard")}
+              >
+                Dashboard
               </Button>
-              <Button size="sm" asChild>
-                <Link href="/auth/register">Sign Up</Link>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className="relative h-8 w-8 rounded-full"
+                  >
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src="" alt={user?.name || 'User Avatar'} />
+                      <AvatarFallback>
+                        {user?.name?.charAt(0) || 'U'}
+                      </AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => router.push("/profile")}>
+                    Profile
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => router.push("/dashboard")}>
+                    Dashboard
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleLogout}>
+                    Log out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
+          ) : (
+            <div className="hidden md:flex items-center gap-2">
+              <Button
+                variant="ghost"
+                onClick={() => router.push("/auth/login")}
+              >
+                Log in
+              </Button>
+              <Button onClick={() => router.push("/auth/register")}>
+                Sign up
               </Button>
             </div>
           )}
         </div>
-        
-        {/* Mobile menu button */}
-        <div className="md:hidden flex items-center gap-4">
-          <ThemeToggle />
-          <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(true)}>
-            <Menu className="h-5 w-5" />
-            <span className="sr-only">Open menu</span>
-          </Button>
-        </div>
-        
-        {/* Mobile menu */}
-        {mobileMenuOpen && (
-          <div className="md:hidden fixed inset-0 z-50">
-            <div className="fixed inset-0 bg-black/20" onClick={() => setMobileMenuOpen(false)} />
-            
-            <div className="fixed right-0 top-0 h-full w-3/4 max-w-sm bg-background p-6 shadow-lg">
-              <div className="flex items-center justify-between mb-8">
-                <Link href="/" className="flex items-center gap-2" onClick={() => setMobileMenuOpen(false)}>
-                  <BookTemplate className="h-6 w-6" />
-                  <span className="text-lg font-bold">ReadyForms</span>
-                </Link>
-                <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(false)}>
-                  <X className="h-5 w-5" />
-                  <span className="sr-only">Close menu</span>
-                </Button>
-              </div>
-              
-              <div className="flex flex-col space-y-4">
-                {navigation.map((item) => (
-                  <Link 
-                    key={item.name} 
-                    href={item.href}
-                    className={cn(
-                      "px-3 py-2 rounded-md text-base font-medium transition-colors",
-                      item.href === pathname 
-                        ? "bg-primary text-primary-foreground" 
-                        : "text-foreground hover:bg-accent hover:text-accent-foreground"
-                    )}
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    {item.name}
-                  </Link>
-                ))}
-                
-                <div className="pt-4 border-t">
-                  {isAuthenticated ? (
-                    <Button className="w-full" asChild>
-                      <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)}>
-                        Dashboard
-                      </Link>
-                    </Button>
-                  ) : (
-                    <>
-                      <Button variant="outline" className="w-full mb-2" asChild>
-                        <Link href="/auth/login" onClick={() => setMobileMenuOpen(false)}>
-                          Sign In
-                        </Link>
-                      </Button>
-                      <Button className="w-full" asChild>
-                        <Link href="/auth/register" onClick={() => setMobileMenuOpen(false)}>
-                          Sign Up
-                        </Link>
-                      </Button>
-                    </>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-      </nav>
+      </div>
     </header>
   );
 }

@@ -32,7 +32,8 @@ const commentService = {
    */
   createComment: async (templateId: string, content: string): Promise<Comment> => {
     try {
-      return await apiClient.post<Comment>('/comments', { templateId, content });
+      const response = await apiClient.post<Comment>('/comments', { templateId, content });
+      return response.data;
     } catch (error) {
       console.error(`Create comment error for template ${templateId}:`, error);
       throw error;

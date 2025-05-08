@@ -1,105 +1,70 @@
 "use client";
 
-import { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useForm } from 'react-hook-form';
-import { z } from 'zod';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useAuth } from '@/contexts/auth-context';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { toast } from '@/components/ui/use-toast';
+import React, { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
+import { z } from "zod";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Button } from "@/components/ui/button";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { useAuth } from "@/contexts/auth-context";
+import { toast } from "@/components/ui/use-toast";
+import { Loader2 } from "lucide-react";
 
-export const dynamic = 'force-dynamic';
-
-const loginSchema = z.object({
-  email: z.string().email('Please enter a valid email'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
-});
-
-type LoginFormValues = z.infer<typeof loginSchema>;
-
-export default function LoginPage() {
-  const router = useRouter();
+// Create a separate component that uses useSearchParams
+function LoginFormWithParams() {
   const searchParams = useSearchParams();
-  const redirectUrl = searchParams.get('redirect');
+  const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
+  const router = useRouter();
   const auth = useAuth();
   const login = auth?.login;
-  const isAuthenticated = auth?.isAuthenticated;
+  
+  if (!auth || !login) {
+    router.push('/auth/login');
+    return;
+  }
   const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    if (redirectUrl) {
-      localStorage.setItem('redirectAfterLogin', redirectUrl);
-    }
-  }, [redirectUrl]);
+  const formSchema = z.object({
+    email: z.string().email({
+      message: "Please enter a valid email address.",
+    }),
+    password: z.string().min(1, {
+      message: "Password is required.",
+    }),
+  });
 
-  useEffect(() => {
-    if (isAuthenticated) {
-      const storedRedirect = localStorage.getItem('redirectAfterLogin');
-      const destinationUrl = storedRedirect || '/dashboard';
-
-      if (storedRedirect) {
-        localStorage.removeItem('redirectAfterLogin');
-      }
-
-      router.replace(destinationUrl);
-    }
-  }, [isAuthenticated, router]);
-
-  const form = useForm<LoginFormValues>({
-    resolver: zodResolver(loginSchema),
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
     defaultValues: {
-      email: '',
-      password: '',
+      email: "",
+      password: "",
     },
   });
 
-  const onSubmit = async (data: LoginFormValues) => {
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    setIsLoading(true);
     try {
-      setIsLoading(true);
-      if (!data.email || !data.password) {
-        toast({
-          title: "Missing Information",
-          description: "Email and password are required",
-          variant: "destructive",
-        });
-        return;
-      }
-      if (!login) {
-        throw new Error("Authentication service is not available");
-      }
-      await login(data.email, data.password);
-      
+      await login(values.email, values.password);
       toast({
-        title: "Success",
-        description: "You have been logged in successfully",
+        title: "Login successful",
+        description: "Welcome back!",
       });
-      
-      
-      const storedRedirect = localStorage.getItem('redirectAfterLogin');
-      const destinationUrl = storedRedirect || '/dashboard';
-
-      if (storedRedirect) {
-        localStorage.removeItem('redirectAfterLogin');
-      }
-
-      router.replace(destinationUrl);
+      router.push(callbackUrl);
     } catch (error) {
-      console.error('Login error:', error);
-
-      let errorMessage = "Login failed. Please try again.";
-      
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      }
-      
+      console.error("Login failed:", error);
       toast({
-        title: "Login Failed",
-        description: errorMessage,
+        title: "Login failed",
+        description: "Please check your email and password.",
         variant: "destructive",
       });
     } finally {
@@ -108,83 +73,90 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 bg-muted/40">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold">Login</CardTitle>
-          <CardDescription>
-            Enter your email and password to sign in to your account
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <FormControl>
-                      <Input 
-                        placeholder="email@example.com" 
-                        type="email" 
-                        autoComplete="email"
-                        {...field} 
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Password</FormLabel>
-                    <FormControl>
-                      <Input 
-                        placeholder="********" 
-                        type="password" 
-                        autoComplete="current-password"
-                        {...field} 
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? (
-                  <span className="flex items-center">
-                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Logging in...
-                  </span>
-                ) : (
-                  'Sign In'
-                )}
-              </Button>
-            </form>
-          </Form>
-        </CardContent>
-        <CardFooter className="flex flex-col space-y-2">
-          <div className="text-sm text-center text-muted-foreground">
-            Don't have an account?{' '}
-            <Link href="/auth/register" className="underline underline-offset-4 hover:text-primary">
-              Sign up
-            </Link>
-          </div>
-          <Link href="/" className="text-sm text-center text-muted-foreground underline">
-            Back to home
-          </Link>
-        </CardFooter>
-      </Card>
+    <div className="mx-auto max-w-md space-y-6">
+      <div className="space-y-2 text-center">
+        <h1 className="text-3xl font-bold">Login</h1>
+        <p className="text-gray-500 dark:text-gray-400">
+          Enter your email and password to access your account
+        </p>
+      </div>
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Email</FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="you@example.com"
+                    type="email"
+                    autoComplete="email"
+                    disabled={isLoading}
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="password"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Password</FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="••••••••"
+                    type="password"
+                    autoComplete="current-password"
+                    disabled={isLoading}
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <Button type="submit" className="w-full" disabled={isLoading}>
+            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Log In
+          </Button>
+        </form>
+      </Form>
+      <div className="text-center text-sm">
+        Don&apos;t have an account?{" "}
+        <Link href="/auth/register" className="underline">
+          Sign Up
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+// Fallback component for Suspense
+function LoginFormFallback() {
+  return (
+    <div className="mx-auto max-w-md space-y-6">
+      <div className="space-y-2 text-center">
+        <h1 className="text-3xl font-bold">Login</h1>
+        <p className="text-gray-500 dark:text-gray-400">Loading login form...</p>
+      </div>
+      <div className="flex justify-center py-8">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <div className="container flex h-screen w-screen flex-col items-center justify-center">
+      <Suspense fallback={<LoginFormFallback />}>
+        <LoginFormWithParams />
+      </Suspense>
     </div>
   );
 }

@@ -1,50 +1,70 @@
-import apiClient from './api-client';
+import axios from 'axios';
+
+// Define the API base URL
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+
+// Create an axios instance for API calls
+const apiClient = axios.create({
+  baseURL: API_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Add auth token to requests if available
+apiClient.interceptors.request.use((config) => {
+  if (typeof window !== 'undefined') {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+  }
+  return config;
+});
 
 export interface FormResponse {
   id: string;
-  userId: string;
   templateId: string;
+  userId: string;
   createdAt: string;
   updatedAt: string;
-  [key: string]: any; // For dynamic form fields
+  score?: number;
+  totalPossiblePoints?: number;
+  scoreViewed?: boolean;
+  // Add other form response fields as needed
 }
 
-// Add this new interface for detailed form response that includes related data
 export interface FormResponseDetail extends FormResponse {
+  template: {
+    id: string;
+    title: string;
+    [key: string]: any; // Add index signature for dynamic template properties
+  };
   user: {
     id: string;
     name: string;
     email: string;
   };
-  template: {
-    id: string;
-    title: string;
-    [key: string]: any; // Allow dynamic access to template fields
-  };
+  [key: string]: any; // Add index signature for dynamic response properties
 }
 
 export interface AggregateData {
-  avg_custom_int1: number | null;
-  avg_custom_int2: number | null;
-  avg_custom_int3: number | null;
-  avg_custom_int4: number | null;
-  checkbox1_yes_count: number;
-  checkbox2_yes_count: number;
-  checkbox3_yes_count: number;
-  checkbox4_yes_count: number;
-  total_responses: number;
-  string1_count: number;
-  string2_count: number;
-  string3_count: number;
   string4_count: number;
   text1_count: number;
   text2_count: number;
   text3_count: number;
   text4_count: number;
+  checkbox1_yes_count: number;
+  checkbox2_yes_count: number;
+  checkbox3_yes_count: number;
+  checkbox4_yes_count: number;
+  avg_score: number;
+  max_score: number;
+  min_score: number;
+  avg_total_points: number;
 }
 
 export interface FormResponseFilters {
-  templateId?: string;
   userId?: string;
   startDate?: Date;
   endDate?: Date;
@@ -54,63 +74,58 @@ export interface FormResponseFilters {
 
 const responseService = {
   // Submit a form response
-  submitResponse: async (templateId: string, answers: Record<string, any>): Promise<FormResponse> => {
+  submitResponse: async (templateId: string, answers: Record<string, any>): Promise<FormResponse | undefined> => {
     try {
-      const response = await apiClient.post<FormResponse>('/forms', {
+      const response = await apiClient.post<FormResponse>('/form-responses', {
         templateId,
         answers
       });
-      return response;
+      return response.data;
     } catch (error) {
       console.error('Error submitting form response:', error);
-      throw error;
+      return undefined;
     }
   },
-  
-  // Get all form responses for a template
+
   getResponsesByTemplate: async (templateId: string): Promise<FormResponse[]> => {
     try {
-      const response = await apiClient.get<FormResponse[]>(`/forms/template/${templateId}`);
-      return response;
+      const response = await apiClient.get<FormResponse[]>(`/form-responses/template/${templateId}`);
+      return response.data;
     } catch (error) {
-      console.error('Error fetching form responses:', error);
-      throw error;
+      console.error('Error fetching responses by template:', error);
+      return [];
+    }
+  },
+
+  getResponseById: async (id: string): Promise<FormResponseDetail | null> => {
+    try {
+      const response = await apiClient.get<FormResponseDetail>(`/form-responses/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching response by ID:', error);
+      return null;
     }
   },
   
-  // Get a form response by ID - update the return type to FormResponseDetail
-  getResponseById: async (id: string): Promise<FormResponseDetail> => {
+  getAggregateData: async (templateId: string): Promise<AggregateData | null> => {
     try {
-      const response = await apiClient.get<FormResponseDetail>(`/forms/${id}`);
-      return response;
-    } catch (error) {
-      console.error('Error fetching form response:', error);
-      throw error;
-    }
-  },
-
-  // Get aggregate data for responses to a template
-  getAggregateData: async (templateId: string): Promise<AggregateData> => {
-    try {
-      const response = await apiClient.get<AggregateData>(`/forms/template/${templateId}/aggregate`);
-      return response;
+      const response = await apiClient.get<AggregateData>(`/form-responses/aggregate/${templateId}`);
+      return response.data;
     } catch (error) {
       console.error('Error fetching aggregate data:', error);
-      throw error;
+      return null;
     }
   },
-
-  // Delete a response
-  deleteResponse: async (responseId: string): Promise<void> => {
+  
+  deleteResponse: async (responseId: string): Promise<boolean> => {
     try {
-      await apiClient.delete(`/forms/${responseId}`);
+      await apiClient.delete(`/form-responses/${responseId}`);
+      return true;
     } catch (error) {
-      console.error('Error deleting form response:', error);
-      throw error;
+      console.error('Error deleting response:', error);
+      return false;
     }
   }
 };
 
-// Export both as default and named export
-export { responseService };
 export default responseService;

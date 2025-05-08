@@ -14,7 +14,7 @@ const dashboardService = {
   getUserStats: async (): Promise<UserStats> => {
     try {
       const response = await apiClient.get<UserStats>('/dashboard/stats');
-      return response;
+      return response.data;
     } catch (error) {
       console.error('Get user stats error:', error);
       // Return default stats on error

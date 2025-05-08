@@ -10,16 +10,101 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
- * Formats a date to a localized string
+ * Format a date string to a more readable format
+ * @param dateString - The date string to format
+ * @returns Formatted date string (Month Day, Year, Hour:Minute AM/PM)
  */
-export function formatDate(date: Date | string): string {
-  if (!date) return "";
-  const d = typeof date === "string" ? new Date(date) : date;
-  return d.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+export function formatDate(dateString: string, options?: Intl.DateTimeFormatOptions): string {
+  if (!dateString) return '';
+  
+  const date = new Date(dateString);
+  
+  // Handle invalid dates
+  if (isNaN(date.getTime())) return '';
+  
+  // Default options for formatting
+  const defaultOptions: Intl.DateTimeFormatOptions = options || {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  };
+  
+  return new Intl.DateTimeFormat('en-US', defaultOptions).format(date);
+}
+
+/**
+ * Format a date string to a short format (MM/DD/YYYY)
+ * @param dateString - The date string to format
+ * @returns Formatted short date string
+ */
+export function formatShortDate(dateString: string): string {
+  if (!dateString) return '';
+  
+  const date = new Date(dateString);
+  
+  // Handle invalid dates
+  if (isNaN(date.getTime())) return '';
+  
+  return new Intl.DateTimeFormat('en-US', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(date);
+}
+
+/**
+ * Format a date string to a time format (HH:MM AM/PM)
+ * @param dateString - The date string to format
+ * @returns Formatted time string
+ */
+export function formatTime(dateString: string): string {
+  if (!dateString) return '';
+  
+  const date = new Date(dateString);
+  
+  // Handle invalid dates
+  if (isNaN(date.getTime())) return '';
+  
+  return new Intl.DateTimeFormat('en-US', {
+    hour: '2-digit',
+    minute: '2-digit'
+  }).format(date);
+}
+
+/**
+ * Format a relative time (e.g., "2 days ago")
+ * @param dateString - The date string to format
+ * @returns Relative time string
+ */
+export function formatRelativeTime(dateString: string): string {
+  if (!dateString) return '';
+  
+  const date = new Date(dateString);
+  
+  // Handle invalid dates
+  if (isNaN(date.getTime())) return '';
+  
+  const now = new Date();
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+  
+  if (diffInSeconds < 60) return 'just now';
+  
+  const diffInMinutes = Math.floor(diffInSeconds / 60);
+  if (diffInMinutes < 60) return `${diffInMinutes} minute${diffInMinutes === 1 ? '' : 's'} ago`;
+  
+  const diffInHours = Math.floor(diffInMinutes / 60);
+  if (diffInHours < 24) return `${diffInHours} hour${diffInHours === 1 ? '' : 's'} ago`;
+  
+  const diffInDays = Math.floor(diffInHours / 24);
+  if (diffInDays < 30) return `${diffInDays} day${diffInDays === 1 ? '' : 's'} ago`;
+  
+  const diffInMonths = Math.floor(diffInDays / 30);
+  if (diffInMonths < 12) return `${diffInMonths} month${diffInMonths === 1 ? '' : 's'} ago`;
+  
+  const diffInYears = Math.floor(diffInMonths / 12);
+  return `${diffInYears} year${diffInYears === 1 ? '' : 's'} ago`;
 }
 
 /**
@@ -57,10 +142,10 @@ export function createId(prefix: string): string {
  * Gets the type of question field
  */
 export function getFieldType(fieldId: string): "string" | "text" | "int" | "checkbox" {
-  if (fieldId.startsWith("customString")) return "string";
-  if (fieldId.startsWith("customText")) return "text";
-  if (fieldId.startsWith("customInt")) return "int";
-  if (fieldId.startsWith("customCheckbox")) return "checkbox";
+  if (fieldId.includes('String')) return "string";
+  if (fieldId.includes('Text')) return "text";
+  if (fieldId.includes('Int')) return "int";
+  if (fieldId.includes('Checkbox')) return "checkbox";
   return "string"; // default
 }
 

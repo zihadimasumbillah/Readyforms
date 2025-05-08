@@ -1,129 +1,93 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
 import { DashboardLayout } from "@/components/layouts/dashboard-layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import Link from "next/link";
+import { ArrowLeft, Eye, Download, FileText } from "lucide-react";
+import { adminService } from "@/lib/api/admin-service";
 import { useAuth } from "@/contexts/auth-context";
-import { useRouter } from "next/navigation";
-import { toast } from '@/components/ui/use-toast';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { 
-  Search, 
-  ChevronLeft, 
-  Eye, 
-  DownloadIcon, 
-  Filter,
-  Calendar,
-  RefreshCw
-} from "lucide-react";
-import Link from 'next/link';
-import { Template } from "@/types";
-import { templateService } from "@/lib/api/template-service";
-import { responseService } from "@/lib/api/response-service";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger
-} from "@/components/ui/tabs";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell
-} from 'recharts';
+import { toast } from "@/components/ui/use-toast";
+import { formatDate } from '@/lib/utils';
 
-interface FormResponse {
-  id: string;
-  userId: string;
-  templateId: string;
-  createdAt: string;
-  updatedAt: string;
-  user: {
-    id: string;
-    name: string;
-    email: string;
-  };
-  [key: string]: any; // For dynamic response fields
-}
-
-interface AggregateData {
-  avg_custom_int1: number | null;
-  avg_custom_int2: number | null;
-  avg_custom_int3: number | null;
-  avg_custom_int4: number | null;
-  checkbox1_yes_count: number;
-  checkbox2_yes_count: number;
-  checkbox3_yes_count: number;
-  checkbox4_yes_count: number;
-  total_responses: number;
-  string1_count: number;
-  string2_count: number;
-  string3_count: number;
-  string4_count: number;
-  text1_count: number;
-  text2_count: number;
-  text3_count: number;
-  text4_count: number;
-  // Add index signature to allow string indexing
-  [key: string]: number | null;
-}
-
-// Colors for charts
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
-
-// Force dynamic rendering to prevent static generation errors
-export const dynamic = 'force-dynamic';
-export const dynamicParams = true;
-
-export default function TemplateResponsesPage({ params }: { params: { id: string } }) {
-  const [template, setTemplate] = useState<Template | null>(null);
-  const [responses, setResponses] = useState<FormResponse[]>([]);
-  const [filteredResponses, setFilteredResponses] = useState<FormResponse[]>([]);
-  const [aggregateData, setAggregateData] = useState<AggregateData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [sortField, setSortField] = useState<string>('createdAt');
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
-  const [activeTab, setActiveTab] = useState('responses');
-  
+export default function TemplateResponsesPage() {
+  const { id } = useParams();
+  const router = useRouter();
   const auth = useAuth();
   const user = auth?.user;
   const logout = auth?.logout;
-  const router = useRouter();
+  const [template, setTemplate] = useState<any>(null);
+  const [responses, setResponses] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
+    totalResponses: 0,
+    averageScore: 0,
+    completionRate: 0
+  });
+
+  useEffect(() => {
+    if (!user?.isAdmin) {
+      toast({
+        title: "Access denied",
+        description: "You don't have permission to access this page",
+        variant: "destructive"
+      });
+      router.push('/dashboard');
+      return;
+    }
+
+    const fetchTemplateAndResponses = async () => {
+      try {
+        setLoading(true);
+        const templateId = Array.isArray(id) ? id[0] : id;
+        
+        // Fetch template data
+        const templateData = await adminService.getTemplateById(templateId);
+        setTemplate(templateData);
+        
+        // Fetch responses for this template
+        const responsesData = await adminService.getFormResponsesByTemplate(templateId);
+        setResponses(responsesData);
+        
+        // Calculate statistics
+        if (responsesData && responsesData.length > 0) {
+          // For quiz templates, calculate average score
+          if (templateData.isQuiz) {
+            const totalScore = responsesData.reduce((sum, response) => sum + (response.score || 0), 0);
+            const avgScore = totalScore / responsesData.length;
+            setStats({
+              totalResponses: responsesData.length,
+              averageScore: Math.round(avgScore * 10) / 10, // Round to 1 decimal
+              completionRate: 100 // Placeholder for now
+            });
+          } else {
+            setStats({
+              totalResponses: responsesData.length,
+              averageScore: 0,
+              completionRate: 100 // Placeholder for now
+            });
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching template and responses:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load template responses",
+          variant: "destructive"
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (user && id) {
+      fetchTemplateAndResponses();
+    }
+  }, [user, id, router]);
 
   const handleLogout = () => {
     if (logout) {
@@ -132,405 +96,225 @@ export default function TemplateResponsesPage({ params }: { params: { id: string
     }
   };
 
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      
-      // Fetch template and responses in parallel
-      const [templateData, responsesData, aggregateDataResult] = await Promise.all([
-        templateService.getTemplateById(params.id),
-        responseService.getResponsesByTemplate(params.id),
-        responseService.getAggregateData(params.id),
-      ]);
-      
-      setTemplate(templateData);
-      setResponses(responsesData.map(response => ({
-        ...response,
-        user: response.user || {
-          id: response.userId || '',
-          name: 'Unknown',
-          email: 'No email'
-        }
-      })));
-      setFilteredResponses(responsesData.map(response => ({
-        ...response,
-        user: response.user || {
-          id: response.userId || '',
-          name: 'Unknown',
-          email: 'No email'
-        }
-      })));
-      setAggregateData(aggregateDataResult as AggregateData);
-    } catch (error) {
-      console.error("Error fetching data:", error);
+  const exportToCSV = () => {
+    if (!responses || responses.length === 0 || !template) {
       toast({
-        title: "Error",
-        description: "Failed to load template responses. Please try again.",
+        title: "Export failed",
+        description: "No data available to export",
         variant: "destructive"
       });
-    } finally {
-      setLoading(false);
+      return;
     }
-  };
-
-  useEffect(() => {
-    if (user) {
-      if (!user.isAdmin) {
-        toast({
-          title: "Access denied",
-          description: "You don't have permission to access this page",
-          variant: "destructive"
-        });
-        router.push('/dashboard');
-        return;
-      }
-      
-      fetchData();
-    } else {
-      router.push('/auth/login');
-    }
-  }, [user, params.id, router]);
-
-  useEffect(() => {
-    if (!responses.length) return;
-    
-    // Filter responses based on search query
-    let filtered = [...responses];
-    
-    if (searchQuery.trim() !== '') {
-      const lowercaseQuery = searchQuery.toLowerCase();
-      filtered = filtered.filter(response => 
-        response.user?.name?.toLowerCase().includes(lowercaseQuery) || 
-        response.user?.email?.toLowerCase().includes(lowercaseQuery)
-      );
-    }
-    
-    // Sort responses
-    filtered.sort((a, b) => {
-      let aValue = a[sortField];
-      let bValue = b[sortField];
-      
-      if (typeof aValue === 'string') {
-        aValue = aValue.toLowerCase();
-        bValue = bValue.toLowerCase();
-      }
-      
-      if (sortDirection === 'asc') {
-        return aValue > bValue ? 1 : -1;
-      } else {
-        return aValue < bValue ? 1 : -1;
-      }
-    });
-    
-    setFilteredResponses(filtered);
-  }, [searchQuery, responses, sortField, sortDirection]);
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return new Intl.DateTimeFormat('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    }).format(date);
-  };
-
-  const exportToCsv = () => {
-    if (!template || !responses.length) return;
     
     try {
-      // Prepare headers
-      const headers = ['Response ID', 'User', 'Email', 'Submission Date'];
+      // Determine all possible fields from the template
+      const fields: string[] = [];
       
-      // Add question columns based on the template's enabled questions
-      const questionFields: string[] = [];
+      // Add all possible question fields based on template configuration
+      ['String', 'Text', 'Int', 'Checkbox'].forEach(type => {
+        for (let i = 1; i <= 4; i++) {
+          const stateField = `custom${type}${i}State`;
+          const questionField = `custom${type}${i}Question`;
+          
+          if (template[stateField]) {
+            fields.push(`custom${type}${i}Answer`);
+          }
+        }
+      });
       
-      for (let i = 1; i <= 4; i++) {
-        if (template[`customString${i}State`]) {
-          headers.push(template[`customString${i}Question`] || `String Question ${i}`);
-          questionFields.push(`customString${i}Answer`);
-        }
-        
-        if (template[`customText${i}State`]) {
-          headers.push(template[`customText${i}Question`] || `Text Question ${i}`);
-          questionFields.push(`customText${i}Answer`);
-        }
-        
-        if (template[`customInt${i}State`]) {
-          headers.push(template[`customInt${i}Question`] || `Number Question ${i}`);
-          questionFields.push(`customInt${i}Answer`);
-        }
-        
-        if (template[`customCheckbox${i}State`]) {
-          headers.push(template[`customCheckbox${i}Question`] || `Checkbox Question ${i}`);
-          questionFields.push(`customCheckbox${i}Answer`);
-        }
+      // Create CSV header row
+      let csv = 'User,Submission Date';
+      if (template.isQuiz) {
+        csv += ',Score,Total Possible Points';
       }
       
-      // Prepare CSV content
-      const csvContent = [
-        headers.join(','),
-        ...responses.map(response => {
-          const row = [
-            response.id,
-            response.user?.name || 'Unknown',
-            response.user?.email || 'No email',
-            new Date(response.createdAt).toISOString()
-          ];
-          
-          // Add answer values
-          questionFields.forEach(field => {
-            let value = response[field];
-            
-            // Format based on type
-            if (value === undefined || value === null) {
-              value = '';
-            } else if (typeof value === 'boolean') {
-              value = value ? 'Yes' : 'No';
-            } else if (typeof value === 'string') {
-              // Escape quotes and commas in strings
-              value = `"${value.replace(/"/g, '""')}"`;
-            }
-            
-            row.push(value);
-          });
-          
-          return row.join(',');
-        })
-      ].join('\n');
+      // Add question headers
+      fields.forEach(field => {
+        const questionType = field.match(/custom(String|Text|Int|Checkbox)(\d)Answer/);
+        if (questionType) {
+          const questionField = `custom${questionType[1]}${questionType[2]}Question`;
+          const question = template[questionField] || field;
+          // Escape quotes in the question text
+          csv += `,"${question.replace(/"/g, '""')}"`;
+        }
+      });
       
-      // Create download link
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      csv += '\n';
+      
+      // Add data rows
+      responses.forEach(response => {
+        const userName = response.user ? response.user.name : 'Anonymous';
+        const submissionDate = formatDate(response.createdAt);
+        
+        let row = `"${userName}","${submissionDate}"`;
+        
+        if (template.isQuiz) {
+          row += `,${response.score || 0},${response.totalPossiblePoints || 0}`;
+        }
+        
+        // Add answer data
+        fields.forEach(field => {
+          let value = response[field];
+          
+          // Format the value based on its type
+          if (value === null || value === undefined) {
+            value = '';
+          } else if (typeof value === 'boolean') {
+            value = value ? 'Yes' : 'No';
+          } else if (typeof value === 'string') {
+            // Escape quotes in the text
+            value = `"${value.replace(/"/g, '""')}"`;
+          }
+          
+          row += `,${value}`;
+        });
+        
+        csv += row + '\n';
+      });
+      
+      // Create and trigger download
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.setAttribute('href', url);
       link.setAttribute('download', `${template.title.replace(/\s+/g, '_')}_responses.csv`);
+      link.style.visibility = 'hidden';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       
       toast({
         title: "Export successful",
-        description: "Responses have been exported to CSV",
-        variant: "default"
+        description: "Responses have been exported to CSV"
       });
     } catch (error) {
       console.error("Error exporting to CSV:", error);
       toast({
         title: "Export failed",
-        description: "Failed to export responses. Please try again.",
+        description: "Failed to export responses to CSV",
         variant: "destructive"
       });
     }
   };
 
-  const prepareCheckboxChartData = () => {
-    if (!template || !aggregateData) return [];
-    
-    const data = [];
-    
-    for (let i = 1; i <= 4; i++) {
-      const stateKey = `customCheckbox${i}State`;
-      const questionKey = `customCheckbox${i}Question`;
-      const yesKey = `checkbox${i}_yes_count`;
-      
-      if (template[stateKey] && aggregateData.total_responses > 0) {
-        const yesCount = aggregateData[yesKey] || 0;
-        const noCount = aggregateData.total_responses - yesCount;
-        
-        data.push({
-          name: template[questionKey] || `Checkbox ${i}`,
-          data: [
-            { name: 'Yes', value: yesCount },
-            { name: 'No', value: noCount }
-          ]
-        });
-      }
-    }
-    
-    return data;
-  };
-
-  const prepareNumberChartData = () => {
-    if (!template || !aggregateData) return [];
-    
-    const numberData = [];
-    
-    for (let i = 1; i <= 4; i++) {
-      const stateKey = `customInt${i}State`;
-      const questionKey = `customInt${i}Question`;
-      const avgKey = `avg_custom_int${i}`;
-      
-      if (template[stateKey] && aggregateData[avgKey] !== null) {
-        numberData.push({
-          question: template[questionKey] || `Number ${i}`,
-          average: parseFloat(aggregateData[avgKey]!.toFixed(2))
-        });
-      }
-    }
-    
-    return numberData;
-  };
-
-  if (loading || !template) {
-    return (
-      <DashboardLayout
-        user={{
-          name: user?.name || 'Admin User',
-          email: user?.email || 'admin@example.com',
-          isAdmin: true
-        }}
-        onLogout={handleLogout}
-      >
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center space-x-2">
-            <Button variant="outline" size="icon" disabled>
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <Skeleton className="h-8 w-80" />
-          </div>
-          <Skeleton className="h-10 w-32" />
-        </div>
-        
-        <Card>
-          <CardHeader>
-            <Skeleton className="h-8 w-64 mb-2" />
-            <Skeleton className="h-4 w-full max-w-md" />
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <Skeleton key={i} className="h-16 w-full" />
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </DashboardLayout>
-    );
+  if (!user) {
+    return <div>Authenticating...</div>;
   }
 
   return (
     <DashboardLayout
       user={{
-        name: user?.name || 'Admin User',
-        email: user?.email || 'admin@example.com',
-        isAdmin: true
+        name: user.name || 'Admin',
+        email: user.email || 'admin@example.com',
+        isAdmin: user.isAdmin
       }}
       onLogout={handleLogout}
     >
       <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center space-x-2">
-          <Button variant="outline" size="icon" asChild>
-            <Link href={`/admin/templates/${params.id}/edit`}>
-              <ChevronLeft className="h-4 w-4" />
-            </Link>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => router.back()}>
+            <ArrowLeft className="h-4 w-4 mr-1" /> Back
           </Button>
-          <h1 className="text-2xl font-bold">
-            {template.title} <span className="text-muted-foreground">Responses</span>
-          </h1>
+          <h1 className="text-2xl font-bold">Template Responses</h1>
         </div>
-        <div className="flex gap-2">
-          <Button onClick={fetchData} variant="outline" size="sm" className="gap-2">
-            <RefreshCw className="h-4 w-4" />
-            Refresh
-          </Button>
-          <Button onClick={exportToCsv} variant="outline" size="sm" className="gap-2">
-            <DownloadIcon className="h-4 w-4" />
-            Export to CSV
-          </Button>
-        </div>
+        
+        <Button 
+          variant="outline"
+          size="sm"
+          onClick={exportToCSV}
+          disabled={responses.length === 0}
+        >
+          <Download className="h-4 w-4 mr-1" /> Export to CSV
+        </Button>
       </div>
-      
-      <Tabs defaultValue="responses" value={activeTab} onValueChange={setActiveTab} className="mb-6">
-        <TabsList>
-          <TabsTrigger value="responses">Responses</TabsTrigger>
-          <TabsTrigger value="analytics">Analytics</TabsTrigger>
-        </TabsList>
-      </Tabs>
-      
-      <TabsContent value="responses" className="mt-0">
-        <Card>
-          <CardHeader>
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-              <div>
-                <CardTitle>Form Responses</CardTitle>
-                <CardDescription>
-                  Total responses: {responses.length}
-                </CardDescription>
-              </div>
-              
-              <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
-                <div className="relative">
-                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    type="search"
-                    placeholder="Search responses..."
-                    className="pl-8 w-full sm:w-[260px]"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
+
+      {loading ? (
+        <div className="space-y-4">
+          <Skeleton className="h-32 w-full" />
+          <Skeleton className="h-96 w-full" />
+        </div>
+      ) : template ? (
+        <>
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="text-xl">{template.title}</CardTitle>
+              <CardDescription>
+                {template.description || "No description provided"}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="p-4 border rounded-lg bg-muted/50">
+                  <div className="text-sm text-muted-foreground mb-1">Total Responses</div>
+                  <div className="text-2xl font-bold">{stats.totalResponses}</div>
                 </div>
                 
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="gap-2">
-                      <Filter className="h-4 w-4" />
-                      Sort
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuLabel>Sort By</DropdownMenuLabel>
-                    <DropdownMenuItem onClick={() => setSortField('createdAt')}>
-                      Date {sortField === 'createdAt' && (sortDirection === 'desc' ? '↓' : '↑')}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setSortField('user.name')}>
-                      Name {sortField === 'user.name' && (sortDirection === 'desc' ? '↓' : '↑')}
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => setSortDirection(sortDirection === 'desc' ? 'asc' : 'desc')}>
-                      {sortDirection === 'desc' ? 'Ascending' : 'Descending'}
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                {template.isQuiz && (
+                  <div className="p-4 border rounded-lg bg-muted/50">
+                    <div className="text-sm text-muted-foreground mb-1">Average Score</div>
+                    <div className="text-2xl font-bold">
+                      {stats.averageScore}
+                      <span className="text-sm ml-2 text-muted-foreground">points</span>
+                    </div>
+                  </div>
+                )}
+                
+                <div className="p-4 border rounded-lg bg-muted/50">
+                  <div className="text-sm text-muted-foreground mb-1">Created By</div>
+                  <div className="font-medium">{template.user?.name || "Unknown"}</div>
+                  <div className="text-sm text-muted-foreground">
+                    {formatDate(template.createdAt)}
+                  </div>
+                </div>
               </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {filteredResponses.length > 0 ? (
-              <div className="rounded-md border">
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-xl">Response List</CardTitle>
+              <CardDescription>
+                All submitted responses for this template
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {responses.length > 0 ? (
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>User</TableHead>
-                      <TableHead>Submitted</TableHead>
+                      <TableHead>Submission Date</TableHead>
+                      {template.isQuiz && <TableHead>Score</TableHead>}
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredResponses.map((response) => (
+                    {responses.map((response) => (
                       <TableRow key={response.id}>
-                        <TableCell>
-                          <div className="flex flex-col">
-                            <span className="font-medium">{response.user?.name || 'Anonymous'}</span>
-                            <span className="text-sm text-muted-foreground">{response.user?.email || 'No email'}</span>
-                          </div>
+                        <TableCell className="font-medium">
+                          {response.user?.name || "Unknown User"}
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center">
-                            <Calendar className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
-                            <span>{formatDate(response.createdAt)}</span>
-                          </div>
+                          {formatDate(response.createdAt)}
                         </TableCell>
+                        {template.isQuiz && (
+                          <TableCell>
+                            {response.score || 0} / {response.totalPossiblePoints || 0}
+                            <span className="text-xs ml-1 text-muted-foreground">
+                              ({response.totalPossiblePoints > 0 
+                                ? Math.round((response.score / response.totalPossiblePoints) * 100) 
+                                : 0}%)
+                            </span>
+                          </TableCell>
+                        )}
                         <TableCell className="text-right">
                           <Button 
-                            variant="ghost" 
+                            variant="outline" 
                             size="sm"
                             asChild
                           >
                             <Link href={`/admin/responses/${response.id}`}>
-                              <Eye className="h-4 w-4 mr-1.5" />
-                              View Details
+                              <Eye className="h-4 w-4 mr-1" /> View
                             </Link>
                           </Button>
                         </TableCell>
@@ -538,206 +322,29 @@ export default function TemplateResponsesPage({ params }: { params: { id: string
                     ))}
                   </TableBody>
                 </Table>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <div className="rounded-full bg-muted p-3 mb-3">
-                  <Search className="h-6 w-6 text-muted-foreground" />
-                </div>
-                <h3 className="text-lg font-medium">No responses found</h3>
-                <p className="text-sm text-muted-foreground mt-1 mb-4">
-                  {searchQuery
-                    ? "No responses match your search criteria."
-                    : "This template has not received any responses yet."}
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </TabsContent>
-      
-      <TabsContent value="analytics" className="mt-0">
-        <div className="grid gap-6 md:grid-cols-2">
-          {/* Numeric questions chart */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Numeric Questions</CardTitle>
-              <CardDescription>
-                Average values for numeric responses
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {loading ? (
-                <Skeleton className="h-[280px] w-full" />
-              ) : aggregateData && prepareNumberChartData().length > 0 ? (
-                <div className="h-[280px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
-                      data={prepareNumberChartData()}
-                      margin={{
-                        top: 20,
-                        right: 30,
-                        left: 20,
-                        bottom: 70,
-                      }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis 
-                        dataKey="question" 
-                        angle={-45} 
-                        textAnchor="end"
-                        height={80}
-                        interval={0}
-                      />
-                      <YAxis />
-                      <Tooltip />
-                      <Legend />
-                      <Bar dataKey="average" fill="#8884d8" name="Average Value" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
               ) : (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <h3 className="text-base font-medium">No numeric data available</h3>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    This template has no numeric questions or no responses yet.
+                <div className="text-center py-12">
+                  <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                  <h3 className="text-lg font-medium mb-2">No responses yet</h3>
+                  <p className="text-muted-foreground">
+                    This template hasn't received any responses yet.
                   </p>
                 </div>
               )}
             </CardContent>
           </Card>
-          
-          {/* Checkbox questions charts */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Yes/No Questions</CardTitle>
-              <CardDescription>
-                Distribution of checkbox answers
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {loading ? (
-                <Skeleton className="h-[280px] w-full" />
-              ) : aggregateData && prepareCheckboxChartData().length > 0 ? (
-                <div className="grid grid-cols-1 gap-6">
-                  {prepareCheckboxChartData().map((questionData, index) => (
-                    <div key={index} className="h-[280px]">
-                      <h3 className="text-sm font-medium text-center mb-2">{questionData.name}</h3>
-                      <div className="h-[220px]">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <PieChart>
-                            <Pie
-                              data={questionData.data}
-                              cx="50%"
-                              cy="50%"
-                              labelLine={false}
-                              outerRadius={80}
-                              fill="#8884d8"
-                              dataKey="value"
-                              label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                            >
-                              {questionData.data.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                              ))}
-                            </Pie>
-                            <Tooltip formatter={(value) => [`${value} responses`, 'Count']} />
-                            <Legend />
-                          </PieChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <h3 className="text-base font-medium">No checkbox data available</h3>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    This template has no checkbox questions or no responses yet.
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+        </>
+      ) : (
+        <div className="text-center py-12">
+          <div className="text-3xl font-bold mb-2">Template not found</div>
+          <p className="text-muted-foreground mb-6">
+            The template you are looking for might have been deleted or does not exist.
+          </p>
+          <Button onClick={() => router.push('/admin/templates')}>
+            View All Templates
+          </Button>
         </div>
-        
-        {/* Text response summary */}
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle>Text Response Summary</CardTitle>
-            <CardDescription>
-              Overview of text-based answers
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <div className="space-y-4">
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <Skeleton key={i} className="h-16 w-full" />
-                ))}
-              </div>
-            ) : aggregateData ? (
-              <div className="space-y-6">
-                {/* Text fields summary */}
-                <div className="space-y-4">
-                  <h3 className="text-base font-medium">Short Text Fields</h3>
-                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                    {[1, 2, 3, 4].map(i => {
-                      const stateKey = `customString${i}State`;
-                      const questionKey = `customString${i}Question`;
-                      const countKey = `string${i}_count`;
-                      
-                      if (template[stateKey] && aggregateData[countKey] !== undefined) {
-                        return (
-                          <div key={i} className="border rounded-md p-4">
-                            <h4 className="text-sm font-medium mb-1">{template[questionKey] || `Text Field ${i}`}</h4>
-                            <div className="flex justify-between items-center">
-                              <span className="text-2xl font-semibold">{aggregateData[countKey]}</span>
-                              <span className="text-xs text-muted-foreground">responses</span>
-                            </div>
-                          </div>
-                        );
-                      }
-                      return null;
-                    })}
-                  </div>
-                </div>
-                
-                {/* Long text fields summary */}
-                <div className="space-y-4">
-                  <h3 className="text-base font-medium">Long Text Fields</h3>
-                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                    {[1, 2, 3, 4].map(i => {
-                      const stateKey = `customText${i}State`;
-                      const questionKey = `customText${i}Question`;
-                      const countKey = `text${i}_count`;
-                      
-                      if (template[stateKey] && aggregateData[countKey] !== undefined) {
-                        return (
-                          <div key={i} className="border rounded-md p-4">
-                            <h4 className="text-sm font-medium mb-1">{template[questionKey] || `Long Text ${i}`}</h4>
-                            <div className="flex justify-between items-center">
-                              <span className="text-2xl font-semibold">{aggregateData[countKey]}</span>
-                              <span className="text-xs text-muted-foreground">responses</span>
-                            </div>
-                          </div>
-                        );
-                      }
-                      return null;
-                    })}
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-8 text-center">
-                <h3 className="text-base font-medium">No text response data available</h3>
-                <p className="text-sm text-muted-foreground mt-1">
-                  This template has no text questions or no responses yet.
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </TabsContent>
+      )}
     </DashboardLayout>
   );
 }
