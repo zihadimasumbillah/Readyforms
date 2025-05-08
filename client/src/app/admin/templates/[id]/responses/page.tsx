@@ -105,6 +105,16 @@ interface AggregateData {
 // Colors for charts
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
 
+// Force dynamic rendering to prevent static generation errors
+export const dynamic = 'force-dynamic';
+export const dynamicParams = true;
+
+// Required for static export with dynamic routes
+export async function generateStaticParams() {
+  // Return empty array to indicate no pages need pre-rendering at build time
+  return [];
+}
+
 export default function TemplateResponsesPage({ params }: { params: { id: string } }) {
   const [template, setTemplate] = useState<Template | null>(null);
   const [responses, setResponses] = useState<FormResponse[]>([]);

@@ -441,7 +441,7 @@ export const searchTemplates = catchAsync(async (req: Request, res: Response) =>
         { description: { [Op.iLike]: `%${query}%` } }
       ];
     }
-d
+    
     if (topicId && typeof topicId === 'string') {
       if (isUuid(topicId)) {
         whereConditions.topicId = topicId;

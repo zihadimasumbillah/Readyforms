@@ -19,6 +19,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 export const dynamic = 'force-dynamic';
 export const dynamicParams = true;
 
+// Required for static export with dynamic routes
+export async function generateStaticParams() {
+  // Return empty array to indicate no pages need pre-rendering at build time
+  return [];
+}
+
 export default function EditTemplatePage({ params }: { params: { id: string } }) {
   const [template, setTemplate] = useState<Template | null>(null);
   const [topics, setTopics] = useState<Topic[]>([]);

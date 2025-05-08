@@ -16,6 +16,16 @@ import { toast } from '@/components/ui/use-toast';
 
 // Force dynamic rendering to prevent static generation errors
 export const dynamic = 'force-dynamic';
+export const dynamicParams = true;
+
+// Required for static export with dynamic routes
+export async function generateStaticParams() {
+  try {
+  } catch (error) {
+    console.error("Error in generateStaticParams:", error);
+    return [];
+  }
+}
 
 export default function TemplatePage({ params }: { params: { id: string } }) {
   const [template, setTemplate] = useState<Template | null>(null);

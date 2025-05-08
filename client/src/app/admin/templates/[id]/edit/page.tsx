@@ -82,6 +82,16 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
+// Force dynamic rendering to prevent static generation errors
+export const dynamic = 'force-dynamic';
+export const dynamicParams = true;
+
+// Required for static export with dynamic routes
+export async function generateStaticParams() {
+  // Return empty array to indicate no pages need pre-rendering at build time
+  return [];
+}
+
 // Define our schema for form validation
 const templateSchema = z.object({
   title: z.string().min(1, "Title is required").max(100, "Title is too long"),
