@@ -1,5 +1,5 @@
 import apiClient from './api-client';
-import { User, Template, FormResponse } from '@/types';
+import { User, Template, FormResponse, Topic } from '@/types';
 
 interface PaginatedResponse<T> {
   data: T[];
@@ -42,6 +42,20 @@ export const adminService = {
       return response.data;
     } catch (error: any) {
       console.error('Failed to fetch users:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get all users without pagination
+   * This is an alias for backward compatibility
+   */
+  async getAllUsers(): Promise<User[]> {
+    try {
+      const response = await apiClient.get(`/admin/users?limit=1000`);
+      return response.data.users;
+    } catch (error: any) {
+      console.error('Failed to fetch all users:', error);
       throw error;
     }
   },
@@ -114,12 +128,26 @@ export const adminService = {
   /**
    * Get all templates
    */
-  async getAllTemplates(page = 1, limit = 10): Promise<{ templates: Template[], pagination: any }> {
+  async getAllTemplates(page = 1, limit = 10): Promise<Template[]> {
     try {
       const response = await apiClient.get(`/admin/templates?page=${page}&limit=${limit}`);
-      return response.data;
+      // Return just the templates array instead of the whole response object
+      return response.data.templates;
     } catch (error: any) {
       console.error('Failed to fetch templates:', error);
+      throw error;
+    }
+  },
+  
+  /**
+   * Get all topics
+   */
+  async getAllTopics(): Promise<Topic[]> {
+    try {
+      const response = await apiClient.get('/admin/topics');
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to fetch topics:', error);
       throw error;
     }
   },
@@ -140,10 +168,11 @@ export const adminService = {
   /**
    * Get all form responses
    */
-  async getAllResponses(page = 1, limit = 10): Promise<{ responses: FormResponse[], pagination: any }> {
+  async getAllResponses(page = 1, limit = 10): Promise<FormResponse[]> {
     try {
       const response = await apiClient.get(`/admin/responses?page=${page}&limit=${limit}`);
-      return response.data;
+      // Return just the responses array instead of the whole response object
+      return response.data.responses;
     } catch (error: any) {
       console.error('Failed to fetch responses:', error);
       throw error;
@@ -171,6 +200,19 @@ export const adminService = {
       await apiClient.delete(`/admin/responses/${responseId}`);
     } catch (error: any) {
       console.error(`Failed to delete form response ${responseId}:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get form responses by template ID
+   */
+  async getFormResponsesByTemplate(templateId: string): Promise<FormResponse[]> {
+    try {
+      const response = await apiClient.get(`/admin/templates/${templateId}/responses`);
+      return response.data;
+    } catch (error: any) {
+      console.error(`Failed to fetch responses for template ${templateId}:`, error);
       throw error;
     }
   },
