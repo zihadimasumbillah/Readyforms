@@ -1,11 +1,12 @@
 {
+  "version": 2,
   "buildCommand": "cd server && npm install && npm run build",
   "outputDirectory": "server/dist",
   "installCommand": "cd server && npm install",
-  "rewrites": [
+  "routes": [
     {
-      "source": "/(.*)",
-      "destination": "/api"
+      "src": "/(.*)",
+      "dest": "/api"
     }
   ],
   "functions": {
@@ -13,5 +14,8 @@
       "memory": 1024,
       "maxDuration": 10
     }
+  },
+  "env": {
+    "NODE_ENV": "production"
   }
 }
