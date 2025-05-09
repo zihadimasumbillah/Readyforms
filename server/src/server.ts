@@ -3,12 +3,11 @@ import http from 'http';
 import dotenv from 'dotenv';
 import { populateDefaults } from './utils/ensure-test-users';
 import sequelize from './config/database';
-import { syncModels } from './models/index';
 
 dotenv.config();
 
 const app: Express = require('./app');
-const PORT: number = parseInt(process.env.PORT || '3001');
+const PORT: number = parseInt(process.env.PORT || '3000');
 
 // Interface for route tracking
 interface Route {
@@ -23,11 +22,11 @@ const startServer = async () => {
     console.log('Database connection established successfully.');
     
     // Sync database models
-    await syncModels();
+    await sequelize.sync();
     console.log('Database models synchronized successfully.');
     
-    // Ensure default users exist in development/test environments
-    if (process.env.NODE_ENV !== 'production') {
+    // In development or test, ensure test users exist
+    if (process.env.NODE_ENV !== 'production' || process.env.POPULATE_TEST_USERS === 'true') {
       await populateDefaults();
     }
     

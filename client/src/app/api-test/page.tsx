@@ -1,135 +1,252 @@
 "use client";
 
-import React, { useState } from 'react';
-import { Button } from "@/components/ui/button";
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { testApiConnectivity } from '@/lib/api/api-test';
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { AlertCircle, CheckCircle2, Server } from "lucide-react";
+import { useRouter } from 'next/navigation';
+import axios from 'axios';
+
+interface EndpointTestResult {
+  endpoint: string;
+  url: string;
+  success: boolean;
+  status?: number;
+  duration?: string;
+  data?: any;
+  error?: string;
+}
 
 export default function ApiTestPage() {
-  const [results, setResults] = useState<any>(null);
+  const [results, setResults] = useState<EndpointTestResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedTab, setSelectedTab] = useState("overview");
+  const [recommendedEndpoint, setRecommendedEndpoint] = useState("");
+  const router = useRouter();
 
-  const runTest = async () => {
+  useEffect(() => {
+    runTests();
+  }, []);
+
+  const runTests = async () => {
     setLoading(true);
-    try {
-      const testResults = await testApiConnectivity();
-      setResults(testResults);
-    } catch (error) {
-      console.error('Error running API test:', error);
-    } finally {
-      setLoading(false);
+    const testResults: EndpointTestResult[] = [];
+    
+    const endpoints = {
+      production: 'https://readyforms-api.vercel.app/api/ping',
+      development: 'http://localhost:3001/api/ping',
+      healthProduction: 'https://readyforms-api.vercel.app/health',
+      healthDevelopment: 'http://localhost:3001/health',
+      debug: 'http://localhost:3001/debug-cors'
+    };
+
+    // Test each endpoint
+    for (const [name, url] of Object.entries(endpoints)) {
+      try {
+        const startTime = Date.now();
+        const response = await axios.get(url, { 
+          timeout: 5000,
+          headers: { 'Accept': 'application/json' }
+        });
+        const duration = Date.now() - startTime;
+        
+        testResults.push({
+          endpoint: name,
+          url,
+          success: true,
+          status: response.status,
+          duration: `${duration}ms`,
+          data: response.data
+        });
+        
+        // Save first successful endpoint as recommended
+        if (!recommendedEndpoint && name.includes('development')) {
+          setRecommendedEndpoint(url.replace('/ping', '').replace('/health', ''));
+        }
+        
+      } catch (error: any) {
+        testResults.push({
+          endpoint: name,
+          url,
+          success: false,
+          error: error.message,
+          status: error.response?.status
+        });
+      }
     }
+    
+    setResults(testResults);
+    setLoading(false);
   };
 
   return (
-    <div className="container mx-auto py-8">
-      <h1 className="text-3xl font-bold mb-6">API Connection Test</h1>
-      <p className="text-muted-foreground mb-6">
-        Use this tool to diagnose API connectivity issues between your client and server.
-      </p>
-      
-      <div className="flex items-center gap-4 mb-8">
-        <Button onClick={runTest} disabled={loading}>
-          {loading ? "Testing..." : "Run API Test"}
-        </Button>
-        {results && (
-          <p className={results.successful ? "text-green-500" : "text-red-500"}>
-            {results.successful ? "✓ Found working endpoints" : "✗ No working endpoints found"}
+    <div className="container mx-auto py-8 px-4">
+      <header className="flex flex-col md:flex-row md:items-center justify-between mb-6">
+        <div>
+          <h1 className="text-3xl font-bold">API Connection Test</h1>
+          <p className="text-muted-foreground mt-1">
+            Diagnostic tool to check API connectivity
           </p>
-        )}
-      </div>
-      
-      {results && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Test Results</CardTitle>
-            <CardDescription>
-              Environment: {results.environment}, 
-              API URL from env: {results.nextPublicApiUrl || "not set"}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+        </div>
+        <div className="flex mt-4 md:mt-0 space-x-2">
+          <Button variant="outline" onClick={() => router.push('/dashboard')}>
+            Dashboard
+          </Button>
+          <Button variant="default" onClick={runTests} disabled={loading}>
+            {loading ? "Running Tests..." : "Run Tests Again"}
+          </Button>
+        </div>
+      </header>
+
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <Server className="mr-2 h-5 w-5" /> API Status
+          </CardTitle>
+          <CardDescription>
+            Testing connectivity between client and API endpoints
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mb-4"></div>
+              <p className="text-muted-foreground">Testing API endpoints...</p>
+            </div>
+          ) : (
             <Tabs value={selectedTab} onValueChange={setSelectedTab}>
-              <TabsList>
+              <TabsList className="mb-4">
                 <TabsTrigger value="overview">Overview</TabsTrigger>
-                <TabsTrigger value="details">Details</TabsTrigger>
-                <TabsTrigger value="raw">Raw Data</TabsTrigger>
+                <TabsTrigger value="details">Detailed Results</TabsTrigger>
+                <TabsTrigger value="help">Troubleshooting</TabsTrigger>
               </TabsList>
               
-              <TabsContent value="overview" className="mt-4">
+              <TabsContent value="overview">
                 <div className="space-y-4">
                   <div className="grid gap-4 md:grid-cols-2">
-                    <Card>
-                      <CardHeader className="py-2">
-                        <CardTitle className="text-sm">Status</CardTitle>
+                    <Card className="bg-muted/50">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-medium">Recommended Endpoint</CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <p className={results.successful ? "text-green-500 font-bold" : "text-red-500 font-bold"}>
-                          {results.successful ? "CONNECTED" : "DISCONNECTED"}
-                        </p>
+                        {recommendedEndpoint ? (
+                          <div className="font-mono text-sm break-all">
+                            {recommendedEndpoint}
+                          </div>
+                        ) : (
+                          <div className="text-red-500 font-medium">
+                            No working endpoints found
+                          </div>
+                        )}
                       </CardContent>
                     </Card>
                     
-                    <Card>
-                      <CardHeader className="py-2">
-                        <CardTitle className="text-sm">Recommended Endpoint</CardTitle>
+                    <Card className="bg-muted/50">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-medium">Environment</CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <p className="font-mono text-xs break-all">
-                          {results.recommendedEndpoint || "None found"}
-                        </p>
+                        <div className="flex items-center space-x-2">
+                          <Badge variant={process.env.NODE_ENV === 'production' ? 'destructive' : 'default'}>
+                            {process.env.NODE_ENV}
+                          </Badge>
+                          <span className="text-sm">
+                            {process.env.NEXT_PUBLIC_API_URL ? 
+                              `Using: ${process.env.NEXT_PUBLIC_API_URL}` : 
+                              'No API URL configured in environment'}
+                          </span>
+                        </div>
                       </CardContent>
                     </Card>
                   </div>
                   
-                  <Card>
-                    <CardHeader className="py-2">
-                      <CardTitle className="text-sm">Endpoint Summary</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2">
-                        {results.tests.map((test: any, i: number) => (
-                          <div key={i} className="flex justify-between items-center px-2 py-1 rounded bg-muted/50">
-                            <span>{test.endpoint}: {test.url}</span>
-                            <span className={test.success ? "text-green-500" : "text-red-500"}>
-                              {test.success ? `✓ (${test.duration || 'OK'})` : "✗ Failed"}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
+                  <div className="rounded-md border">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="bg-muted/50">
+                            <th className="px-4 py-2 text-left font-medium">Endpoint</th>
+                            <th className="px-4 py-2 text-left font-medium">Status</th>
+                            <th className="px-4 py-2 text-left font-medium hidden md:table-cell">Response Time</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y">
+                          {results.map((result, index) => (
+                            <tr key={index} className="hover:bg-muted/50 transition-colors">
+                              <td className="px-4 py-2 font-mono text-xs">
+                                {result.url}
+                              </td>
+                              <td className="px-4 py-2">
+                                {result.success ? (
+                                  <span className="inline-flex items-center text-green-600">
+                                    <CheckCircle2 className="h-4 w-4 mr-1" />
+                                    OK ({result.status})
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center text-red-600">
+                                    <AlertCircle className="h-4 w-4 mr-1" />
+                                    Error {result.status && `(${result.status})`}
+                                  </span>
+                                )}
+                              </td>
+                              <td className="px-4 py-2 hidden md:table-cell">
+                                {result.duration || '-'}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
                 </div>
               </TabsContent>
               
-              <TabsContent value="details" className="mt-4">
+              <TabsContent value="details">
                 <div className="space-y-4">
-                  {results.tests.map((test: any, i: number) => (
-                    <Card key={i}>
-                      <CardHeader>
-                        <CardTitle className={test.success ? "text-green-500" : "text-red-500"}>
-                          {test.endpoint} {test.success ? "✓" : "✗"}
+                  {results.map((result, index) => (
+                    <Card key={index}>
+                      <CardHeader className={`pb-2 ${result.success ? 'bg-green-100/50 dark:bg-green-900/20' : 'bg-red-100/50 dark:bg-red-900/20'}`}>
+                        <CardTitle className="text-base flex items-center">
+                          {result.success ? (
+                            <CheckCircle2 className="h-5 w-5 mr-2 text-green-600" />
+                          ) : (
+                            <AlertCircle className="h-5 w-5 mr-2 text-red-600" />
+                          )}
+                          {result.endpoint}
                         </CardTitle>
                         <CardDescription className="font-mono text-xs break-all">
-                          {test.url}
+                          {result.url}
                         </CardDescription>
                       </CardHeader>
-                      <CardContent>
-                        {test.success ? (
-                          <div>
-                            <p>Status: {test.status}</p>
-                            <p>Duration: {test.duration}</p>
-                            <pre className="mt-2 p-2 bg-muted rounded text-xs">
-                              {JSON.stringify(test.data, null, 2)}
-                            </pre>
-                          </div>
+                      <CardContent className="pt-4">
+                        {result.success ? (
+                          <>
+                            <p className="mb-2">
+                              <span className="font-medium">Status:</span> {result.status}
+                            </p>
+                            <p className="mb-2">
+                              <span className="font-medium">Response Time:</span> {result.duration}
+                            </p>
+                            <div className="mt-4">
+                              <p className="font-medium mb-1">Response Data:</p>
+                              <pre className="bg-muted p-3 rounded-md overflow-auto max-h-80 text-xs">
+                                {JSON.stringify(result.data, null, 2)}
+                              </pre>
+                            </div>
+                          </>
                         ) : (
-                          <div>
-                            <p>Error: {test.error}</p>
-                            {test.status && <p>Status: {test.status}</p>}
-                          </div>
+                          <>
+                            <p className="text-red-600 mb-2">
+                              <span className="font-medium">Error:</span> {result.error}
+                            </p>
+                            {result.status && (
+                              <p className="mb-2">
+                                <span className="font-medium">Status Code:</span> {result.status}
+                              </p>
+                            )}
+                          </>
                         )}
                       </CardContent>
                     </Card>
@@ -137,55 +254,73 @@ export default function ApiTestPage() {
                 </div>
               </TabsContent>
               
-              <TabsContent value="raw" className="mt-4">
-                <pre className="p-4 bg-muted rounded overflow-auto max-h-[500px]">
-                  {JSON.stringify(results, null, 2)}
-                </pre>
+              <TabsContent value="help">
+                <div className="space-y-4">
+                  <div className="rounded-md bg-amber-50 dark:bg-amber-950/50 p-4 border border-amber-200 dark:border-amber-900">
+                    <h3 className="font-bold text-amber-800 dark:text-amber-300 mb-2">
+                      Common CORS Issues
+                    </h3>
+                    <ul className="list-disc pl-5 space-y-2 text-amber-800 dark:text-amber-300">
+                      <li>
+                        <strong>Missing CORS Headers:</strong> API server needs to have CORS properly configured
+                      </li>
+                      <li>
+                        <strong>Mismatched Protocol:</strong> HTTP vs HTTPS origin differences
+                      </li>
+                      <li>
+                        <strong>Domain Mismatch:</strong> API server CORS settings need to include your client domain
+                      </li>
+                      <li>
+                        <strong>Credentials Mode:</strong> Issues with withCredentials and wildcard origins
+                      </li>
+                    </ul>
+                  </div>
+                  
+                  <div className="rounded-md bg-blue-50 dark:bg-blue-950/50 p-4 border border-blue-200 dark:border-blue-900">
+                    <h3 className="font-bold text-blue-800 dark:text-blue-300 mb-2">
+                      Troubleshooting Steps
+                    </h3>
+                    <ol className="list-decimal pl-5 space-y-2 text-blue-800 dark:text-blue-300">
+                      <li>Ensure API server is running on <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded">http://localhost:3001</code></li>
+                      <li>Verify <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded">NEXT_PUBLIC_API_URL</code> is set correctly in your .env file</li>
+                      <li>Check that CORS is properly configured in the server</li>
+                      <li>Try disabling withCredentials in your API client if using * wildcard origins</li>
+                      <li>Use browser developer tools Network tab to inspect response headers</li>
+                    </ol>
+                  </div>
+                  
+                  <div className="rounded-md bg-green-50 dark:bg-green-950/50 p-4 border border-green-200 dark:border-green-900">
+                    <h3 className="font-bold text-green-800 dark:text-green-300 mb-2">
+                      Client-Side Config
+                    </h3>
+                    <p className="mb-2 text-green-800 dark:text-green-300">
+                      Make sure your API client configuration is correct:
+                    </p>
+                    <pre className="bg-green-100/50 dark:bg-green-900/50 p-3 rounded-md overflow-auto text-xs text-green-800 dark:text-green-300">
+{`// In your api-client.ts file:
+const apiClient = axios.create({
+  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  withCredentials: false // Set to true only for authenticated routes
+});`}
+                    </pre>
+                  </div>
+                </div>
               </TabsContent>
             </Tabs>
-          </CardContent>
-          <CardFooter>
-            <Button variant="outline" onClick={runTest}>
-              Run Test Again
-            </Button>
-          </CardFooter>
-        </Card>
-      )}
-      
-      {!results && !loading && (
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-center text-muted-foreground">
-              Click "Run API Test" to check connectivity to the backend server.
-            </p>
-          </CardContent>
-        </Card>
-      )}
-      
-      {loading && (
-        <Card>
-          <CardContent className="py-8">
-            <div className="flex flex-col items-center justify-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mb-4"></div>
-              <p>Testing API connectivity...</p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-      
-      <div className="mt-8">
-        <h2 className="text-xl font-bold mb-4">Troubleshooting Steps</h2>
-        <div className="space-y-2">
-          <p className="text-muted-foreground">If you're having connection issues:</p>
-          <ol className="list-decimal list-inside space-y-2 ml-4">
-            <li>Ensure your server is running on <code className="bg-muted px-1 rounded">http://localhost:3001</code></li>
-            <li>Check that CORS is properly configured on your server</li>
-            <li>Verify your <code className="bg-muted px-1 rounded">NEXT_PUBLIC_API_URL</code> environment variable</li>
-            <li>Check for network issues or firewalls blocking connections</li>
-            <li>Verify the routes in your API are correctly configured</li>
-          </ol>
-        </div>
-      </div>
+          )}
+        </CardContent>
+        <CardFooter className="border-t pt-4 flex justify-between">
+          <p className="text-xs text-muted-foreground">
+            If you're still having issues, check the server logs or contact support.
+          </p>
+          <Button variant="outline" size="sm" onClick={() => router.push('/')}>
+            Return Home
+          </Button>
+        </CardFooter>
+      </Card>
     </div>
   );
 }

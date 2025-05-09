@@ -106,6 +106,10 @@ export function Navbar() {
             </NavigationMenuList>
           </NavigationMenu>
 
+          <Link href="/api-test" className="text-sm font-medium transition-colors hover:text-primary">
+            API Status
+          </Link>
+
           <ThemeToggle />
 
           <div>
@@ -198,6 +202,10 @@ export function Navbar() {
                     {item.label}
                   </Link>
                 ))}
+
+                <Link href="/api-test" className="text-sm font-medium transition-colors hover:text-primary">
+                  API Status
+                </Link>
 
                 {auth?.user ? (
                   <>

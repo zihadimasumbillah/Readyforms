@@ -18,20 +18,14 @@ if (process.env.NODE_ENV === 'development') {
 
 // Simple CORS configuration that works reliably in all environments
 app.use(cors({
-  origin: '*',  // Allow all origins - this is ok for a public API
+  origin: '*',  // Allow all origins - this is necessary for Vercel deployments
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Version']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Version', 'X-Requested-With']
 }));
 
-// Special ping endpoint for connectivity testing
-app.get('/api/ping', (req, res) => {
-  res.status(200).json({ 
-    message: 'pong', 
-    server: 'ReadyForms API',
-    env: process.env.NODE_ENV,
-    origin: req.headers.origin || 'No origin',
-    timestamp: new Date().toISOString() 
-  });
+// Explicitly handle OPTIONS requests for CORS preflight
+app.options('*', (req, res) => {
+  res.status(204).end();
 });
 
 // Health check route that doesn't require API prefix
@@ -41,6 +35,31 @@ app.get('/health', (req, res) => {
     message: 'Server is responding',
     env: process.env.NODE_ENV,
     timestamp: new Date().toISOString() 
+  });
+});
+
+// Additional simple health ping endpoint for diagnostics
+app.get('/api/ping', (req, res) => {
+  res.status(200).json({ 
+    message: 'pong',
+    server: 'ReadyForms API',
+    env: process.env.NODE_ENV,
+    origin: req.headers.origin || 'No origin',
+    timestamp: new Date().toISOString() 
+  });
+});
+
+// API diagnostics endpoints for easier debugging
+app.get('/api/status', (req, res) => {
+  res.status(200).json({
+    status: 'online',
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV,
+    headers: req.headers,
+    cors: {
+      enabled: true,
+      origin: req.headers.origin || 'No origin'
+    }
   });
 });
 
@@ -112,6 +131,7 @@ app.get('/', (req, res) => {
   res.status(200).json({ 
     message: 'ReadyForms API Server',
     status: 'Running',
+    version: process.env.npm_package_version || '1.0.0',
     timestamp: new Date().toISOString() 
   });
 });
