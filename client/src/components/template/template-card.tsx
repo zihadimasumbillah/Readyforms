@@ -25,21 +25,18 @@ export function TemplateCard({ template }: TemplateCardProps) {
   useEffect(() => {
     const fetchInteractions = async () => {
       try {
-        // Fetch like count
         if (template.likesCount === undefined) {
-          const likeCountResponse = await likeService.getLikeCount(template.id);
-          setLikesCount(likeCountResponse || 0);
+          const likeCountResponse = await likeService.getLikesCount(template.id);
+          setLikesCount(likeCountResponse.count || 0); 
         } else {
           setLikesCount(template.likesCount);
         }
         
-        // Check if user has liked this template
         if (user) {
-          const likeStatus = await likeService.checkLike(template.id);
-          setLiked(likeStatus);
+          const likeStatus = await likeService.checkLikeStatus(template.id);
+          setLiked(likeStatus.liked); 
         }
         
-        // Fetch comment count
         const comments = await commentService.getCommentsByTemplate(template.id);
         setCommentsCount(comments.length);
       } catch (error) {
@@ -80,7 +77,6 @@ export function TemplateCard({ template }: TemplateCardProps) {
       </CardHeader>
       
       <CardContent className="flex-grow">
-        {/* Show template image if available */}
         {template.imageUrl && (
           <div className="mb-3 rounded-md overflow-hidden">
             <img 

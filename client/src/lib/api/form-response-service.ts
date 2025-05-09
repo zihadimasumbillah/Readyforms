@@ -1,55 +1,78 @@
 import apiClient from './api-client';
-import { FormResponse } from '@/types';
 
+// Add the FormResponseData interface
+export interface FormResponseData {
+  id: string;
+  templateId: string;
+  userId: string;
+  customString1Answer?: string;
+  customString2Answer?: string;
+  customString3Answer?: string;
+  customString4Answer?: string;
+  customText1Answer?: string;
+  customText2Answer?: string;
+  customText3Answer?: string;
+  customText4Answer?: string;
+  customInt1Answer?: number;
+  customInt2Answer?: number;
+  customInt3Answer?: number;
+  customInt4Answer?: number;
+  customCheckbox1Answer?: boolean;
+  customCheckbox2Answer?: boolean;
+  customCheckbox3Answer?: boolean;
+  customCheckbox4Answer?: boolean;
+  score?: number;
+  totalPossiblePoints?: number;
+  scoreViewed?: boolean;
+  createdAt: string;
+  updatedAt: string;
+  user?: {
+    id: string;
+    name: string;
+    email: string;
+  };
+}
+
+// Create and export the form response service
 export const formResponseService = {
   /**
-   * Submit a form response
+   * Get all responses for a template
    */
-  async submitResponse(responseData: any): Promise<FormResponse> {
-    try {
-      const response = await apiClient.post('/responses', responseData);
-      return response.data;
-    } catch (error: any) {
-      console.error('Failed to submit form response:', error);
-      throw error;
-    }
-  },
-
-  /**
-   * Get responses for a template
-   */
-  async getResponsesByTemplate(templateId: string): Promise<FormResponse[]> {
+  async getResponsesByTemplate(templateId: string): Promise<FormResponseData[]> {
     try {
       const response = await apiClient.get(`/responses/template/${templateId}`);
       return response.data;
     } catch (error: any) {
-      console.error(`Failed to fetch responses for template ${templateId}:`, error);
+      console.error('Failed to fetch responses:', error);
       throw error;
     }
   },
 
   /**
-   * Get a specific response by ID
+   * Get response by ID
    */
-  async getResponseById(responseId: string): Promise<FormResponse> {
+  async getResponseById(id: string): Promise<FormResponseData> {
     try {
-      const response = await apiClient.get(`/responses/${responseId}`);
+      const response = await apiClient.get(`/responses/${id}`);
       return response.data;
     } catch (error: any) {
-      console.error(`Failed to fetch response ${responseId}:`, error);
+      console.error(`Failed to fetch response ${id}:`, error);
       throw error;
     }
   },
 
   /**
-   * Get responses for the current user
+   * Create new form response
    */
-  async getUserResponses(): Promise<FormResponse[]> {
+  async createResponse(responseData: any, templateId: string): Promise<FormResponseData> {
     try {
-      const response = await apiClient.get('/responses/user');
+      const response = await apiClient.post('/responses', {
+        ...responseData,
+        templateId
+      });
       return response.data;
     } catch (error: any) {
-      console.error('Failed to fetch user responses:', error);
+      console.error('Failed to create response:', error);
       throw error;
     }
   },
@@ -62,7 +85,20 @@ export const formResponseService = {
       const response = await apiClient.get(`/responses/aggregate/${templateId}`);
       return response.data;
     } catch (error: any) {
-      console.error(`Failed to fetch aggregate data for template ${templateId}:`, error);
+      console.error('Failed to fetch aggregate data:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get responses for current user
+   */
+  async getUserResponses(): Promise<FormResponseData[]> {
+    try {
+      const response = await apiClient.get('/responses/user');
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to fetch user responses:', error);
       throw error;
     }
   }

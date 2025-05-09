@@ -46,13 +46,13 @@ export default function TemplateDetailsPage({ params }: TemplateDetailsProps) {
         setTemplate(data);
       
         // Get likes count
-        const likesCount = await likeService.getLikeCount(id);
-        setLikeCount(likesCount || 0);
+        const likesCount = await likeService.getLikesCount(id);
+        setLikeCount(likesCount.count || 0); // Access the count property from the response
         
         // Check if user has liked this template
         if (user) {
-          const likeStatus = await likeService.checkLike(id);
-          setLiked(likeStatus);
+          const likeStatus = await likeService.checkLikeStatus(id);
+          setLiked(likeStatus.liked); // Extract the liked boolean property from the response object
         }
         
         // Get comments
@@ -83,7 +83,11 @@ export default function TemplateDetailsPage({ params }: TemplateDetailsProps) {
     }
 
     try {
-      const response = await likeService.toggleLike(id);
+      // Use either likeTemplate or unlikeTemplate based on the current liked state
+      const response = liked 
+        ? await likeService.unlikeTemplate(id)
+        : await likeService.likeTemplate(id);
+        
       setLiked(response.liked);
       setLikeCount(prev => response.liked ? prev + 1 : prev - 1);
 
@@ -120,10 +124,8 @@ export default function TemplateDetailsPage({ params }: TemplateDetailsProps) {
 
     setSubmittingComment(true);
     try {
-      const newComment = await commentService.createComment({
-        templateId: id,
-        content: commentContent
-      });
+      // Instead of passing an object, pass the content as a string directly
+      const newComment = await commentService.createComment(commentContent, id);
 
       setComments([...comments, newComment]);
       setCommentContent('');

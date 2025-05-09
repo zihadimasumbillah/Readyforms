@@ -61,12 +61,14 @@ export const healthService = {
       return {
         success: true,
         corsStatus: response.data.corsStatus,
+        status: 'up',
         timestamp: new Date()
       };
     } catch (error: any) {
       console.error('CORS check failed:', error);
       return {
         success: false,
+        status: 'down',
         error: error.message,
         timestamp: new Date()
       };
@@ -81,6 +83,7 @@ export const healthService = {
       const response = await apiClient.get('/ping');
       return {
         success: true,
+        status: 'up',
         message: response.data.message,
         timestamp: response.data.timestamp
       };
@@ -88,6 +91,7 @@ export const healthService = {
       console.error('API ping failed:', error);
       return {
         success: false,
+        status: 'down',
         error: error.message,
         timestamp: new Date()
       };
@@ -122,6 +126,7 @@ export const healthService = {
       // Try to get the health status
       const healthStatus = await this.getStatus().catch(err => ({
         success: false,
+        status: 'down',
         error: err.message,
         timestamp: new Date()
       }));
@@ -132,6 +137,7 @@ export const healthService = {
       // Try CORS check separately
       const corsCheck = await this.checkCors().catch(err => ({
         success: false,
+        status: 'down',
         error: err.message,
         timestamp: new Date()
       }));

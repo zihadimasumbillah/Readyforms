@@ -14,6 +14,17 @@ import {
 type ApiStatus = 'loading' | 'online' | 'offline';
 type AuthStatus = 'loading' | 'valid' | 'invalid' | 'none';
 
+function isAuthResponse(authStatus: any): authStatus is { 
+  success: boolean; 
+  isAuthenticated: boolean;
+  user?: { name: string }
+} {
+  return authStatus && 
+    typeof authStatus === 'object' && 
+    'success' in authStatus && 
+    'isAuthenticated' in authStatus;
+}
+
 export default function ApiHealthIndicator() {
   const [apiStatus, setApiStatus] = useState<ApiStatus>('loading');
   const [authStatus, setAuthStatus] = useState<AuthStatus>('loading');
@@ -21,15 +32,13 @@ export default function ApiHealthIndicator() {
   useEffect(() => {
     const checkHealth = async () => {
       try {
-        // Check API connection
         const connectionInfo = await apiDebug.testConnection();
         setApiStatus(connectionInfo.success ? 'online' : 'offline');
         
-        // If API is online and user is authenticated, check token validity
         if (authService.isLoggedIn()) {
           try {
             const authDebugInfo = await apiDebug.testAuth();
-            setAuthStatus(authDebugInfo.authenticated ? 'valid' : 'invalid');
+            setAuthStatus(authDebugInfo.isAuthenticated ? 'valid' : 'invalid');
           } catch (error) {
             setAuthStatus('invalid');
           }
@@ -43,7 +52,7 @@ export default function ApiHealthIndicator() {
     };
 
     checkHealth();
-    const interval = setInterval(checkHealth, 60000); // Check every minute
+    const interval = setInterval(checkHealth, 60000); 
 
     return () => clearInterval(interval);
   }, []);
@@ -80,6 +89,11 @@ export default function ApiHealthIndicator() {
             <br />
             Auth: {authStatus === 'loading' ? 'Checking...' : authStatus === 'valid' ? 'Valid' : authStatus === 'invalid' ? 'Invalid' : 'Not Logged In'}
           </p>
+          {authStatus && isAuthResponse(authStatus) && authStatus.success && authStatus.isAuthenticated && (
+            <div className="mt-2 text-sm text-green-600">
+              Authenticated as: {authStatus.user?.name || 'Unknown user'}
+            </div>
+          )}
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>

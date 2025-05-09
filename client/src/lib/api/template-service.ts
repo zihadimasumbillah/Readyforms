@@ -1,6 +1,98 @@
 import apiClient from './api-client';
 import { Template } from '@/types';
 
+// Add the TemplateCreateData interface
+export interface TemplateCreateData {
+  title: string;
+  description: string;
+  isPublic: boolean;
+  topicId: string;
+  tags: string[];
+  isQuiz?: boolean;
+  showScoreImmediately?: boolean;
+  scoringCriteria?: string;
+  customString1State?: boolean;
+  customString1Question?: string;
+  customString2State?: boolean;
+  customString2Question?: string;
+  customString3State?: boolean;
+  customString3Question?: string;
+  customString4State?: boolean;
+  customString4Question?: string;
+  customText1State?: boolean;
+  customText1Question?: string;
+  customText2State?: boolean;
+  customText2Question?: string;
+  customText3State?: boolean;
+  customText3Question?: string;
+  customText4State?: boolean;
+  customText4Question?: string;
+  customInt1State?: boolean;
+  customInt1Question?: string;
+  customInt2State?: boolean;
+  customInt2Question?: string;
+  customInt3State?: boolean;
+  customInt3Question?: string;
+  customInt4State?: boolean;
+  customInt4Question?: string;
+  customCheckbox1State?: boolean;
+  customCheckbox1Question?: string;
+  customCheckbox2State?: boolean;
+  customCheckbox2Question?: string;
+  customCheckbox3State?: boolean;
+  customCheckbox3Question?: string;
+  customCheckbox4State?: boolean;
+  customCheckbox4Question?: string;
+  questionOrder?: string;
+  [key: string]: string | boolean | string[] | undefined;
+}
+
+export interface TemplateUpdateData {
+  title: string;
+  description: string;
+  isPublic: boolean;
+  topicId: string;
+  tags: string[];
+  version: number;
+  isQuiz?: boolean;
+  showScoreImmediately?: boolean;
+  scoringCriteria?: string;
+  customString1State?: boolean;
+  customString1Question?: string;
+  customString2State?: boolean;
+  customString2Question?: string;
+  customString3State?: boolean;
+  customString3Question?: string;
+  customString4State?: boolean;
+  customString4Question?: string;
+  customText1State?: boolean;
+  customText1Question?: string;
+  customText2State?: boolean;
+  customText2Question?: string;
+  customText3State?: boolean;
+  customText3Question?: string;
+  customText4State?: boolean;
+  customText4Question?: string;
+  customInt1State?: boolean;
+  customInt1Question?: string;
+  customInt2State?: boolean;
+  customInt2Question?: string;
+  customInt3State?: boolean;
+  customInt3Question?: string;
+  customInt4State?: boolean;
+  customInt4Question?: string;
+  customCheckbox1State?: boolean;
+  customCheckbox1Question?: string;
+  customCheckbox2State?: boolean;
+  customCheckbox2Question?: string;
+  customCheckbox3State?: boolean;
+  customCheckbox3Question?: string;
+  customCheckbox4State?: boolean;
+  customCheckbox4Question?: string;
+  questionOrder?: string;
+  [key: string]: string | boolean | string[] | number | undefined;
+}
+
 export const templateService = {
   /**
    * Get all templates

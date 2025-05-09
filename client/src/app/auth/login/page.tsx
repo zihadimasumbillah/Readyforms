@@ -84,7 +84,7 @@ function LoginForm() {
       );
       
       if (response && response.token && response.user) {
-        auth?.login(response.token, response.user);
+        auth?.login(response.token, response.user.id);
         
         toast({
           title: "Login successful",

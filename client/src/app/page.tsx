@@ -23,14 +23,8 @@ export default function HomePage() {
       try {
         setLoading(true);
         const [recentData, popularData, topicsData] = await Promise.all([
-          templateService.getAllTemplates({
-            limit: 6,
-            sort: 'newest'
-          }),
-          templateService.getAllTemplates({
-            limit: 5,
-            sort: 'popular'
-          }),
+          templateService.getAllTemplates(1, 6),
+          templateService.getAllTemplates(1, 5),
           topicService.getAllTopics()
         ]);
         

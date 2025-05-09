@@ -81,7 +81,7 @@ function RegisterForm() {
       );
       
       if (response && response.token && response.user) {
-        auth?.login(response.token, response.user);
+        auth?.login(response.token, response.user.id);
         
         toast({
           title: "Account created",

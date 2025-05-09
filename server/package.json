@@ -26,7 +26,8 @@
     "pretest": "tsc",
     "test:api": "npm run pretest && jest tests/api.test.js --config=jest.config.js --forceExit --detectOpenHandles --runInBand",
     "test:extended-api": "npm run pretest && jest tests/extended-api.test.js --config=jest.config.js --forceExit --detectOpenHandles --runInBand",
-    "test:all": "npm run pretest && jest tests/*.test.js --config=jest.config.js --forceExit --detectOpenHandles --runInBand"
+    "test:all": "npm run pretest && jest tests/*.test.js --config=jest.config.js --forceExit --detectOpenHandles --runInBand",
+    "vercel-build": "node build.js"
   },
   "keywords": [],
   "author": "",

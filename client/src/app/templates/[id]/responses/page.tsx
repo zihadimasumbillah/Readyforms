@@ -66,7 +66,7 @@ export default function TemplateResponsesPage({ params }: ResponsesPageProps) {
         const responsesData = await formResponseService.getResponsesByTemplate(templateId);
         setResponses(responsesData);
   
-        const aggregateStats = await formResponseService.getResponseAggregates(templateId);
+        const aggregateStats = await formResponseService.getAggregateData(templateId);
         setAggregateData(aggregateStats);
       } catch (error) {
         console.error("Error fetching data:", error);
