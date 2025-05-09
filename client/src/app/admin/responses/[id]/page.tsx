@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft, FileText, User, Calendar, CheckCircle, XCircle } from "lucide-react";
 import { adminService } from "@/lib/api/admin-service";
-import { useAuth } from '@/contexts/auth-context';
+import { useAuth } from "@/contexts/auth-context";
 import { toast } from '@/components/ui/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { formatDate } from '@/lib/utils';
@@ -42,8 +42,7 @@ export default function ResponseDetailPage() {
         const responseId = Array.isArray(id) ? id[0] : id;
         const data = await adminService.getFormResponseById(responseId);
         setResponse(data);
-        
-        // Get template details to show questions
+
         if (data.templateId) {
           const templateData = await adminService.getTemplateById(data.templateId);
           setTemplate(templateData);
@@ -65,11 +64,34 @@ export default function ResponseDetailPage() {
     }
   }, [user, id, router]);
 
-  const handleLogout = () => {
-    if (logout) {
-      logout();
-      router.push('/auth/login');
+  const renderFieldValue = (key: string, value: any) => {
+    if (value === null || value === undefined) {
+      return <span className="text-muted-foreground italic">Not answered</span>;
     }
+    
+    if (typeof value === 'boolean') {
+      return value ? 
+        <span className="flex items-center text-green-600"><CheckCircle className="h-4 w-4 mr-1" /> Yes</span> : 
+        <span className="flex items-center text-red-600"><XCircle className="h-4 w-4 mr-1" /> No</span>;
+    }
+    
+    if (key.includes('Int') && typeof value === 'number') {
+      return <span className="font-medium">{value}</span>;
+    }
+    
+    return <span>{String(value)}</span>;
+  };
+
+  const getQuestion = (fieldName: string) => {
+    if (!template) return '';
+    
+    const match = fieldName.match(/custom(String|Text|Int|Checkbox)(\d)Answer/);
+    if (!match) return '';
+    
+    const fieldType = match[1].toLowerCase();
+    const fieldNumber = match[2];
+    const questionField = `custom${fieldType}${fieldNumber}Question`;
+    return template[questionField] || '';
   };
 
   const handleDeleteResponse = async () => {
@@ -92,39 +114,11 @@ export default function ResponseDetailPage() {
     setDeleteDialogOpen(false);
   };
 
-  // Return value display based on field type
-  const renderFieldValue = (key: string, value: any) => {
-    if (value === null || value === undefined) {
-      return <span className="text-muted-foreground italic">Not answered</span>;
+  const handleLogout = () => {
+    if (logout) {
+      logout();
+      router.push('/auth/login');
     }
-    
-    if (typeof value === 'boolean') {
-      return value ? 
-        <span className="flex items-center text-green-600"><CheckCircle className="h-4 w-4 mr-1" /> Yes</span> : 
-        <span className="flex items-center text-red-600"><XCircle className="h-4 w-4 mr-1" /> No</span>;
-    }
-    
-    if (key.includes('Int') && typeof value === 'number') {
-      return <span className="font-medium">{value}</span>;
-    }
-    
-    return <span>{String(value)}</span>;
-  };
-
-  // Get the question based on the answer field name
-  const getQuestion = (fieldName: string) => {
-    if (!template) return '';
-    
-    // Extract field type and number (e.g., "customString1Answer" -> "String1")
-    const match = fieldName.match(/custom(String|Text|Int|Checkbox)(\d)Answer/);
-    if (!match) return '';
-    
-    const fieldType = match[1].toLowerCase();
-    const fieldNumber = match[2];
-    
-    // Construct the question field name in the template
-    const questionField = `custom${fieldType}${fieldNumber}Question`;
-    return template[questionField] || '';
   };
 
   if (!user) {

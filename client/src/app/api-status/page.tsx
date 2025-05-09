@@ -63,7 +63,6 @@ export default function ApiStatusPage() {
     checkHealth();
   }, []);
 
-  // Ensure user is admin
   useEffect(() => {
     if (user && !user.isAdmin) {
       toast({

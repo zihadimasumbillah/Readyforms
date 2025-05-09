@@ -1,68 +1,87 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { ActivityIcon } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import Link from 'next/link';
-import { checkApiHealth } from '@/lib/api/health-service';
+import { useState, useEffect } from 'react';
+import { Badge } from "@/components/ui/badge";
+import { apiDebug } from '@/lib/api/api-debug';
+import { authService } from '@/lib/api/auth-service';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
-const ApiHealthIndicator = () => {
-  const [isHealthy, setIsHealthy] = useState<boolean | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+type ApiStatus = 'loading' | 'online' | 'offline';
+type AuthStatus = 'loading' | 'valid' | 'invalid' | 'none';
+
+export default function ApiHealthIndicator() {
+  const [apiStatus, setApiStatus] = useState<ApiStatus>('loading');
+  const [authStatus, setAuthStatus] = useState<AuthStatus>('loading');
 
   useEffect(() => {
     const checkHealth = async () => {
       try {
-        setIsLoading(true);
-        const healthy = await checkApiHealth();
-        setIsHealthy(healthy);
+        // Check API connection
+        const connectionInfo = await apiDebug.testConnection();
+        setApiStatus(connectionInfo.success ? 'online' : 'offline');
+        
+        // If API is online and user is authenticated, check token validity
+        if (authService.isLoggedIn()) {
+          try {
+            const authDebugInfo = await apiDebug.testAuth();
+            setAuthStatus(authDebugInfo.authenticated ? 'valid' : 'invalid');
+          } catch (error) {
+            setAuthStatus('invalid');
+          }
+        } else {
+          setAuthStatus('none');
+        }
       } catch (error) {
-        console.error('Error checking API health:', error);
-        setIsHealthy(false);
-      } finally {
-        setIsLoading(false);
+        setApiStatus('offline');
+        setAuthStatus('none');
       }
     };
-    
+
     checkHealth();
-    
-    // Check API health every 60 seconds
-    const intervalId = setInterval(checkHealth, 60000);
-    
-    return () => clearInterval(intervalId);
+    const interval = setInterval(checkHealth, 60000); // Check every minute
+
+    return () => clearInterval(interval);
   }, []);
-  
-  if (isLoading) {
-    return (
-      <Button variant="ghost" size="icon" disabled className="opacity-50">
-        <ActivityIcon className="h-4 w-4 animate-pulse" />
-      </Button>
-    );
-  }
-  
+
+  const getStatusDetails = () => {
+    if (apiStatus === 'loading' || authStatus === 'loading') {
+      return { label: 'Checking API...', variant: 'outline' as const };
+    }
+
+    if (apiStatus === 'offline') {
+      return { label: 'API Offline', variant: 'destructive' as const };
+    }
+
+    if (authStatus === 'invalid') {
+      return { label: 'Auth Invalid', variant: 'secondary' as const };
+    }
+
+    return { label: 'API Online', variant: 'default' as const };
+  };
+
+  const statusDetails = getStatusDetails();
+
   return (
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <Button 
-            variant="ghost" 
-            size="icon"
-            className={isHealthy ? 'text-green-500 hover:text-green-600' : 'text-red-500 hover:text-red-600'}
-            asChild
-          >
-            <Link href="/api-status">
-              <ActivityIcon className={`h-4 w-4 ${!isHealthy && 'animate-pulse'}`} />
-            </Link>
-          </Button>
+          <Badge variant={statusDetails.variant} className="cursor-help mr-2">
+            {statusDetails.label}
+          </Badge>
         </TooltipTrigger>
         <TooltipContent>
-          <p>API Status: {isHealthy ? 'Healthy' : 'Issues Detected'}</p>
-          <p className="text-xs text-muted-foreground">Click for details</p>
+          <p>
+            API: {apiStatus === 'loading' ? 'Checking...' : apiStatus === 'online' ? 'Connected' : 'Disconnected'}
+            <br />
+            Auth: {authStatus === 'loading' ? 'Checking...' : authStatus === 'valid' ? 'Valid' : authStatus === 'invalid' ? 'Invalid' : 'Not Logged In'}
+          </p>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
   );
-};
-
-export default ApiHealthIndicator;
+}

@@ -1,110 +1,143 @@
 import apiClient from './api-client';
-import { FormResponse } from '@/types';
 
-// Define interface for form response create data
-export interface FormResponseCreateData {
+export interface FormResponseSubmission {
   templateId: string;
-  answers: {
-    [key: string]: string | number | boolean;
+  answers: Record<string, any>;
+}
+
+export interface FormResponseData {
+  id: string;
+  templateId: string;
+  userId: string;
+  createdAt: string;
+  updatedAt: string;
+  customString1Answer?: string;
+  customString2Answer?: string;
+  customString3Answer?: string;
+  customString4Answer?: string;
+  customText1Answer?: string;
+  customText2Answer?: string;
+  customText3Answer?: string;
+  customText4Answer?: string;
+  customInt1Answer?: number;
+  customInt2Answer?: number;
+  customInt3Answer?: number;
+  customInt4Answer?: number;
+  customCheckbox1Answer?: boolean;
+  customCheckbox2Answer?: boolean;
+  customCheckbox3Answer?: boolean;
+  customCheckbox4Answer?: boolean;
+  score?: number;
+  totalPossiblePoints?: number;
+  percentScore?: number;
+  template?: {
+    id: string;
+    title: string;
   };
+  user?: {
+    id: string;
+    name: string;
+    email: string;
+  };
+}
+
+export interface FormResponseAggregateData {
+  avg_custom_int1: number | null;
+  avg_custom_int2: number | null;
+  avg_custom_int3: number | null;
+  avg_custom_int4: number | null;
+  total_responses: number;
+  string1_count: number;
+  string2_count: number;
+  string3_count: number;
+  string4_count: number;
+  text1_count: number;
+  text2_count: number;
+  text3_count: number;
+  text4_count: number;
+  checkbox1_yes_count: number;
+  checkbox2_yes_count: number;
+  checkbox3_yes_count: number;
+  checkbox4_yes_count: number;
+  avg_score: number;
+  max_score: number;
+  min_score: number;
+  avg_total_points: number;
 }
 
 export const formResponseService = {
   /**
-   * Get form response by ID
-   * @param id - The ID of the form response
-   * @returns Promise with form response
+   * Submit a form response
+   * @param formResponseData The form response data
    */
-  getResponseById: async (id: string): Promise<FormResponse> => {
+  async submitResponse(formResponseData: FormResponseSubmission): Promise<FormResponseData> {
     try {
-      const response = await apiClient.get<FormResponse>(`/form-responses/${id}`);
+      const response = await apiClient.post<FormResponseData>('/form-responses', formResponseData);
       return response.data;
-    } catch (error) {
-      console.error(`Error getting form response ${id}:`, error);
-      throw error;
-    }
-  },
-
-  /**
-   * Get form responses for a specific template
-   * @param templateId - The ID of the template
-   * @returns Promise with array of form responses
-   */
-  getResponsesByTemplate: async (templateId: string): Promise<FormResponse[]> => {
-    try {
-      const response = await apiClient.get<FormResponse[]>(`/form-responses/template/${templateId}`);
-      return response.data;
-    } catch (error) {
-      console.error(`Error getting responses for template ${templateId}:`, error);
-      throw error;
-    }
-  },
-
-  /**
-   * Create a new form response
-   * @param data - The form response data
-   * @returns Promise with created form response
-   */
-  createResponse: async (data: FormResponseCreateData): Promise<FormResponse> => {
-    try {
-      const response = await apiClient.post<FormResponse>('/form-responses', data);
-      return response.data;
-    } catch (error) {
-      console.error('Error creating form response:', error);
-      throw error;
-    }
-  },
-
-  /**
-   * Get form responses for the current user
-   * @returns Promise with array of form responses
-   */
-  getUserResponses: async (): Promise<FormResponse[]> => {
-    try {
-      const response = await apiClient.get<FormResponse[]>('/form-responses/user');
-      return response.data;
-    } catch (error) {
-      console.error('Error getting user responses:', error);
-      throw error;
-    }
-  },
-
-  /**
-   * Get aggregate data for a specific template
-   * @param templateId - The ID of the template
-   * @returns Promise with aggregate data
-   */
-  getAggregateData: async (templateId: string): Promise<any> => {
-    try {
-      const response = await apiClient.get(`/form-responses/aggregate/${templateId}`);
-      return response.data;
-    } catch (error) {
-      console.error(`Error getting aggregate data for template ${templateId}:`, error);
-      throw error;
-    }
-  },
-
-  /**
-   * Export responses for a template as CSV
-   * @param templateId - The ID of the template
-   * @returns Promise with CSV data as a string
-   */
-  exportResponsesAsCsv: async (templateId: string): Promise<string> => {
-    try {
-      const response = await apiClient.get(`/form-responses/template/${templateId}/export`, {
-        responseType: 'blob'
-      });
+    } catch (error: any) {
+      console.error('Error submitting form response:', error);
       
-      // Convert blob to string
-      return await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsText(response.data);
-      });
-    } catch (error) {
-      console.error(`Error exporting responses for template ${templateId}:`, error);
-      throw error;
+      // Special handling for authentication errors
+      if (error.response?.data?.requiresAuth) {
+        throw { ...error.response.data, requiresAuth: true };
+      }
+      
+      throw error.response?.data || { message: 'Failed to submit form response' };
+    }
+  },
+  
+  /**
+   * Get all responses for the current user
+   */
+  async getUserResponses(): Promise<FormResponseData[]> {
+    try {
+      const response = await apiClient.get<FormResponseData[]>('/form-responses/user');
+      return response.data;
+    } catch (error: any) {
+      console.error('Error fetching user responses:', error);
+      throw error.response?.data || { message: 'Failed to fetch responses' };
+    }
+  },
+  
+  /**
+   * Get a specific form response by ID
+   * @param id The response ID
+   */
+  async getResponseById(id: string): Promise<FormResponseData> {
+    try {
+      const response = await apiClient.get<FormResponseData>(`/form-responses/${id}`);
+      return response.data;
+    } catch (error: any) {
+      console.error('Error fetching response:', error);
+      throw error.response?.data || { message: 'Failed to fetch response' };
+    }
+  },
+  
+  /**
+   * Get all form responses for a template
+   * @param templateId The template ID
+   */
+  async getResponsesByTemplate(templateId: string): Promise<FormResponseData[]> {
+    try {
+      const response = await apiClient.get<FormResponseData[]>(`/form-responses/template/${templateId}`);
+      return response.data;
+    } catch (error: any) {
+      console.error('Error fetching template responses:', error);
+      throw error.response?.data || { message: 'Failed to fetch template responses' };
+    }
+  },
+  
+  /**
+   * Get aggregate data for a template's responses
+   * @param templateId The template ID
+   */
+  async getResponseAggregates(templateId: string): Promise<FormResponseAggregateData> {
+    try {
+      const response = await apiClient.get<FormResponseAggregateData>(`/form-responses/aggregate/${templateId}`);
+      return response.data;
+    } catch (error: any) {
+      console.error('Error fetching response aggregates:', error);
+      throw error.response?.data || { message: 'Failed to fetch response statistics' };
     }
   }
 };

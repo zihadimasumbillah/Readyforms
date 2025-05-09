@@ -1,56 +1,62 @@
 import apiClient from './api-client';
 
-interface Comment {
+export interface Comment {
   id: string;
   content: string;
-  userId: string;
-  templateId: string;
   createdAt: string;
   updatedAt: string;
-  user: {
+  userId: string;
+  templateId: string;
+  user?: {
     id: string;
     name: string;
   };
 }
 
-const commentService = {
+export interface CreateCommentRequest {
+  templateId: string;
+  content: string;
+}
+
+export const commentService = {
   /**
-   * Get all comments for a template
+   * @param templateId The ID of the template
    */
-  getCommentsByTemplate: async (templateId: string): Promise<Comment[]> => {
+  async getCommentsByTemplate(templateId: string): Promise<Comment[]> {
     try {
       const response = await apiClient.get<Comment[]>(`/comments/template/${templateId}`);
       return response.data;
-    } catch (error) {
-      console.error(`Get comments error for template ${templateId}:`, error);
-      throw error;
+    } catch (error: any) {
+      console.error('Error fetching comments:', error);
+      return [];
     }
   },
-
+  
   /**
-   * Create a new comment
+   * @param comment The comment data
    */
-  createComment: async (templateId: string, content: string): Promise<Comment> => {
+  async createComment(comment: CreateCommentRequest): Promise<Comment> {
     try {
-      const response = await apiClient.post<Comment>('/comments', { templateId, content });
+      const response = await apiClient.post<Comment>('/comments', comment);
       return response.data;
-    } catch (error) {
-      console.error(`Create comment error for template ${templateId}:`, error);
-      throw error;
+    } catch (error: any) {
+      console.error('Error creating comment:', error);
+      throw error.response?.data || { message: 'Failed to create comment' };
     }
   },
-
+  
   /**
-   * Delete a comment
+   * @param commentId The ID of the comment to delete
+   * @param version The version of the comment for optimistic locking
    */
-  deleteComment: async (commentId: string, version: number): Promise<void> => {
+  async deleteComment(commentId: string, version: number): Promise<void> {
     try {
-      await apiClient.delete(`/comments/${commentId}`, { 
-        data: { version } 
+      await apiClient.delete(`/comments/${commentId}`, {
+        data: { version }
       });
-    } catch (error) {
-      console.error(`Delete comment error for comment ${commentId}:`, error);
-      throw error;
+    } catch (error: any) {
+      console.error('Error deleting comment:', error);
+      throw error.response?.data || { message: 'Failed to delete comment' };
     }
   }
 };

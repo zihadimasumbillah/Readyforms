@@ -1,60 +1,70 @@
 import fs from 'fs';
 import path from 'path';
+import { pathToRegexp } from 'path-to-regexp';
 
-export function scanRoutes(baseDir: string): void {
-  const routesDir = path.join(baseDir, 'routes');
+/**
+ * Scans all route files for problematic patterns like URLs being used as route paths
+ */
+export function scanRouteFiles() {
+  const routesDir = path.join(__dirname, '..', 'routes');
+  console.log(`Scanning route files in ${routesDir}`);
   
-  console.log(`Scanning routes directory: ${routesDir}`);
-  
-  if (!fs.existsSync(routesDir)) {
-    console.error(`Routes directory not found: ${routesDir}`);
-    return;
-  }
-  
-  const routeFiles = fs.readdirSync(routesDir)
-    .filter(file => file.endsWith('.routes.ts') || file.endsWith('.routes.js'));
-  
-  console.log(`Found ${routeFiles.length} route files`);
-  
-  let suspiciousPatterns = 0;
-  const routeRegex = /router\.(get|post|put|delete|patch)\s*\(\s*["']([^"']+)["']/g;
-  const suspiciousRegex = /https?:\/\//;
-  
-  routeFiles.forEach(file => {
-    const filePath = path.join(routesDir, file);
-    const content = fs.readFileSync(filePath, 'utf-8');
+  try {
+    const files = fs.readdirSync(routesDir);
+    let problemsFound = false;
     
-    let match;
-    while ((match = routeRegex.exec(content)) !== null) {
-      const method = match[1];
-      const routePath = match[2];
-
-      if (suspiciousRegex.test(routePath)) {
-        suspiciousPatterns++;
-        console.error(`[ISSUE] Found suspicious route pattern in ${file}:`);
-        console.error(`  ${method.toUpperCase()} ${routePath}`);
-        console.error(`  Route paths should be relative paths, not full URLs`);
+    files.forEach(file => {
+      if (!file.endsWith('.ts') && !file.endsWith('.js')) return;
+      
+      const filePath = path.join(routesDir, file);
+      const content = fs.readFileSync(filePath, 'utf8');
+      
+      // Look for router method calls with URLs instead of paths
+      const urlRegex = /router\.(get|post|put|delete|patch|options)\s*\(\s*['"`](https?:\/\/[^'"`]+)['"`]/g;
+      let match;
+      
+      while ((match = urlRegex.exec(content)) !== null) {
+        const method = match[1];
+        const url = match[2];
+        
+        console.error(`ERROR in ${file}:`);
+        console.error(`  Found URL used as route path: ${method.toUpperCase()} ${url}`);
+        console.error(`  URLs cannot be used as Express route paths. Use a path like '/example' instead.`);
+        console.error();
+        
+        problemsFound = true;
       }
       
-      // Check for other common route pattern issues
-      if (routePath.includes(':{')) {
-        console.warn(`[WARNING] Possible parameter format issue in ${file}:`);
-        console.warn(`  ${method.toUpperCase()} ${routePath}`);
-        console.warn(`  Route parameters should be in the format ':paramName'`);
+      // Look for syntactically valid but semantically problematic paths
+      const pathRegex = /router\.(get|post|put|delete|patch|options)\s*\(\s*['"`]([^'"`]+)['"`]/g;
+      while ((match = pathRegex.exec(content)) !== null) {
+        const method = match[1];
+        const routePath = match[2];
+        
+        try {
+          pathToRegexp(routePath);
+        } catch (error) {
+          console.error(`ERROR in ${file}:`);
+          console.error(`  Invalid route pattern: ${method.toUpperCase()} ${routePath}`);
+          console.error(`  Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          console.error();
+          
+          problemsFound = true;
+        }
       }
+    });
+    
+    if (!problemsFound) {
+      console.log("No problematic routes found. All routes appear to be valid!");
+    } else {
+      console.error("IMPORTANT: Please fix the problematic routes identified above before starting the server.");
     }
-  });
-  
-  if (suspiciousPatterns === 0) {
-    console.log('No obvious route pattern issues found.');
-    console.log('The path-to-regexp error might be occurring at runtime.');
-    console.log('Check for dynamic route registration or routes using variables.');
-  } else {
-    console.error(`Found ${suspiciousPatterns} suspicious route patterns that might cause path-to-regexp errors.`);
+  } catch (error) {
+    console.error("Error scanning route files:", error);
   }
 }
 
+// Run the scanner if this script is executed directly
 if (require.main === module) {
-  const baseDir = process.cwd();
-  scanRoutes(baseDir);
+  scanRouteFiles();
 }

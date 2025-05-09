@@ -49,7 +49,6 @@ export const authenticateToken: RequestHandler = async (
       }
 
       try {
-        console.log(`Looking up user with ID: ${decoded.id}`);
         const user = await User.findByPk(decoded.id);
         
         if (!user) {
@@ -91,6 +90,64 @@ export const authenticateToken: RequestHandler = async (
   } catch (error) {
     console.error('Authentication error:', error);
     res.status(500).json({ message: 'Authentication error' });
+    return;
+  }
+};
+
+export const optionalAuthMiddleware: RequestHandler = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const authHeader = req.headers.authorization;
+    const token = authHeader && authHeader.split(' ')[1];
+    
+    if (!token) {
+      next();
+      return;
+    }
+
+    try {
+      const decoded = jwt.verify(token, jwtConfig.secret) as DecodedToken;
+      
+      if (typeof decoded !== 'object' || !decoded.id) {
+        next(); 
+        return;
+      }
+
+      if (!isUuid(decoded.id)) {
+        next(); 
+        return;
+      }
+
+      try {
+        const user = await User.findByPk(decoded.id);
+        
+        if (!user || user.blocked) {
+          next(); 
+          return;
+        }
+
+        req.user = {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          isAdmin: user.isAdmin,
+          language: user.language,
+          theme: user.theme
+        };
+        
+        next();
+      } catch (dbError) {
+        console.error('Database error in optional auth middleware:', dbError);
+        next(); // Continue without setting user
+        return;
+      }
+    } catch (error) {
+      console.error('Token verification error in optional auth:', error);
+      next(); 
+      return;
+    }
+  } catch (error) {
+    console.error('Authentication error in optional auth:', error);
+    next(); 
     return;
   }
 };

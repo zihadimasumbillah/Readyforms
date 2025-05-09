@@ -1,31 +1,23 @@
 "use client";
 
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { TemplateForm } from "@/components/template/template-form";
-import { Navbar } from "@/components/navbar";
-import templateService from "@/lib/api/template-service";
-import { Topic } from "@/types";
-import { topicService } from "@/lib/api/topic-service";
-import { useRouter } from "next/navigation";
-import { toast } from "@/components/ui/use-toast";
-import { useAuth } from "@/contexts/auth-context";
-import { ChevronLeft } from "lucide-react";
-import Link from "next/link";
-import { useMounted } from "@/hooks/use-mounted";
-
-// Mark this page as dynamic to prevent static generation
-export const dynamic = 'force-dynamic';
-export const dynamicParams = true;
+import React, { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { templateService } from '@/lib/api/template-service';
+import { topicService } from '@/lib/api/topic-service';
+import { useAuth } from '@/contexts/auth-context';
+import { toast } from '@/components/ui/use-toast';
+import { DashboardLayout } from '@/components/layouts/dashboard-layout';
+import { TemplateForm } from '@/components/template/template-form';
+import { Loader2 } from 'lucide-react';
+import { Topic } from '@/types';
 
 export default function CreateTemplatePage() {
   const [topics, setTopics] = useState<Topic[]>([]);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const router = useRouter();
   const auth = useAuth();
   const user = auth?.user;
-  const isMounted = useMounted();
 
   useEffect(() => {
     const fetchTopics = async () => {
@@ -34,138 +26,98 @@ export default function CreateTemplatePage() {
         const topicsData = await topicService.getAllTopics();
         setTopics(topicsData);
       } catch (error) {
-        console.error("Error fetching topics:", error);
+        console.error('Error fetching topics:', error);
         toast({
-          title: "Error",
-          description: "Failed to load topics. Please try again.",
-          variant: "destructive"
+          title: 'Error',
+          description: 'Failed to load topics. Please try again.',
+          variant: 'destructive',
         });
       } finally {
         setLoading(false);
       }
     };
 
-    if (isMounted) {
+    if (user) {
       fetchTopics();
+    } else {
+      router.push('/auth/login');
     }
-  }, [isMounted]);
+  }, [user, router]);
 
   const handleCreateTemplate = async (formData: any) => {
     try {
-      if (!user) {
-        toast({
-          title: "Authentication required",
-          description: "Please log in to create a template",
-          variant: "destructive"
-        });
-        router.push('/auth/login');
-        return;
-      }
-      
-      // Check if at least one field is enabled
-      const hasEnabledField = Object.keys(formData).some(key => 
-        key.endsWith('State') && formData[key] === true
-      );
-      
-      if (!hasEnabledField) {
-        toast({
-          title: "Validation Error",
-          description: "Please add at least one question to your template",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      const result = await templateService.createTemplate(formData);
-      
+      setSaving(true);
+      const template = await templateService.createTemplate(formData);
       toast({
         title: "Success",
-        description: "Template created successfully",
+        description: "Template created successfully."
       });
-      
-      router.push(`/templates/${result.id}`);
-    } catch (error) {
-      console.error("Error creating template:", error);
+      router.push(`/templates/${template.id}`);
+    } catch (error: any) {
+      console.error('Error creating template:', error);
       toast({
         title: "Error",
-        description: "Failed to create template. Please try again.",
+        description: error.response?.data?.message || "Failed to create template. Please try again.",
         variant: "destructive"
       });
+    } finally {
+      setSaving(false);
     }
   };
 
-  // Only redirect once the component is mounted in the browser
-  useEffect(() => {
-    if (isMounted && !user) {
+  const handleCancel = () => {
+    router.push('/dashboard/templates');
+  };
+
+  const handleLogout = () => {
+    if (auth?.logout) {
+      auth.logout();
       router.push('/auth/login');
     }
-  }, [isMounted, user, router]);
+  };
 
-  // If not mounted yet, render a loading state instead of null
-  if (!isMounted) {
-    return (
-      <>
-        <Navbar />
-        <main className="container py-6">
-          <div className="flex items-center justify-center h-[60vh]">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-          </div>
-        </main>
-      </>
-    );
-  }
-
-  // If mounted but no user, show nothing (redirection will happen via useEffect)
   if (!user) {
     return (
-      <>
-        <Navbar />
-        <main className="container py-6">
-          <div className="flex flex-col items-center justify-center h-[60vh]">
-            <p className="text-center mb-4">Authentication required. Redirecting to login page...</p>
-            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
-          </div>
-        </main>
-      </>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="flex flex-col items-center space-y-4">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p>Loading...</p>
+        </div>
+      </div>
     );
   }
 
   return (
-    <>
-      <Navbar />
-      <main className="container py-6">
-        <div className="flex items-center mb-6">
-          <Button variant="outline" size="icon" className="mr-4" asChild>
-            <Link href="/dashboard/templates">
-              <ChevronLeft className="h-4 w-4" />
-            </Link>
-          </Button>
-          <h1 className="text-2xl font-bold">Create Template</h1>
-        </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>New Template</CardTitle>
-            <CardDescription>
-              Create a new form template with custom questions
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <div className="flex justify-center p-8">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-              </div>
-            ) : (
-              <TemplateForm 
-                topics={topics}
-                onSubmit={handleCreateTemplate}
-                isEditMode={false}
-                submitButtonLabel="Create Template"
-              />
-            )}
-          </CardContent>
-        </Card>
-      </main>
-    </>
+    <DashboardLayout
+      user={{
+        name: user.name || '',
+        email: user.email || '',
+        isAdmin: user.isAdmin || false
+      }}
+      onLogout={handleLogout}
+    >
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold">Create Template</h1>
+        <p className="text-muted-foreground">Design your form template</p>
+      </div>
+      
+      <div className="space-y-8">
+        {loading ? (
+          <div className="flex items-center justify-center h-64">
+            <div className="flex flex-col items-center space-y-4">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p>Loading topics...</p>
+            </div>
+          </div>
+        ) : (
+          <TemplateForm 
+            topics={topics}
+            handleSave={handleCreateTemplate}
+            handleCancel={handleCancel}
+            isSubmitting={saving}
+          />
+        )}
+      </div>
+    </DashboardLayout>
   );
 }

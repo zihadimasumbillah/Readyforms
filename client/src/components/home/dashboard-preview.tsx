@@ -1,98 +1,110 @@
 "use client";
 
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { ChevronRight, FileText, Heart, MessageSquare } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
-export function DashboardPreview() {
+export function DashboardPreview({ className }: { className?: string }) {
   return (
-    <div className="w-full max-w-4xl mx-auto overflow-hidden rounded-lg border bg-background shadow">
-      <div className="flex border-b">
-        <div className="hidden md:block w-64 border-r p-6">
-          {/* Sidebar Navigation */}
-          <div className="space-y-1">
-            {['Dashboard', 'My Templates', 'Responses', 'Settings'].map((item, i) => (
-              <div 
-                key={i}
-                className={`px-3 py-2 rounded-md text-sm font-medium ${
-                  i === 0 ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'
-                }`}
-              >
-                {item}
-              </div>
-            ))}
-          </div>
+    <div className={cn("rounded-xl border border-muted bg-card shadow-md", className)}>
+      <div className="flex h-10 items-center border-b bg-muted/50 px-4">
+        <div className="flex items-center space-x-2">
+          <div className="h-2.5 w-2.5 rounded-full bg-red-500"></div>
+          <div className="h-2.5 w-2.5 rounded-full bg-yellow-500"></div>
+          <div className="h-2.5 w-2.5 rounded-full bg-green-500"></div>
+        </div>
+        <div className="mx-auto text-xs text-muted-foreground">Preview of ReadyForms Dashboard</div>
+      </div>
+      
+      <div className="p-4">
+        <div className="grid grid-cols-3 gap-4 mb-4">
+          <Card className="shadow-sm">
+            <CardHeader className="p-3">
+              <CardTitle className="text-sm">Total Templates</CardTitle>
+            </CardHeader>
+            <CardContent className="p-3 pt-0">
+              <p className="text-2xl font-bold">24</p>
+              <p className="text-xs text-muted-foreground">+12% from last month</p>
+            </CardContent>
+          </Card>
+          
+          <Card className="shadow-sm">
+            <CardHeader className="p-3">
+              <CardTitle className="text-sm">Form Responses</CardTitle>
+            </CardHeader>
+            <CardContent className="p-3 pt-0">
+              <p className="text-2xl font-bold">142</p>
+              <p className="text-xs text-muted-foreground">+8% from last month</p>
+            </CardContent>
+          </Card>
+          
+          <Card className="shadow-sm">
+            <CardHeader className="p-3">
+              <CardTitle className="text-sm">Completion Rate</CardTitle>
+            </CardHeader>
+            <CardContent className="p-3 pt-0">
+              <p className="text-2xl font-bold">87%</p>
+              <p className="text-xs text-muted-foreground">+3% from last month</p>
+            </CardContent>
+          </Card>
         </div>
         
-        <div className="flex-1 p-4 md:p-6 overflow-auto h-[380px]">
-          <div className="mb-8">
-            <h2 className="text-xl font-semibold mb-4">Recent Templates</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card className="shadow-sm mb-4">
+          <CardHeader className="p-3">
+            <CardTitle className="text-sm">Recent Templates</CardTitle>
+          </CardHeader>
+          <CardContent className="p-3 pt-0">
+            <div className="space-y-2">
               {[
-                {
-                  title: "Customer Feedback",
-                  responses: 24,
-                  likes: 8,
-                  comments: 3
-                },
-                {
-                  title: "Event Registration",
-                  responses: 56,
-                  likes: 12,
-                  comments: 5
-                }
-              ].map((template, i) => (
-                <Card key={i} className="overflow-hidden">
-                  <CardHeader className="p-4 pb-2">
-                    <div className="flex items-start justify-between">
-                      <CardTitle className="text-base">{template.title}</CardTitle>
-                      <Badge variant="outline" className="text-xs">
-                        {template.responses} responses
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="p-4 pt-2">
-                    <div className="flex items-center text-xs text-muted-foreground">
-                      <div className="flex items-center mr-3">
-                        <Heart className="h-3 w-3 mr-1" />
-                        <span>{template.likes}</span>
-                      </div>
-                      <div className="flex items-center">
-                        <MessageSquare className="h-3 w-3 mr-1" />
-                        <span>{template.comments}</span>
-                      </div>
-                      <div className="ml-auto flex items-center">
-                        <span>View</span>
-                        <ChevronRight className="h-3 w-3 ml-1" />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
-          
-          <div>
-            <h2 className="text-xl font-semibold mb-4">Analytics</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-              {[
-                { title: "Templates", value: "12", icon: <FileText className="h-4 w-4" /> },
-                { title: "Responses", value: "148", icon: <MessageSquare className="h-4 w-4" /> },
-                { title: "Likes", value: "38", icon: <Heart className="h-4 w-4" /> }
-              ].map((stat, i) => (
-                <div key={i} className="bg-muted/50 p-4 rounded-lg">
-                  <div className="flex items-center mb-2">
-                    <div className="mr-2 rounded-full bg-primary/10 p-1.5 text-primary">
-                      {stat.icon}
-                    </div>
-                    <p className="text-xs text-muted-foreground">{stat.title}</p>
-                  </div>
-                  <p className="text-2xl font-bold">{stat.value}</p>
+                "Customer Satisfaction Survey",
+                "Employee Feedback Form",
+                "Product Evaluation Quiz"
+              ].map((item, i) => (
+                <div key={i} className="flex justify-between border-b pb-1 last:border-0">
+                  <p className="text-xs">{item}</p>
+                  <p className="text-xs text-muted-foreground">{i + 1} day{i !== 0 ? 's' : ''} ago</p>
                 </div>
               ))}
             </div>
-          </div>
+          </CardContent>
+        </Card>
+        
+        <div className="grid grid-cols-2 gap-4">
+          <Card className="shadow-sm">
+            <CardHeader className="p-3">
+              <CardTitle className="text-sm">Activity Overview</CardTitle>
+            </CardHeader>
+            <CardContent className="p-3 pt-0 h-20 flex items-center justify-center">
+              <div className="w-full h-8 bg-muted rounded-sm flex items-end">
+                {[30, 45, 20, 60, 75, 45, 35].map((h, i) => (
+                  <div 
+                    key={i} 
+                    className="flex-1 mx-0.5"
+                    style={{ height: `${h}%`, backgroundColor: 'var(--primary)' }}
+                  ></div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card className="shadow-sm">
+            <CardHeader className="p-3">
+              <CardTitle className="text-sm">Upcoming Tasks</CardTitle>
+            </CardHeader>
+            <CardContent className="p-3 pt-0">
+              <div className="space-y-2">
+                {[
+                  "Review responses",
+                  "Update feedback form"
+                ].map((task, i) => (
+                  <div key={i} className="flex items-center gap-2 text-xs">
+                    <div className="h-2.5 w-2.5 rounded-full bg-primary"></div>
+                    {task}
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>

@@ -8,16 +8,12 @@ export interface UserStats {
 }
 
 const dashboardService = {
-  /**
-   * Get user dashboard stats
-   */
   getUserStats: async (): Promise<UserStats> => {
     try {
       const response = await apiClient.get<UserStats>('/dashboard/stats');
       return response.data;
     } catch (error) {
       console.error('Get user stats error:', error);
-      // Return default stats on error
       return {
         templates: 0,
         responses: 0,
@@ -27,13 +23,9 @@ const dashboardService = {
     }
   },
 
-  /**
-   * Get user templates
-   */
   getUserTemplates: async (): Promise<any[]> => {
     try {
       const response = await apiClient.get<any[]>('/dashboard/templates');
-      // Ensure we always return an array even if the API fails or returns undefined
       if (!response || !Array.isArray(response)) {
         console.warn('API returned invalid data for templates:', response);
         return [];
@@ -45,13 +37,9 @@ const dashboardService = {
     }
   },
 
-  /**
-   * Get user's form responses
-   */
   getUserResponses: async (): Promise<any[]> => {
     try {
       const response = await apiClient.get<any[]>('/dashboard/responses');
-      // Ensure we always return an array even if the API fails
       if (!response || !Array.isArray(response)) {
         console.warn('API returned invalid data for responses:', response);
         return [];
@@ -63,13 +51,9 @@ const dashboardService = {
     }
   },
 
-  /**
-   * Get recent activity
-   */
   getRecentActivity: async (limit: number = 5): Promise<any[]> => {
     try {
       const response = await apiClient.get<any[]>(`/dashboard/activity?limit=${limit}`);
-      // Ensure we always return an array even if the API fails
       if (!response || !Array.isArray(response)) {
         console.warn('API returned invalid data for activity:', response);
         return [];
@@ -81,12 +65,8 @@ const dashboardService = {
     }
   },
 
-  /**
-   * Delete a template
-   */
   deleteTemplate: async (id: string, version: number): Promise<void> => {
     try {
-      // Version must be included for optimistic locking
       const data = { version };
       await apiClient.delete(`/templates/${id}`, { data });
     } catch (error) {
@@ -96,6 +76,5 @@ const dashboardService = {
   },
 };
 
-// Export both as default and named export
 export { dashboardService };
 export default dashboardService;

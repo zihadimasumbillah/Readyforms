@@ -1,132 +1,84 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
-import { DashboardLayout } from "@/components/layouts/dashboard-layout";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import React, { useState, useEffect } from 'react';
+import { DashboardLayout } from '@/components/layouts/dashboard-layout';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { adminService } from "@/lib/api/admin-service";
-import { Skeleton } from "@/components/ui/skeleton";
-import { User } from "@/types";
-import { useAuth } from "@/contexts/auth-context";
-import { useRouter } from "next/navigation";
-import { toast } from '@/components/ui/use-toast';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow
 } from "@/components/ui/table";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Badge } from "@/components/ui/badge";
-import { 
-  Search, 
-  Shield, 
-  ShieldOff, 
-  UserCheck,
-  UserX,
-  ChevronLeft,
-  UserCog,
-  RefreshCw,
-  Filter
-} from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, 
+  DropdownMenuSeparator, DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
+import { Badge } from "@/components/ui/badge";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Search, MoreHorizontal, Shield, ShieldOff, Ban, UserCheck, UserCog } from 'lucide-react';
+import { useAuth } from '@/contexts/auth-context';
+import { useRouter } from 'next/navigation';
+import { adminService } from '@/lib/api/admin-service';
+import { Skeleton } from '@/components/ui/skeleton';
+import { toast } from '@/components/ui/use-toast';
+import { User } from '@/types';
+
+// Define possible filter statuses
+type StatusFilter = 'all' | 'active' | 'blocked' | 'admin';
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterStatus, setFilterStatus] = useState<string>('all');
-  const [filterRole, setFilterRole] = useState<string>('all');
-  const [userToModify, setUserToModify] = useState<User | null>(null);
-  const [modifyAction, setModifyAction] = useState<'block' | 'unblock' | 'admin' | 'removeAdmin' | null>(null);
-  const [processingId, setProcessingId] = useState<string | null>(null);
+  const [status, setStatus] = useState<StatusFilter>('all');
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [action, setAction] = useState<'block' | 'unblock' | 'makeAdmin' | 'removeAdmin' | null>(null);
   
   const auth = useAuth();
   const user = auth?.user;
   const logout = auth?.logout;
   const router = useRouter();
 
-  const handleLogout = () => {
-    if (logout) {
-      logout();
-      router.push('/auth/login');
-    }
-  };
-
-  const fetchUsers = async () => {
-    try {
-      setLoading(true);
-      const data = await adminService.getAllUsers();
-      setUsers(data);
-      applyFilters(data, searchQuery, filterStatus, filterRole);
-    } catch (error) {
-      console.error("Error fetching users:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load users. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    if (user) {
-      // Check if user is admin
-      if (!user.isAdmin) {
-        toast({
-          title: "Access denied",
-          description: "You don't have permission to access this page",
-          variant: "destructive"
-        });
+    const fetchUsers = async () => {
+      if (!user?.isAdmin) {
         router.push('/dashboard');
         return;
       }
-      
-      fetchUsers();
-    } else {
-      // Redirect to login if no user is found
-      router.push('/auth/login');
-    }
+
+      try {
+        setLoading(true);
+        const data = await adminService.getAllUsers();
+        setUsers(data);
+        setFilteredUsers(data);
+      } catch (error) {
+        console.error("Error fetching users:", error);
+        toast({
+          title: "Error",
+          description: "Failed to fetch users. Please try again later.",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUsers();
   }, [user, router]);
 
-  const applyFilters = (userList: User[], query: string, status: string, role: string) => {
-    let filtered = [...userList];
+  useEffect(() => {
+    // Apply search and filters
+    let filtered = [...users];
     
     // Apply search filter
-    if (query.trim() !== '') {
-      const lowercaseQuery = query.toLowerCase();
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
       filtered = filtered.filter(user => 
-        user.name.toLowerCase().includes(lowercaseQuery) || 
-        user.email.toLowerCase().includes(lowercaseQuery)
+        user.name?.toLowerCase().includes(query) || 
+        user.email?.toLowerCase().includes(query)
       );
     }
     
@@ -135,364 +87,322 @@ export default function AdminUsersPage() {
       filtered = filtered.filter(user => user.blocked);
     } else if (status === 'active') {
       filtered = filtered.filter(user => !user.blocked);
-    }
-    
-    // Apply role filter
-    if (role === 'admin') {
+    } else if (status === 'admin') {
       filtered = filtered.filter(user => user.isAdmin);
-    } else if (role === 'regular') {
-      filtered = filtered.filter(user => !user.isAdmin);
     }
     
     setFilteredUsers(filtered);
-  };
+  }, [searchQuery, status, users]);
 
-  useEffect(() => {
-    applyFilters(users, searchQuery, filterStatus, filterRole);
-  }, [searchQuery, filterStatus, filterRole, users]);
-
-  const handleToggleBlock = async (userId: string) => {
-    try {
-      setLoading(true);
-      const updatedUser = await adminService.toggleUserBlock(userId);
-      
-      // Now updatedUser will be just the User object, not {user: User}
-      setUsers(users.map(user => 
-        user.id === updatedUser.id ? updatedUser : user
-      ));
-
-      toast({
-        title: `User ${updatedUser.blocked ? 'blocked' : 'unblocked'}`,
-        description: `${updatedUser.name} has been ${updatedUser.blocked ? 'blocked' : 'unblocked'}.`
-      });
-    } catch (error) {
-      console.error("Error toggling user block status:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update user status. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
+  const handleLogout = () => {
+    if (logout) {
+      logout();
+      router.push('/auth/login');
     }
   };
 
-  const handleToggleAdmin = async (userId: string) => {
-    try {
-      setLoading(true);
-      const updatedUser = await adminService.toggleUserAdmin(userId);
-      
-      // Now updatedUser will be just the User object, not {user: User}
-      setUsers(users.map(user => 
-        user.id === updatedUser.id ? updatedUser : user
-      ));
-
-      toast({
-        title: `Admin privileges ${updatedUser.isAdmin ? 'granted' : 'revoked'}`,
-        description: `${updatedUser.name} is ${updatedUser.isAdmin ? 'now' : 'no longer'} an administrator.`
-      });
-    } catch (error) {
-      console.error("Error toggling user admin status:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update user role. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const confirmAction = (user: User, action: 'block' | 'unblock' | 'admin' | 'removeAdmin') => {
-    setUserToModify(user);
-    setModifyAction(action);
-  };
-
-  const cancelAction = () => {
-    setUserToModify(null);
-    setModifyAction(null);
-  };
-
-  const executeAction = () => {
-    if (!userToModify) return;
+  const handleAction = async () => {
+    if (!selectedUser || !action) return;
     
-    if (modifyAction === 'block' || modifyAction === 'unblock') {
-      handleToggleBlock(userToModify.id);
-    } else if (modifyAction === 'admin' || modifyAction === 'removeAdmin') {
-      handleToggleAdmin(userToModify.id);
+    try {
+      let result;
+      
+      switch (action) {
+        case 'block':
+        case 'unblock':
+          result = await adminService.toggleUserBlock(selectedUser.id);
+          break;
+        case 'makeAdmin':
+        case 'removeAdmin':
+          result = await adminService.toggleUserAdmin(selectedUser.id);
+          break;
+      }
+      
+      if (result) {
+        // Update the user in the local state
+        const updatedUsers = users.map(u => {
+          if (u.id === selectedUser.id) {
+            return {
+              ...u,
+              blocked: action === 'block' ? true : action === 'unblock' ? false : u.blocked,
+              isAdmin: action === 'makeAdmin' ? true : action === 'removeAdmin' ? false : u.isAdmin
+            };
+          }
+          return u;
+        });
+        
+        setUsers(updatedUsers);
+        
+        toast({
+          title: "Success",
+          description: `User ${selectedUser.name} was ${
+            action === 'block' ? 'blocked' : 
+            action === 'unblock' ? 'unblocked' : 
+            action === 'makeAdmin' ? 'made admin' : 
+            'removed from admin'
+          } successfully.`,
+        });
+      }
+    } catch (error) {
+      console.error(`Error during ${action}:`, error);
+      toast({
+        title: "Error",
+        description: `Failed to ${action} user. Please try again.`,
+        variant: "destructive",
+      });
+    } finally {
+      setSelectedUser(null);
+      setAction(null);
     }
   };
-
-  const formatDate = (dateString: string) => {
+  
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return 'Never';
     const date = new Date(dateString);
     return new Intl.DateTimeFormat('en-US', {
+      year: 'numeric',
       month: 'short',
       day: 'numeric',
-      year: 'numeric'
+      hour: '2-digit',
+      minute: '2-digit'
     }).format(date);
   };
-
+  
   if (!user) {
-    return <div className="flex items-center justify-center min-h-screen">
-      <div className="text-center space-y-4">
-        <h2 className="text-2xl font-bold">Loading users</h2>
-        <div className="flex justify-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-        </div>
-      </div>
-    </div>;
+    return <div>Loading...</div>;
   }
 
   return (
     <DashboardLayout
       user={{
-        name: user.name || 'Admin User',
+        name: user.name || 'Admin',
         email: user.email || 'admin@example.com',
         isAdmin: true
       }}
       onLogout={handleLogout}
     >
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center space-x-2">
-          <Button variant="outline" size="icon" asChild>
-            <div onClick={() => router.push('/admin')}>
-              <ChevronLeft className="h-4 w-4" />
-            </div>
-          </Button>
-          <h1 className="text-2xl font-bold">User Management</h1>
-        </div>
-        <Button onClick={fetchUsers} variant="outline" className="gap-2">
-          <RefreshCw className="h-4 w-4" />
-          Refresh
-        </Button>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold">User Management</h1>
+        <p className="text-muted-foreground">Manage user accounts and permissions</p>
       </div>
 
-      <Card className="mb-8">
-        <CardHeader>
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
-              <CardTitle>All Users</CardTitle>
-              <CardDescription>Manage user accounts and permissions</CardDescription>
+      <Card>
+        <CardHeader className="flex flex-col space-y-2 lg:flex-row lg:items-center lg:justify-between lg:space-y-0">
+          <CardTitle>Users</CardTitle>
+          <div className="flex flex-col space-y-2 md:flex-row md:items-center md:space-x-2 md:space-y-0">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="search"
+                placeholder="Search users..."
+                className="pl-8 w-full md:w-[200px] lg:w-[300px]"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
             </div>
-            
-            <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
-              <div className="relative">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="search"
-                  placeholder="Search users..."
-                  className="pl-8 w-full sm:w-[200px] md:w-[260px]"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
-              
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-2">
-                  <Filter className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-medium text-muted-foreground hidden sm:inline">Filter:</span>
-                </div>
-                
-                <div className="flex flex-wrap gap-2">
-                  <Select value={filterStatus} onValueChange={setFilterStatus}>
-                    <SelectTrigger className="w-[120px]">
-                      <SelectValue placeholder="Status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Status</SelectItem>
-                      <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="blocked">Blocked</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  
-                  <Select value={filterRole} onValueChange={setFilterRole}>
-                    <SelectTrigger className="w-[120px]">
-                      <SelectValue placeholder="Role" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Roles</SelectItem>
-                      <SelectItem value="admin">Admin</SelectItem>
-                      <SelectItem value="regular">Regular</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+            <div className="flex items-center space-x-2">
+              <Button
+                variant={status === 'all' ? "default" : "outline"}
+                size="sm"
+                onClick={() => setStatus('all')}
+              >
+                All
+              </Button>
+              <Button
+                variant={status === 'active' ? "default" : "outline"}
+                size="sm"
+                onClick={() => setStatus('active')}
+              >
+                Active
+              </Button>
+              <Button
+                variant={status === 'blocked' ? "default" : "outline"}
+                size="sm"
+                onClick={() => setStatus('blocked')}
+              >
+                Blocked
+              </Button>
+              <Button
+                variant={status === 'admin' ? "default" : "outline"}
+                size="sm"
+                onClick={() => setStatus('admin')}
+              >
+                Admins
+              </Button>
             </div>
           </div>
         </CardHeader>
-        
         <CardContent>
           {loading ? (
             <div className="space-y-3">
               {[...Array(5)].map((_, i) => (
-                <Skeleton key={i} className="h-12 w-full" />
+                <div key={i} className="flex space-x-3">
+                  <Skeleton className="h-10 w-10 rounded-full" />
+                  <div className="space-y-2 flex-1">
+                    <Skeleton className="h-4 w-[250px]" />
+                    <Skeleton className="h-4 w-[200px]" />
+                  </div>
+                </div>
               ))}
             </div>
-          ) : filteredUsers.length > 0 ? (
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>User</TableHead>
-                    <TableHead className="hidden md:table-cell">Joined</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredUsers.map((userItem) => (
-                    <TableRow key={userItem.id}>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>User</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="hidden md:table-cell">Created</TableHead>
+                  <TableHead className="hidden md:table-cell">Last Login</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredUsers.length > 0 ? (
+                  filteredUsers.map((user) => (
+                    <TableRow key={user.id}>
                       <TableCell>
                         <div className="flex flex-col">
-                          <span className="font-medium">{userItem.name}</span>
-                          <span className="text-xs text-muted-foreground">{userItem.email}</span>
+                          <span className="font-medium">{user.name}</span>
+                          <span className="text-xs text-muted-foreground">{user.email}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1">
+                          {user.isAdmin && (
+                            <Badge variant="default" className="bg-blue-500">
+                              Admin
+                            </Badge>
+                          )}
+                          {user.blocked ? (
+                            <Badge variant="destructive">Blocked</Badge>
+                          ) : (
+                            <Badge variant="outline">Active</Badge>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
-                        {formatDate(userItem.createdAt)}
+                        {formatDate(user.createdAt)}
                       </TableCell>
-                      <TableCell>
-                        {userItem.blocked ? (
-                          <Badge variant="destructive" className="font-normal">
-                            Blocked
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="text-green-500 border-green-500 font-normal">
-                            Active
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {userItem.isAdmin ? (
-                          <Badge variant="default" className="bg-amber-500 hover:bg-amber-500 font-normal">
-                            Admin
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="font-normal">
-                            Regular
-                          </Badge>
-                        )}
+                      <TableCell className="hidden md:table-cell">
+                        {formatDate(user.lastLoginAt)}
                       </TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              disabled={processingId === userItem.id}
-                              className={processingId === userItem.id ? "opacity-50 cursor-wait" : ""}
-                            >
-                              {processingId === userItem.id ? (
-                                <span className="flex items-center">
-                                  <RefreshCw className="h-4 w-4 animate-spin mr-1" />
-                                  Processing
-                                </span>
-                              ) : (
-                                <div className="flex items-center">
-                                  <UserCog className="h-4 w-4 mr-1" />
-                                  <span>Manage</span>
-                                </div>
-                              )}
+                            <Button variant="ghost" className="h-8 w-8 p-0" disabled={user.id === auth?.user?.id}>
+                              <span className="sr-only">Open menu</span>
+                              <MoreHorizontal className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>User Actions</DropdownMenuLabel>
-                            <DropdownMenuItem 
-                              onClick={() => router.push(`/admin/users/${userItem.id}`)}
-                              disabled={processingId === userItem.id}
-                            >
-                              <UserCheck className="h-4 w-4 mr-2" />
-                              View Details
-                            </DropdownMenuItem>
-                            
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            {user.isAdmin ? (
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setSelectedUser(user);
+                                  setAction('removeAdmin');
+                                }}
+                                disabled={user.id === auth?.user?.id}
+                                className="text-amber-600"
+                              >
+                                <ShieldOff className="mr-2 h-4 w-4" />
+                                <span>Remove Admin</span>
+                              </DropdownMenuItem>
+                            ) : (
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setSelectedUser(user);
+                                  setAction('makeAdmin');
+                                }}
+                                disabled={user.id === auth?.user?.id}
+                              >
+                                <Shield className="mr-2 h-4 w-4" />
+                                <span>Make Admin</span>
+                              </DropdownMenuItem>
+                            )}
                             <DropdownMenuSeparator />
-                            
-                            {/* Toggle block status - disable for self */}
-                            {userItem.blocked ? (
+                            {user.blocked ? (
                               <DropdownMenuItem
-                                onClick={() => confirmAction(userItem, 'unblock')}
-                                disabled={processingId === userItem.id || userItem.id === user.id}
+                                onClick={() => {
+                                  setSelectedUser(user);
+                                  setAction('unblock');
+                                }}
+                                disabled={user.id === auth?.user?.id}
                               >
-                                <UserCheck className="h-4 w-4 mr-2" />
-                                Unblock User
+                                <UserCheck className="mr-2 h-4 w-4" />
+                                <span>Unblock User</span>
                               </DropdownMenuItem>
                             ) : (
                               <DropdownMenuItem
-                                onClick={() => confirmAction(userItem, 'block')}
-                                disabled={processingId === userItem.id || userItem.id === user.id}
-                                className={userItem.id === user.id ? "text-muted-foreground cursor-not-allowed" : "text-red-600"}
+                                onClick={() => {
+                                  setSelectedUser(user);
+                                  setAction('block');
+                                }}
+                                disabled={user.id === auth?.user?.id}
+                                className="text-red-600"
                               >
-                                <UserX className="h-4 w-4 mr-2" />
-                                {userItem.id === user.id ? "Cannot Block Yourself" : "Block User"}
+                                <Ban className="mr-2 h-4 w-4" />
+                                <span>Block User</span>
                               </DropdownMenuItem>
                             )}
-                            
-                            {/* Toggle admin status - disable for self */}
-                            {userItem.isAdmin ? (
-                              <DropdownMenuItem
-                                onClick={() => confirmAction(userItem, 'removeAdmin')}
-                                disabled={processingId === userItem.id || userItem.id === user.id}
-                                className={userItem.id === user.id ? "text-muted-foreground cursor-not-allowed" : ""}
-                              >
-                                <ShieldOff className="h-4 w-4 mr-2" />
-                                {userItem.id === user.id ? "Cannot Remove Own Admin" : "Remove Admin Role"}
-                              </DropdownMenuItem>
-                            ) : (
-                              <DropdownMenuItem
-                                onClick={() => confirmAction(userItem, 'admin')}
-                                disabled={processingId === userItem.id}
-                              >
-                                <Shield className="h-4 w-4 mr-2" />
-                                Make Admin
-                              </DropdownMenuItem>
-                            )}
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem>
+                              <UserCog className="mr-2 h-4 w-4" />
+                              <span>View Details</span>
+                            </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <div className="rounded-full bg-muted p-3 mb-3">
-                <Search className="h-6 w-6 text-muted-foreground" />
-              </div>
-              <h3 className="text-lg font-medium">No users found</h3>
-              <p className="text-sm text-muted-foreground mt-1 mb-4">
-                Try adjusting your search or filter criteria.
-              </p>
-            </div>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-10">
+                      <div className="flex flex-col items-center">
+                        <Search className="h-8 w-8 text-muted-foreground mb-2" />
+                        <h3 className="text-lg font-semibold">No users found</h3>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {searchQuery
+                            ? "No users match your search criteria."
+                            : "There are no users available."}
+                        </p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
           )}
         </CardContent>
       </Card>
 
-      {/* Action confirmation dialogs */}
-      <AlertDialog open={!!userToModify && !!modifyAction} onOpenChange={() => cancelAction()}>
+      {/* Confirmation Dialog */}
+      <AlertDialog open={!!selectedUser && !!action} onOpenChange={() => { setSelectedUser(null); setAction(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {modifyAction === 'block' && "Block User"}
-              {modifyAction === 'unblock' && "Unblock User"}
-              {modifyAction === 'admin' && "Make User Admin"}
-              {modifyAction === 'removeAdmin' && "Remove Admin Status"}
+              {action === 'block' ? 'Block User' : 
+               action === 'unblock' ? 'Unblock User' : 
+               action === 'makeAdmin' ? 'Make User Admin' : 
+               'Remove Admin Status'}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {modifyAction === 'block' && `Are you sure you want to block ${userToModify?.name}? They will no longer be able to log in or access the system.`}
-              {modifyAction === 'unblock' && `Are you sure you want to unblock ${userToModify?.name}? This will restore their access to the system.`}
-              {modifyAction === 'admin' && `Are you sure you want to give ${userToModify?.name} administrator privileges? This will grant them full access to the system.`}
-              {modifyAction === 'removeAdmin' && `Are you sure you want to remove administrator privileges from ${userToModify?.name}? They will no longer have admin access.`}
+              {action === 'block' ? 
+                `Are you sure you want to block ${selectedUser?.name}? They will no longer be able to log in.` : 
+               action === 'unblock' ? 
+                `Are you sure you want to unblock ${selectedUser?.name}? They will be able to log in again.` : 
+               action === 'makeAdmin' ? 
+                `Are you sure you want to make ${selectedUser?.name} an admin? They will have full access to all areas of the application.` : 
+                `Are you sure you want to remove admin status from ${selectedUser?.name}? They will lose access to admin areas.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={executeAction} className={modifyAction === 'block' ? "bg-red-600 hover:bg-red-700" : ""}>
-              {modifyAction === 'block' && "Block User"}
-              {modifyAction === 'unblock' && "Unblock User"}
-              {modifyAction === 'admin' && "Make Admin"}
-              {modifyAction === 'removeAdmin' && "Remove Admin"}
+            <AlertDialogAction onClick={handleAction}>
+              {action === 'block' ? 'Block' : 
+               action === 'unblock' ? 'Unblock' : 
+               action === 'makeAdmin' ? 'Make Admin' : 
+               'Remove Admin'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

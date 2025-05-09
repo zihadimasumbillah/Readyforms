@@ -104,7 +104,6 @@ export default function AdminTemplatesPage() {
 
   useEffect(() => {
     if (user) {
-      // Check if user is admin
       if (!user.isAdmin) {
         toast({
           title: "Access denied",
@@ -117,7 +116,6 @@ export default function AdminTemplatesPage() {
       
       fetchTemplates();
     } else {
-      // Redirect to login if no user is found
       router.push('/auth/login');
     }
   }, [user, router]);
@@ -125,7 +123,6 @@ export default function AdminTemplatesPage() {
   const applyFilters = (templateList: Template[], query: string, topic: string, visibility: string) => {
     let filtered = [...templateList];
     
-    // Apply search filter
     if (query.trim() !== '') {
       const lowercaseQuery = query.toLowerCase();
       filtered = filtered.filter(template => 
@@ -133,13 +130,11 @@ export default function AdminTemplatesPage() {
         (template.description && template.description.toLowerCase().includes(lowercaseQuery))
       );
     }
-    
-    // Apply topic filter
+
     if (topic !== 'all') {
       filtered = filtered.filter(template => template.topic?.id === topic);
     }
-    
-    // Apply visibility filter
+
     if (visibility === 'public') {
       filtered = filtered.filter(template => template.isPublic);
     } else if (visibility === 'restricted') {
@@ -160,7 +155,6 @@ export default function AdminTemplatesPage() {
       setProcessingId(templateToDelete.id);
       await templateService.deleteTemplate(templateToDelete.id, templateToDelete.version);
       
-      // Update templates list
       setTemplates(templates.filter(t => t.id !== templateToDelete.id));
       
       toast({

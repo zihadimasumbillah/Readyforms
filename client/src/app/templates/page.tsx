@@ -24,22 +24,15 @@ export default function TemplatesPage() {
       setLoading(true);
       try {
         const topicsData = await topicService.getAllTopics();
-
-        // Extra debug logging
         console.log("Topics data type:", typeof topicsData);
         console.log("Topics is array:", Array.isArray(topicsData));
-
-        // Ensure topicsData is an array
         const topicsArray = Array.isArray(topicsData) ? topicsData : [];
         setTopics(topicsArray);
 
         const templatesData = await templateService.getAllTemplates();
-
-        // Extra debug logging
         console.log("Templates data type:", typeof templatesData);
         console.log("Templates is array:", Array.isArray(templatesData));
 
-        // Ensure templatesData is an array
         const templatesArray = Array.isArray(templatesData) ? templatesData : [];
         setTemplates(templatesArray);
       } catch (error) {

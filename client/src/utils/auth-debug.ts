@@ -1,14 +1,11 @@
 import apiClient from '../lib/api/api-client';
 import { AxiosError } from 'axios';
 
-/**
- * This is a utility function to diagnose auth issues in the browser console
- */
+
 export async function debugAuthStatus() {
   console.group('🔍 Auth Debug Information');
   
   try {
-    // Check local storage
     const authDataString = localStorage.getItem('readyforms_auth');
     console.log('Auth data in localStorage:', authDataString ? 'Found' : 'Not found');
     
@@ -22,14 +19,11 @@ export async function debugAuthStatus() {
           isAdmin: authData.user?.isAdmin
         });
         
-        // Try to parse JWT token payload (without verification)
         if (authData.token) {
           const tokenParts = authData.token.split('.');
           if (tokenParts.length === 3) {
             const payload = JSON.parse(atob(tokenParts[1]));
             console.log('Token payload:', payload);
-            
-            // Check token expiration
             if (payload.exp) {
               const expTime = new Date(payload.exp * 1000);
               const now = new Date();
@@ -56,7 +50,6 @@ export async function debugAuthStatus() {
       }
     }
 
-    // Check API health
     try {
       const response = await apiClient.get('/health');
       console.log('API health:', response.data);
@@ -77,7 +70,6 @@ export async function debugAuthStatus() {
   return "Auth debug complete. See console output for details.";
 }
 
-// Make it available in the window object for console debugging
 if (typeof window !== 'undefined') {
   (window as any).debugAuth = debugAuthStatus;
   console.log('Auth debug function available: debugAuth()');

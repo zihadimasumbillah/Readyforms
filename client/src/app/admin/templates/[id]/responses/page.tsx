@@ -14,6 +14,22 @@ import { useAuth } from "@/contexts/auth-context";
 import { toast } from "@/components/ui/use-toast";
 import { formatDate } from '@/lib/utils';
 
+interface FormResponse {
+  id: string;
+  templateId: string;
+  userId: string;
+  createdAt: string;
+  updatedAt: string;
+  score?: number;
+  totalPossiblePoints?: number;
+  user?: {
+    id: string;
+    name?: string;
+    email?: string;
+  };
+  [key: string]: any;
+}
+
 export default function TemplateResponsesPage() {
   const { id } = useParams();
   const router = useRouter();
@@ -21,7 +37,7 @@ export default function TemplateResponsesPage() {
   const user = auth?.user;
   const logout = auth?.logout;
   const [template, setTemplate] = useState<any>(null);
-  const [responses, setResponses] = useState<any[]>([]);
+  const [responses, setResponses] = useState<FormResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     totalResponses: 0,
@@ -44,31 +60,27 @@ export default function TemplateResponsesPage() {
       try {
         setLoading(true);
         const templateId = Array.isArray(id) ? id[0] : id;
-        
-        // Fetch template data
+
         const templateData = await adminService.getTemplateById(templateId);
         setTemplate(templateData);
-        
-        // Fetch responses for this template
+
         const responsesData = await adminService.getFormResponsesByTemplate(templateId);
         setResponses(responsesData);
-        
-        // Calculate statistics
+
         if (responsesData && responsesData.length > 0) {
-          // For quiz templates, calculate average score
           if (templateData.isQuiz) {
-            const totalScore = responsesData.reduce((sum, response) => sum + (response.score || 0), 0);
+            const totalScore = responsesData.reduce((sum: number, response: FormResponse) => sum + (response.score || 0), 0);
             const avgScore = totalScore / responsesData.length;
             setStats({
               totalResponses: responsesData.length,
-              averageScore: Math.round(avgScore * 10) / 10, // Round to 1 decimal
-              completionRate: 100 // Placeholder for now
+              averageScore: Math.round(avgScore * 10) / 10, 
+              completionRate: 100 
             });
           } else {
             setStats({
               totalResponses: responsesData.length,
               averageScore: 0,
-              completionRate: 100 // Placeholder for now
+              completionRate: 100 
             });
           }
         }
@@ -107,10 +119,7 @@ export default function TemplateResponsesPage() {
     }
     
     try {
-      // Determine all possible fields from the template
       const fields: string[] = [];
-      
-      // Add all possible question fields based on template configuration
       ['String', 'Text', 'Int', 'Checkbox'].forEach(type => {
         for (let i = 1; i <= 4; i++) {
           const stateField = `custom${type}${i}State`;
@@ -122,26 +131,22 @@ export default function TemplateResponsesPage() {
         }
       });
       
-      // Create CSV header row
       let csv = 'User,Submission Date';
       if (template.isQuiz) {
-        csv += ',Score,Total Possible Points';
+        csv += ',Score,Total Possible Points,Percentage';
       }
       
-      // Add question headers
       fields.forEach(field => {
         const questionType = field.match(/custom(String|Text|Int|Checkbox)(\d)Answer/);
         if (questionType) {
           const questionField = `custom${questionType[1]}${questionType[2]}Question`;
           const question = template[questionField] || field;
-          // Escape quotes in the question text
           csv += `,"${question.replace(/"/g, '""')}"`;
         }
       });
       
       csv += '\n';
-      
-      // Add data rows
+
       responses.forEach(response => {
         const userName = response.user ? response.user.name : 'Anonymous';
         const submissionDate = formatDate(response.createdAt);
@@ -149,20 +154,20 @@ export default function TemplateResponsesPage() {
         let row = `"${userName}","${submissionDate}"`;
         
         if (template.isQuiz) {
-          row += `,${response.score || 0},${response.totalPossiblePoints || 0}`;
+          const score = response.score || 0;
+          const totalPoints = response.totalPossiblePoints || 0;
+          const percent = totalPoints > 0 ? Math.round((score / totalPoints) * 100) : 0;
+          row += `,${score},${totalPoints},${percent}%`;
         }
-        
-        // Add answer data
+
         fields.forEach(field => {
           let value = response[field];
           
-          // Format the value based on its type
           if (value === null || value === undefined) {
             value = '';
           } else if (typeof value === 'boolean') {
             value = value ? 'Yes' : 'No';
           } else if (typeof value === 'string') {
-            // Escape quotes in the text
             value = `"${value.replace(/"/g, '""')}"`;
           }
           
@@ -172,7 +177,6 @@ export default function TemplateResponsesPage() {
         csv += row + '\n';
       });
       
-      // Create and trigger download
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -299,12 +303,18 @@ export default function TemplateResponsesPage() {
                         </TableCell>
                         {template.isQuiz && (
                           <TableCell>
-                            {response.score || 0} / {response.totalPossiblePoints || 0}
-                            <span className="text-xs ml-1 text-muted-foreground">
-                              ({response.totalPossiblePoints > 0 
-                                ? Math.round((response.score / response.totalPossiblePoints) * 100) 
-                                : 0}%)
-                            </span>
+                            {response.score !== undefined && response.totalPossiblePoints !== undefined ? (
+                              <>
+                                {response.score} / {response.totalPossiblePoints}
+                                <span className="text-xs ml-1 text-muted-foreground">
+                                  ({response.totalPossiblePoints > 0 
+                                    ? Math.round((response.score / response.totalPossiblePoints) * 100) 
+                                    : 0}%)
+                                </span>
+                              </>
+                            ) : (
+                              "N/A"
+                            )}
                           </TableCell>
                         )}
                         <TableCell className="text-right">

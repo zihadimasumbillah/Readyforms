@@ -1,153 +1,130 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import Link from "next/link";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Template } from "@/types";
-import { cn } from "@/lib/utils";
-import { Eye, Edit, Heart, MessageSquare } from "lucide-react";
-import { useAuth } from "@/contexts/auth-context";
-import likeService from "@/lib/api/like-service";
-import commentService from "@/lib/api/comment-service";
+import { Button } from "@/components/ui/button";
+import { Heart, MessageSquare, ArrowRight } from "lucide-react";
+import Link from "next/link";
+import { likeService } from '@/lib/api/like-service';
+import { commentService } from '@/lib/api/comment-service';
+import { useAuth } from '@/contexts/auth-context';
 
 interface TemplateCardProps {
   template: Template;
-  onClick?: () => void;
-  className?: string;
-  showStats?: boolean;
 }
 
-export function TemplateCard({ template, onClick, className, showStats = true }: TemplateCardProps) {
+export function TemplateCard({ template }: TemplateCardProps) {
+  const [likesCount, setLikesCount] = useState<number>(template.likesCount || 0);
+  const [commentsCount, setCommentsCount] = useState<number>(0);
+  const [liked, setLiked] = useState<boolean>(false);
   const auth = useAuth();
   const user = auth?.user;
-  const isOwner = user && template.userId === user.id;
-  const isAdmin = user?.isAdmin;
-  
-  const [likesCount, setLikesCount] = useState<number>(template.likesCount || 0);
-  const [commentsCount, setCommentsCount] = useState<number>(template.commentsCount || 0);
-  
-  // Load likes and comments count if not provided with the template
+
   useEffect(() => {
-    const fetchCounts = async () => {
-      if (showStats) {
-        try {
-          // Only fetch if not already provided in template data
-          if (template.likesCount === undefined) {
-            const likeCount = await likeService.getLikeCount(template.id);
-            setLikesCount(likeCount);
-          } else {
-            setLikesCount(template.likesCount);
-          }
-          
-          if (template.commentsCount === undefined) {
-            const comments = await commentService.getCommentsByTemplate(template.id);
-            setCommentsCount(comments.length);
-          } else {
-            setCommentsCount(template.commentsCount);
-          }
-        } catch (error) {
-          console.error("Error fetching template stats:", error);
+    const fetchInteractions = async () => {
+      try {
+        // Fetch like count
+        if (template.likesCount === undefined) {
+          const likeCountResponse = await likeService.getLikeCount(template.id);
+          setLikesCount(likeCountResponse || 0);
+        } else {
+          setLikesCount(template.likesCount);
         }
+        
+        // Check if user has liked this template
+        if (user) {
+          const likeStatus = await likeService.checkLike(template.id);
+          setLiked(likeStatus);
+        }
+        
+        // Fetch comment count
+        const comments = await commentService.getCommentsByTemplate(template.id);
+        setCommentsCount(comments.length);
+      } catch (error) {
+        console.error('Error fetching template interactions:', error);
       }
     };
-    
-    fetchCounts();
-  }, [template.id, template.likesCount, template.commentsCount, showStats]);
-  
-  // Filter out test templates
-  const isTestTemplate = 
-    (template.title?.toLowerCase() || '').includes('test') || 
-    (template.description?.toLowerCase() || '').includes('test');
-  
-  // Format the creation date
-  const formattedDate = template.createdAt ? 
-    new Date(template.createdAt).toLocaleDateString() : 'Unknown date';
 
-  // Get just the date without time for cleaner display
-  const creationDate = template.createdAt ? 
-    new Date(template.createdAt).toLocaleDateString() : 'Unknown date';
+    fetchInteractions();
+  }, [template.id, template.likesCount, user]);
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return new Intl.DateTimeFormat('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    }).format(date);
+  };
 
   return (
-    <Card 
-      className={cn("overflow-hidden transition-all hover:shadow-md", className)} 
-    >
-      <CardHeader className="p-4 pb-2">
-        <div className="flex justify-between items-start gap-2">
-          <CardTitle className="text-lg line-clamp-1">
-            {template.title}
-          </CardTitle>
-          {template.topic && (
-            <Badge variant="outline" className="shrink-0">
-              {template.topic.name}
-            </Badge>
+    <Card className="h-full flex flex-col">
+      <CardHeader className="pb-3">
+        <div className="flex justify-between items-start">
+          <div>
+            <CardTitle className="text-lg hover:text-primary transition-colors">
+              <Link href={`/templates/${template.id}`} className="hover:underline">
+                {template.title}
+              </Link>
+            </CardTitle>
+            <CardDescription className="line-clamp-2 mt-1">
+              {template.description || 'No description provided'}
+            </CardDescription>
+          </div>
+          {template.isQuiz && (
+            <Badge>Quiz</Badge>
           )}
         </div>
       </CardHeader>
-      <CardContent className="p-4 pt-2">
-        <div className="h-20">
-          {template.description && (
-            <p className="text-muted-foreground text-sm line-clamp-3 mb-2">
-              {template.description}
-            </p>
-          )}
-        </div>
-        <div className="flex items-center mt-2 text-xs text-muted-foreground">
-          <span>
-            Created {creationDate} {template.user?.name && `by ${template.user.name}`}
-          </span>
-        </div>
-        
-        {showStats && (
-          <div className="flex items-center justify-between mt-3 text-sm">
-            <div className="flex items-center gap-4">
-              <div className="flex items-center text-muted-foreground">
-                <Heart className="h-3.5 w-3.5 mr-1" />
-                <span>{likesCount}</span>
-              </div>
-              <div className="flex items-center text-muted-foreground">
-                <MessageSquare className="h-3.5 w-3.5 mr-1" />
-                <span>{commentsCount}</span>
-              </div>
-            </div>
+      
+      <CardContent className="flex-grow">
+        {/* Show template image if available */}
+        {template.imageUrl && (
+          <div className="mb-3 rounded-md overflow-hidden">
+            <img 
+              src={template.imageUrl} 
+              alt={template.title} 
+              className="w-full h-32 object-cover"
+            />
           </div>
         )}
-      </CardContent>
-      <CardFooter className="p-4 pt-0 gap-2">
-        <Button 
-          variant="secondary" 
-          className="w-full" 
-          size="sm"
-          onClick={onClick}
-          asChild={!onClick}
-        >
-          {onClick ? (
-            <>
-              <Eye className="h-3.5 w-3.5 mr-1" />
-              View
-            </>
-          ) : (
-            <Link href={`/templates/${template.id}`}>
-              <Eye className="h-3.5 w-3.5 mr-1" />
-              View
-            </Link>
+
+        <div className="flex flex-wrap gap-2 my-2">
+          {template.topic && (
+            <Badge variant="outline" className="bg-muted/50">
+              {template.topic.name}
+            </Badge>
           )}
-        </Button>
+          {template.tags && template.tags.map((tag: any) => (
+            <Badge key={tag.id || tag.name} variant="secondary" className="bg-primary/10">
+              {tag.name}
+            </Badge>
+          ))}
+        </div>
+      </CardContent>
+      
+      <CardFooter className="pt-4 flex items-center justify-between border-t">
+        <div className="flex items-center space-x-3 text-sm text-muted-foreground">
+          <div className="flex items-center">
+            <Heart className={`h-4 w-4 mr-1 ${liked ? 'fill-red-500 text-red-500' : ''}`} />
+            {likesCount}
+          </div>
+          <div className="flex items-center">
+            <MessageSquare className="h-4 w-4 mr-1" />
+            {commentsCount}
+          </div>
+          <div>
+            {formatDate(template.createdAt)}
+          </div>
+        </div>
         
-        {/* Show Edit button if user is owner or admin */}
-        {(isOwner || isAdmin) && (
-          <Button 
-            variant="outline" 
-            size="sm"
-            asChild
-          >
-            <Link href={`/templates/${template.id}/edit`}>
-              <Edit className="h-3.5 w-3.5 mr-1" />
-              Edit
-            </Link>
-          </Button>
-        )}
+        <Button size="sm" variant="ghost" asChild>
+          <Link href={`/templates/${template.id}`}>
+            View <ArrowRight className="ml-1 h-3 w-3" />
+          </Link>
+        </Button>
       </CardFooter>
     </Card>
   );

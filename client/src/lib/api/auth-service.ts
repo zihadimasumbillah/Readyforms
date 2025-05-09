@@ -1,163 +1,152 @@
 import apiClient from './api-client';
+import { User } from '@/types';
 
-// Types for request/response data
-export interface RegisterData {
-  name: string;
-  email: string;
-  password: string;
-  language?: string;
-  theme?: string;
-}
-
-export interface LoginData {
-  email: string;
-  password: string;
-}
-
-export interface User {
-  id: string;
-  name: string;
-  email: string;
-  isAdmin: boolean;
-  language?: string;
-  theme?: string;
-  createdAt?: string;
-  lastLoginAt?: string;
-}
-
-export interface AuthResponse {
-  message: string;
+export interface LoginResponse {
   token: string;
   user: User;
+  message?: string;
 }
 
-class AuthService {
-  async register(data: RegisterData): Promise<AuthResponse> {
-    try {
-      const response = await apiClient.post<AuthResponse>('/auth/register', data);
-      // Store auth data in localStorage
-      this.setAuthData(response.data);
-      return response.data;
-    } catch (error: unknown) {
-      console.error('Registration error:', error);
-      // Enhance error handling to expose the specific error message from the API
-      if (error && typeof error === 'object' && 'response' in error && 
-          error.response && typeof error.response === 'object' && 
-          'data' in error.response && error.response.data && 
-          typeof error.response.data === 'object' && 
-          'message' in error.response.data) {
-            const errorMessage = error.response.data.message;
-            throw new Error(errorMessage as string);
-      }
-      throw error;
-    }
-  }
+export interface RegisterResponse {
+  token: string;
+  user: User;
+  message?: string;
+}
 
-  async login(data: LoginData): Promise<AuthResponse> {
+export const authService = {
+  /**
+   * Get stored authentication token
+   */
+  getToken(): string | null {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('token');
+    }
+    return null;
+  },
+
+  /**
+   * Authenticate user with email and password
+   */
+  async login(email: string, password: string): Promise<LoginResponse> {
     try {
-      console.log('Login attempt:', { email: data.email, passwordLength: data.password?.length });
+      console.log('Logging in with:', { email });
+      const response = await apiClient.post('/auth/login', { email, password });
       
-      const response = await apiClient.post<AuthResponse>('/auth/login', data);
-      console.log('Login successful, storing auth data');
-      this.setAuthData(response.data);
-      return response.data;
-    } catch (error: unknown) {
-      console.error('Login error details:', error);
-      // Enhance error handling to expose the specific error message from the API
-      if (error && typeof error === 'object' && 'response' in error && 
-          error.response && typeof error.response === 'object' && 
-          'data' in error.response && error.response.data && 
-          typeof error.response.data === 'object' && 
-          'message' in error.response.data) {
-            const errorMessage = error.response.data.message;
-            throw new Error(errorMessage as string);
+      if (response.data && response.data.token) {
+        // Store token in localStorage
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('token', response.data.token);
+        }
+        apiClient.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
+      } else {
+        console.error('Login response missing token:', response.data);
+        throw new Error('Invalid response format - missing token');
       }
+
+      return response.data;
+    } catch (error: any) {
+      console.error('Login error:', error.response?.data || error.message);
       throw error;
     }
-  }
+  },
 
+  /**
+   * Register a new user
+   */
+  async register(
+    name: string,
+    email: string,
+    password: string,
+    language: string = 'en',
+    theme: string = 'light'
+  ): Promise<RegisterResponse> {
+    try {
+      console.log('Registering user:', { name, email });
+      
+      // Make sure we don't have Authorization header for registration
+      delete apiClient.defaults.headers.common['Authorization'];
+      
+      const response = await apiClient.post('/auth/register', {
+        name,
+        email,
+        password,
+        language,
+        theme
+      });
+
+      console.log('Registration response:', response.data);
+
+      if (response.data && response.data.token) {
+        // Store token in localStorage
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('token', response.data.token);
+        }
+        apiClient.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
+      } else {
+        console.error('Registration response missing token:', response.data);
+        throw new Error('Invalid response format - missing token');
+      }
+      
+      return response.data;
+    } catch (error: any) {
+      console.error('Registration error:', error.response?.data || error.message);
+      throw error;
+    }
+  },
+
+  /**
+   * Get current authenticated user
+   */
   async getCurrentUser(): Promise<User> {
     try {
-      const response = await apiClient.get<User>('/auth/me');
-      return response.data;
-    } catch (error: unknown) {
-      console.error('Get current user error:', error);
-      throw error;
-    }
-  }
-
-  async updatePreferences(preferences: {
-    language?: string;
-    theme?: string;
-  }): Promise<User> {
-    try {
-      const response = await apiClient.put<{ user: User }>(
-        '/auth/preferences',
-        preferences
-      );
+      // Try to get the token from localStorage
+      const token = this.getToken();
       
-      // Update the stored user data to reflect preferences change
-      const currentData = this.getAuthData();
-      if (currentData) {
-        this.setAuthData({
-          ...currentData,
-          user: response.data.user
-        });
+      // Set the auth header if we have a token
+      if (token) {
+        apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      } else {
+        throw new Error('No authentication token found');
       }
       
-      return response.data.user;
-    } catch (error: unknown) {
-      console.error('Update preferences error:', error);
+      const response = await apiClient.get('/auth/me');
+      return response.data;
+    } catch (error: any) {
+      console.error('Get current user error:', error.response?.data || error.message);
       throw error;
     }
-  }
+  },
 
-  // Get the stored auth data from localStorage
-  getAuthData(): AuthResponse | null {
-    if (typeof window === 'undefined') return null;
-    
+  /**
+   * Update user preferences
+   */
+  async updatePreferences(language?: string, theme?: string): Promise<User> {
     try {
-      const authDataString = localStorage.getItem('readyforms_auth');
-      if (!authDataString) return null;
-      return JSON.parse(authDataString);
-    } catch (error) {
-      console.error('Error retrieving auth data:', error);
-      return null;
+      const response = await apiClient.put('/auth/preferences', {
+        language,
+        theme
+      });
+      return response.data.user;
+    } catch (error: any) {
+      console.error('Update preferences error:', error.response?.data || error.message);
+      throw error;
     }
-  }
+  },
 
-  // Store auth data in localStorage
-  setAuthData(authData: AuthResponse): void {
-    if (typeof window === 'undefined') return;
-    
-    try {
-      localStorage.setItem('readyforms_auth', JSON.stringify(authData));
-    } catch (error) {
-      console.error('Error storing auth data:', error);
-    }
-  }
-
-  // Clear auth data from localStorage
-  clearAuthData(): void {
-    if (typeof window === 'undefined') return;
-    
-    try {
-      localStorage.removeItem('readyforms_auth');
-    } catch (error) {
-      console.error('Error clearing auth data:', error);
-    }
-  }
-
-  // Check if the user is authenticated
-  isAuthenticated(): boolean {
-    return !!this.getAuthData();
-  }
-
-  // Logout
+  /**
+   * Logout user by clearing token
+   */
   logout(): void {
-    this.clearAuthData();
-  }
-}
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('token');
+    }
+    delete apiClient.defaults.headers.common['Authorization'];
+  },
 
-const authService = new AuthService();
-export default authService;
+  /**
+   * Check if user is logged in
+   */
+  isLoggedIn(): boolean {
+    return !!this.getToken();
+  }
+};

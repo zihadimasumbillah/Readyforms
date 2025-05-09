@@ -1,19 +1,15 @@
-// Common types for the ReadyForms application
-
-// User type definition
 export interface User {
   id: string;
   name: string;
   email: string;
   isAdmin: boolean;
+  blocked?: boolean;
   language?: string;
   theme?: string;
-  blocked?: boolean;
-  createdAt: string;
-  updatedAt: string;
+  createdAt?: string;
+  lastLoginAt?: string;
 }
 
-// Form field type definition
 export interface FormField {
   id: string;
   label: string;
@@ -22,7 +18,6 @@ export interface FormField {
   value?: any;
 }
 
-// Topic type definition
 export interface Topic {
   id: string;
   name: string;
@@ -32,7 +27,13 @@ export interface Topic {
   version: number;
 }
 
-// Template type definition
+export interface Tag {
+  id: number | string;
+  name: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface Template {
   id: string;
   title: string;
@@ -46,12 +47,10 @@ export interface Template {
   createdAt: string;
   updatedAt: string;
 
-  // Quiz-related fields
   isQuiz?: boolean;
   showScoreImmediately?: boolean;
   scoringCriteria?: string;
-  
-  // Custom field states
+
   customString1State: boolean;
   customString2State: boolean;
   customString3State: boolean;
@@ -68,8 +67,7 @@ export interface Template {
   customCheckbox2State: boolean;
   customCheckbox3State: boolean;
   customCheckbox4State: boolean;
-  
-  // Custom field questions
+
   customString1Question: string;
   customString2Question: string;
   customString3Question: string;
@@ -86,24 +84,18 @@ export interface Template {
   customCheckbox2Question: string;
   customCheckbox3Question: string;
   customCheckbox4Question: string;
-  
-  // Order of questions (JSON string)
+
   questionOrder: string;
-  
-  // Relations (optional because they might not always be included)
   user?: User;
   topic?: Topic;
-  
-  // Extra stats that might be included in some responses
   likesCount?: number;
   commentsCount?: number;
   responsesCount?: number;
+  tags?: Array<Tag>;
 
-  // Index signature for dynamic access (needed for our component)
   [key: string]: any;
 }
 
-// Form Response type definition
 export interface FormResponse {
   id: string;
   templateId: string;
@@ -111,14 +103,12 @@ export interface FormResponse {
   createdAt: string;
   updatedAt: string;
   version: number;
-  
-  // Scoring fields
+
   score?: number;
   totalPossiblePoints?: number;
   scoreViewed?: boolean;
   percentScore?: number;
-  
-  // Custom field answers
+
   customString1Answer?: string;
   customString2Answer?: string;
   customString3Answer?: string;
@@ -135,13 +125,11 @@ export interface FormResponse {
   customCheckbox2Answer?: boolean;
   customCheckbox3Answer?: boolean;
   customCheckbox4Answer?: boolean;
-  
-  // Relations
+
   user?: User;
   template?: Template;
 }
 
-// Comment type definition
 export interface Comment {
   id: string;
   content: string;
@@ -150,13 +138,11 @@ export interface Comment {
   createdAt: string;
   updatedAt: string;
   version: number;
-  
-  // Relations
+
   user?: User;
   template?: Template;
 }
 
-// Like type definition
 export interface Like {
   id: string;
   userId: string;
@@ -164,13 +150,11 @@ export interface Like {
   createdAt: string;
   updatedAt: string;
   version: number;
-  
-  // Relations
+
   user?: User;
   template?: Template;
 }
 
-// Dashboard stats type
 export interface DashboardStats {
   templates: number;
   responses: number;
@@ -178,7 +162,6 @@ export interface DashboardStats {
   comments: number;
 }
 
-// Admin dashboard stats type
 export interface AdminDashboardStats {
   templates: number;
   responses: number;
@@ -189,3 +172,4 @@ export interface AdminDashboardStats {
   topicsCount: number;
   adminCount: number;
 }
+

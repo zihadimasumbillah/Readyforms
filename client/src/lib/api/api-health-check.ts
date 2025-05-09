@@ -1,97 +1,142 @@
 import axios from 'axios';
-import apiClient from './api-client';
 
-// Base URL configuration from environment variable or default
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
-// API connection test endpoints - FIXED: removed duplicate '/api' prefix
-const API_ENDPOINTS = [
-  '/health', // Health check endpoint
-  '/topics', // Public endpoint to get topics
-  '/templates', // Public endpoint to get templates
-];
-
-export interface HealthCheckResponse {
-  success: boolean;
-  endpoint: string;
-  message?: string;
-  error?: string;
-  duration: number;
+export interface HealthCheckResult {
+  status: 'healthy' | 'unhealthy';
+  details: {
+    auth: boolean;
+    templates: boolean;
+    responses: boolean;
+    users: boolean;
+    tags: boolean;
+  };
+  message: string;
   timestamp: string;
 }
 
-/**
- * Tests connectivity to backend API endpoints
- * @returns Results of health check tests
- */
-export async function checkApiConnectivity(): Promise<HealthCheckResponse[]> {
-  const results: HealthCheckResponse[] = [];
-  
-  for (const endpoint of API_ENDPOINTS) {
-    const startTime = Date.now();
+export const checkApiHealth = async (): Promise<HealthCheckResult> => {
+  try {
+    console.log('Starting API health check...');
+    const healthResult: HealthCheckResult = {
+      status: 'healthy',
+      details: {
+        auth: false,
+        templates: false,
+        responses: false,
+        users: false,
+        tags: false
+      },
+      message: '',
+      timestamp: new Date().toISOString()
+    };
+
     try {
-      // Use direct axios call to ensure correct URL formation
-      const response = await axios.get(`${API_URL}${endpoint}`);
-      results.push({
-        success: true,
-        endpoint,
-        message: `Successfully connected to ${endpoint}`,
-        duration: Date.now() - startTime,
-        timestamp: new Date().toISOString()
-      });
-    } catch (error: any) {
-      results.push({
-        success: false,
-        endpoint,
-        error: error.message || 'Unknown error',
-        duration: Date.now() - startTime,
-        timestamp: new Date().toISOString()
-      });
+      const baseResponse = await axios.get(`${API_URL}/health`);
+      console.log('Base health check response:', baseResponse.status);
+    } catch (error) {
+      console.error('API base health check failed:', error);
+      healthResult.status = 'unhealthy';
+      healthResult.message = 'API server unreachable';
+      return healthResult;
     }
-  }
-  
-  return results;
-}
 
-/**
- * Checks the health of the API server
- * @returns A promise that resolves to true if the API is healthy, false otherwise
- */
-export const checkApiHealth = async (): Promise<boolean> => {
-  try {
-    // Make a request to the health endpoint
-    const response = await axios.get(`${API_URL}/health`);
-    return response.status === 200;
+    try {
+   
+      await axios.post(`${API_URL}/auth/login`, {
+        email: 'test@example.com',
+        password: 'wrongpassword'
+      });
+      healthResult.details.auth = true;
+      console.log('Auth endpoint check: OK');
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response && error.response.status < 500) {
+        healthResult.details.auth = true;
+        console.log('Auth endpoint check: OK (expected auth failure)');
+      } else {
+        console.error('Auth endpoint check failed:', error);
+      }
+    }
+    try {
+      await axios.get(`${API_URL}/templates`);
+      healthResult.details.templates = true;
+      console.log('Templates endpoint check: OK');
+    } catch (error) {
+      console.error('Templates endpoint check failed:', error);
+    }
+    try {
+      await axios.get(`${API_URL}/tags`);
+      healthResult.details.tags = true;
+      console.log('Tags endpoint check: OK');
+    } catch (error) {
+      console.error('Tags endpoint check failed:', error);
+    }
+    try {
+      await axios.get(`${API_URL}/users`);
+      healthResult.details.users = true;
+      console.log('Users endpoint check: OK');
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response && error.response.status === 401) {
+        healthResult.details.users = true;
+        console.log('Users endpoint check: OK (expected auth required)');
+      } else {
+        console.error('Users endpoint check failed:', error);
+      }
+    }
+    try {
+      await axios.get(`${API_URL}/form-responses/user`);
+      healthResult.details.responses = true;
+      console.log('Responses endpoint check: OK');
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response && error.response.status === 401) {
+        healthResult.details.responses = true;
+        console.log('Responses endpoint check: OK (expected auth required)');
+      } else {
+        console.error('Responses endpoint check failed:', error);
+      }
+    }
+
+    const failedServices = Object.entries(healthResult.details)
+      .filter(([_, isHealthy]) => !isHealthy)
+      .map(([service]) => service);
+
+    if (failedServices.length > 0) {
+      healthResult.status = 'unhealthy';
+      healthResult.message = `These services are unhealthy: ${failedServices.join(', ')}`;
+    } else {
+      healthResult.message = 'All services are healthy';
+    }
+
+    console.log('API health check completed:', healthResult);
+    return healthResult;
   } catch (error) {
-    console.error('API health check failed:', error);
-    return false;
+    console.error('API health check failed with unexpected error:', error);
+    return {
+      status: 'unhealthy',
+      details: {
+        auth: false,
+        templates: false,
+        responses: false,
+        users: false,
+        tags: false
+      },
+      message: 'API health check failed with an unexpected error',
+      timestamp: new Date().toISOString()
+    };
   }
 };
 
-/**
- * Retrieves server status details
- * @returns A promise that resolves to server status information or null on failure
- */
-export const getServerStatus = async (): Promise<any> => {
-  try {
-    const response = await axios.get(`${API_URL}/health/status`);
-    return response.data;
-  } catch (error) {
-    console.error('Failed to get server status:', error);
-    return null;
-  }
-};
-
-/**
- * Check if API is reachable
- * @returns A promise that resolves to true if the API is reachable, false otherwise
- */
 export const isApiReachable = async (): Promise<boolean> => {
   try {
-    await axios.get(`${API_URL}/health`, { timeout: 5000 });
+    await axios.get(`${API_URL}/health`);
     return true;
   } catch (error) {
-    console.error('API not reachable:', error);
+    console.error('API reachability check failed:', error);
     return false;
   }
+};
+
+export default {
+  checkApiHealth,
+  isApiReachable
 };

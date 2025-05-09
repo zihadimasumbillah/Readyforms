@@ -57,13 +57,10 @@ export default function TemplatesPage() {
       try {
         setLoading(true);
         const data = await dashboardService.getUserTemplates();
-        
-        // data will always be an array now thanks to our service changes
         setTemplates(data);
         setFilteredTemplates(data);
       } catch (error) {
         console.error("Error fetching templates:", error);
-        // Set empty arrays in case of error
         setTemplates([]);
         setFilteredTemplates([]);
         toast({
@@ -79,7 +76,6 @@ export default function TemplatesPage() {
     if (user) {
       fetchTemplates();
     } else {
-      // If user isn't available, redirect to login
       router.push('/auth/login');
     }
   }, [user, router]);
@@ -100,10 +96,7 @@ export default function TemplatesPage() {
     if (!templateToDelete) return;
     
     try {
-      // Call the API to delete the template
       await dashboardService.deleteTemplate(templateToDelete.id, templateToDelete.version);
-      
-      // Update state after successful deletion
       setTemplates(templates.filter(t => t.id !== templateToDelete.id));
       setFilteredTemplates(filteredTemplates.filter(t => t.id !== templateToDelete.id));
       

@@ -39,14 +39,11 @@ export default function DashboardPage() {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
-        // Fetch user stats
         const userStats = await dashboardService.getUserStats();
         setStats(userStats);
 
-        // Fetch user templates (limited to recent ones)
         const templates = await dashboardService.getUserTemplates();
-        
-        // Filter out test templates - adding null checks
+
         const filteredTemplates = templates.filter(template => {
           const title = template?.title?.toLowerCase() || '';
           const desc = template?.description?.toLowerCase() || '';
@@ -71,16 +68,13 @@ export default function DashboardPage() {
       }
     };
 
-    // Only fetch data if user is authenticated
     if (user) {
       fetchDashboardData();
     } else {
-      // Redirect to login if no user is found
       router.push('/auth/login');
     }
   }, [user, router]);
 
-  // If user is not available, display a loading state
   if (!user) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -94,7 +88,6 @@ export default function DashboardPage() {
     );
   }
 
-  // Format date for better display
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return new Intl.DateTimeFormat('en-US', { 
@@ -243,7 +236,6 @@ export default function DashboardPage() {
         </CardContent>
       </Card>
 
-      {/* Recent Activity and Quick Actions in 2 columns */}
       <div className="grid md:grid-cols-2 gap-6">
         {/* Recent Activity */}
         <Card>

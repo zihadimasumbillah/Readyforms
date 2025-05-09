@@ -1,182 +1,292 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft } from 'lucide-react';
-import { useAuth } from '@/contexts/auth-context';
-import { Template, FormResponse } from '@/types';
-import { toast } from '@/components/ui/use-toast';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import templateService from '@/lib/api/template-service';
-import { formResponseService } from '@/lib/api/form-response-service';
+import React, { useEffect, useState } from 'react';
+import { DashboardLayout } from "@/components/layouts/dashboard-layout";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { templateService } from "@/lib/api/template-service";
+import { formResponseService, FormResponseData } from "@/lib/api/form-response-service";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ChevronLeft, BarChart2, Users, Download } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/auth-context";
+import { toast } from "@/components/ui/use-toast";
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import Link from "next/link";
 
-export default function TemplateResponsesPage({ params }: { params: { id: string } }) {
-  const [template, setTemplate] = useState<Template | null>(null);
-  const [responses, setResponses] = useState<FormResponse[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+interface ResponsesPageProps {
+  params: {
+    id: string;
+  };
+}
+
+export default function TemplateResponsesPage({ params }: ResponsesPageProps) {
+  const [loading, setLoading] = useState(true);
+  const [template, setTemplate] = useState<any>(null);
+  const [responses, setResponses] = useState<FormResponseData[]>([]);
+  const [aggregateData, setAggregateData] = useState<any>(null);
+  
   const router = useRouter();
-  const { user, isAuthenticated } = useAuth() || {};
+  const auth = useAuth();
+  const user = auth?.user;
+  
+  const templateId = params.id;
+
+  const handleLogout = () => {
+    auth?.logout();
+    router.push('/auth/login');
+  };
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        setIsLoading(true);
-        setError(null);
+        setLoading(true);
         
-        // Get template data
-        const templateData = await templateService.getTemplateById(params.id);
+        const templateData = await templateService.getTemplateById(templateId);
         setTemplate(templateData);
-        
-        // Get responses for the template
-        const responsesData = await formResponseService.getResponsesByTemplate(params.id);
+  
+        if (templateData.userId !== user?.id && !user?.isAdmin) {
+          toast({
+            title: "Access denied",
+            description: "You don't have permission to view responses for this template.",
+            variant: "destructive"
+          });
+          router.push(`/templates/${templateId}`);
+          return;
+        }
+
+        const responsesData = await formResponseService.getResponsesByTemplate(templateId);
         setResponses(responsesData);
-        
+  
+        const aggregateStats = await formResponseService.getResponseAggregates(templateId);
+        setAggregateData(aggregateStats);
       } catch (error) {
-        console.error("Error fetching template or responses:", error);
-        setError("Failed to load data. Please try again later.");
+        console.error("Error fetching data:", error);
         toast({
           title: "Error",
-          description: "Failed to load template responses",
-          variant: "destructive",
+          description: "Failed to load responses. Please try again.",
+          variant: "destructive"
         });
       } finally {
-        setIsLoading(false);
+        setLoading(false);
       }
     };
 
-    if (isAuthenticated) {
+    if (user) {
       fetchData();
     } else {
       router.push('/auth/login');
     }
-  }, [params.id, isAuthenticated, router]);
+  }, [templateId, user, router]);
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString();
-  };
+  function formatDate(dateString: string | undefined) {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  }
 
-  if (isLoading) {
-    return (
-      <div className="container mx-auto py-6 px-4 md:px-6">
-        <div className="mb-6">
-          <Button variant="ghost" onClick={() => router.back()}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back
+  function exportToCSV() {
+    if (!responses.length) return;
+  
+    const fields = new Set<string>();
+    responses.forEach(response => {
+      Object.keys(response).forEach(key => {
+        if (!['id', 'templateId', 'userId', 'createdAt', 'updatedAt', 'template', 'user'].includes(key)) {
+          fields.add(key);
+        }
+      });
+    });
+    
+    const headers = ['ID', 'Submitted By', 'Submission Date', ...Array.from(fields)];
+
+    const rows = responses.map(response => {
+      const row: any[] = [
+        response.id,
+        response.user?.name || 'Anonymous',
+        formatDate(response.createdAt),
+      ];
+      
+      // Add values for each field
+      Array.from(fields).forEach(field => {
+        const value = response[field as keyof FormResponseData];
+        row.push(value !== undefined ? value : '');
+      });
+      
+      return row;
+    });
+    
+    // Combine header and rows
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+    ].join('\n');
+    
+    // Create download link
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `${template?.title || 'template'}-responses.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  if (!user) {
+    return <div>Loading...</div>;
+  }
+
+  return (
+    <DashboardLayout 
+      user={{
+        name: user.name,
+        email: user.email,
+        isAdmin: user.isAdmin
+      }}
+      onLogout={handleLogout}
+    >
+      <div className="mb-6">
+        <div className="flex items-center justify-between mb-2">
+          <Button variant="ghost" size="sm" onClick={() => router.push(`/templates/${templateId}`)}>
+            <ChevronLeft className="mr-2 h-4 w-4" />
+            Back to Template
           </Button>
+          
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => router.push(`/templates/${templateId}/statistics`)}
+            >
+              <BarChart2 className="mr-2 h-4 w-4" />
+              Statistics
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={exportToCSV}
+              disabled={!responses.length}
+            >
+              <Download className="mr-2 h-4 w-4" />
+              Export CSV
+            </Button>
+          </div>
         </div>
-        <Card>
-          <CardHeader>
-            <Skeleton className="h-8 w-3/4" />
-            <Skeleton className="h-4 w-1/2" />
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
+
+        {loading ? (
+          <Skeleton className="h-8 w-2/3" />
+        ) : (
+          <h1 className="text-2xl font-bold">
+            Responses: {template?.title}
+          </h1>
+        )}
+      </div>
+
+      <Card className="mb-6">
+        <CardHeader>
+          <div className="flex justify-between items-center">
+            <CardTitle className="text-xl">Response Summary</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {[...Array(3)].map((_, i) => (
+                <Skeleton key={i} className="h-24 w-full" />
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+              <div className="bg-muted/50 p-4 rounded-md">
+                <div className="text-sm text-muted-foreground">Total Responses</div>
+                <div className="text-2xl font-bold">{responses.length}</div>
+              </div>
+              
+              {template?.isQuiz && (
+                <div className="bg-muted/50 p-4 rounded-md">
+                  <div className="text-sm text-muted-foreground">Average Score</div>
+                  <div className="text-2xl font-bold">
+                    {aggregateData?.avg_score ? 
+                      `${Math.round(aggregateData.avg_score * 10) / 10}/${Math.round(aggregateData.avg_total_points)}` : 
+                      'N/A'}
+                  </div>
+                </div>
+              )}
+              
+              <div className="bg-muted/50 p-4 rounded-md">
+                <div className="text-sm text-muted-foreground">Latest Response</div>
+                <div className="text-lg font-medium">
+                  {responses.length > 0 ? 
+                    formatDate(responses[0].createdAt) :
+                    'No responses yet'}
+                </div>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <Users className="h-5 w-5 mr-2" />
+            All Responses
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="space-y-3">
               {[...Array(5)].map((_, i) => (
                 <Skeleton key={i} className="h-12 w-full" />
               ))}
             </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  if (error || !template) {
-    return (
-      <div className="container mx-auto py-6 px-4 md:px-6">
-        <div className="mb-6">
-          <Button variant="ghost" onClick={() => router.back()}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back
-          </Button>
-        </div>
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <h2 className="text-xl font-bold mb-2">Error</h2>
-            <p className="text-muted-foreground mb-4">
-              {error || "The template you're looking for doesn't exist or has been removed."}
-            </p>
-            <Button asChild>
-              <Link href="/templates">Browse Templates</Link>
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  // Check if user can view responses
-  const isOwner = user?.id === template.userId;
-  const isAdmin = user?.isAdmin;
-  const canViewResponses = isOwner || isAdmin;
-
-  if (!canViewResponses) {
-    return (
-      <div className="container mx-auto py-6 px-4 md:px-6">
-        <div className="mb-6">
-          <Button variant="ghost" onClick={() => router.back()}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back
-          </Button>
-        </div>
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <h2 className="text-xl font-bold mb-2">Access Denied</h2>
-            <p className="text-muted-foreground mb-4">
-              You don't have permission to view responses for this template.
-            </p>
-            <Button asChild>
-              <Link href="/templates">Browse Templates</Link>
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  return (
-    <div className="container mx-auto py-6 px-4 md:px-6">
-      <div className="mb-6">
-        <Button variant="ghost" onClick={() => router.back()}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back
-        </Button>
-      </div>
-      
-      <Card>
-        <CardHeader>
-          <CardTitle>Responses for: {template.title}</CardTitle>
-          <CardDescription>
-            {responses.length} {responses.length === 1 ? 'response' : 'responses'} submitted
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {responses.length > 0 ? (
+          ) : responses.length > 0 ? (
             <Table>
+              <TableCaption>A list of all responses for this template.</TableCaption>
               <TableHeader>
                 <TableRow>
                   <TableHead>Respondent</TableHead>
-                  <TableHead>Submission Time</TableHead>
+                  <TableHead>Date Submitted</TableHead>
+                  {template?.isQuiz && <TableHead>Score</TableHead>}
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {responses.map((response) => (
                   <TableRow key={response.id}>
-                    <TableCell>
+                    <TableCell className="font-medium">
                       {response.user?.name || 'Anonymous'}
                     </TableCell>
-                    <TableCell>
-                      {formatDate(response.createdAt)}
-                    </TableCell>
+                    <TableCell>{formatDate(response.createdAt)}</TableCell>
+                    {template?.isQuiz && (
+                      <TableCell>
+                        {response.score !== undefined && response.totalPossiblePoints !== undefined ? (
+                          <div>
+                            <span className="font-medium">{response.score}/{response.totalPossiblePoints}</span>
+                            <span className="ml-2 text-sm text-muted-foreground">
+                              ({Math.round((response.score / response.totalPossiblePoints) * 100)}%)
+                            </span>
+                          </div>
+                        ) : 'N/A'}
+                      </TableCell>
+                    )}
                     <TableCell className="text-right">
-                      <Button size="sm" variant="outline" asChild>
-                        <Link href={`/responses/${response.id}`}>
+                      <Button asChild variant="outline" size="sm">
+                        <Link href={`/templates/${templateId}/responses/${response.id}`}>
                           View Details
                         </Link>
                       </Button>
@@ -186,12 +296,16 @@ export default function TemplateResponsesPage({ params }: { params: { id: string
               </TableBody>
             </Table>
           ) : (
-            <div className="text-center py-8">
-              <p className="text-muted-foreground">No responses have been submitted yet.</p>
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <Users className="h-16 w-16 text-muted-foreground mb-4" />
+              <h3 className="text-lg font-medium">No responses yet</h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                There are no responses to this template yet.
+              </p>
             </div>
           )}
         </CardContent>
       </Card>
-    </div>
+    </DashboardLayout>
   );
 }

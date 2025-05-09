@@ -30,9 +30,7 @@ class TopicService {
   }
 }
 
-// Create and export service instance
 const topicService = new TopicService();
 
-// Export both the class and the instance
 export { TopicService, topicService };
 export default topicService;

@@ -1,19 +1,16 @@
 import './globals.css';
 import type { Metadata } from 'next';
-import { Inter as FontSans } from 'next/font/google';
-import { cn } from '@/lib/utils';
+import { Inter } from 'next/font/google';
 import { ThemeProvider } from '@/components/theme-provider';
 import { AuthProvider } from '@/contexts/auth-context';
 import { Toaster } from '@/components/ui/toaster';
+import { Navbar } from '@/components/navbar';
 
-const fontSans = FontSans({
-  subsets: ['latin'],
-  variable: '--font-sans',
-});
+const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'ReadyForms - Create & Share Forms Easily',
-  description: 'Create, share, and analyze forms with ease. ReadyForms is your complete form solution.',
+  title: 'ReadyForms',
+  description: 'Create and manage forms with ease',
 };
 
 export default function RootLayout({
@@ -23,22 +20,19 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head />
-      <body 
-        className={cn(
-          'min-h-screen bg-background font-sans antialiased',
-          fontSans.variable
-        )}
-        suppressHydrationWarning
-      >
-        <ThemeProvider 
-          attribute="class" 
-          defaultTheme="system" 
-          enableSystem 
+      <body className={inter.className}>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
           disableTransitionOnChange
         >
           <AuthProvider>
-            {children}
+            {/* Include Navbar in all pages */}
+            <Navbar />
+            <main>
+              {children}
+            </main>
             <Toaster />
           </AuthProvider>
         </ThemeProvider>

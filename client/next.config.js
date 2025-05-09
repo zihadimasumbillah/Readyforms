@@ -7,9 +7,8 @@ const nextConfig = {
   },
   images: {
     domains: ['localhost', 'picsum.photos', 'res.cloudinary.com'],
-    unoptimized: true, // Required for static export
+    unoptimized: true, 
   },
-  // Add trailing slash to allow for proper path-based routing
   trailingSlash: true,
 };
 

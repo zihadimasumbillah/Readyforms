@@ -1,461 +1,479 @@
 "use client";
 
-import React, { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
+import React, { useState, useEffect } from 'react';
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Button } from "@/components/ui/button";
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Topic, Template } from "@/types";
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragEndEvent
-} from '@dnd-kit/core';
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy
-} from '@dnd-kit/sortable';
-import { SortableQuestionField } from './sortable-question-field';
-import { PlusCircle } from 'lucide-react';
-import { toast } from "@/components/ui/use-toast";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
+import { SortableQuestionField } from "./sortable-question-field";
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
+import { restrictToParentElement, restrictToVerticalAxis } from '@dnd-kit/modifiers';
+import { useDropzone } from 'react-dropzone';
+import { Upload, X, Plus } from 'lucide-react';
 
-// Template form schema
-const templateSchema = z.object({
-  title: z.string().min(3, { message: "Title must be at least 3 characters" }),
-  description: z.string(),
-  topicId: z.string().min(1, { message: "Please select a topic" }),
-  isPublic: z.boolean().default(true),
-  allowedUsers: z.string().optional(),
-});
-
-// Update the TemplateFormProps interface to include initialData and isEditMode
-export interface TemplateFormProps {
-  initialData?: Template; 
-  topics: Topic[];
-  onSubmit: (formData: any) => Promise<void>;
-  submitButtonLabel: string;
-  isEditMode?: boolean; // Add this property
+// Define scoring criteria type
+interface ScoringCriteriaItem {
+  answer: string | number | boolean;
+  points: number;
 }
 
-export const TemplateForm: React.FC<TemplateFormProps> = ({
-  initialData,
-  topics,
-  onSubmit,
-  submitButtonLabel,
-  isEditMode = false // Add this with default value
-}) => {
-  const [template, setTemplate] = useState<any>(initialData || {});
-  const [questionOrder, setQuestionOrder] = useState<string[]>(
-    initialData?.questionOrder ? 
-      JSON.parse(initialData.questionOrder) : []
-  );
-  const [saving, setSaving] = useState(false);
+interface ScoringCriteria {
+  [key: string]: ScoringCriteriaItem;
+}
 
-  // Form setup
-  const form = useForm<z.infer<typeof templateSchema>>({
-    resolver: zodResolver(templateSchema),
-    defaultValues: {
-      title: initialData?.title || '',
-      description: initialData?.description || '',
-      topicId: initialData?.topicId || '',
-      isPublic: initialData?.isPublic !== undefined ? initialData.isPublic : true,
-      allowedUsers: initialData?.allowedUsers || '',
-    },
+export interface TemplateFormProps {
+  topics: Array<{ id: string, name: string }>;
+  initialData?: any;
+  handleSave: (data: any) => Promise<void>;
+  handleCancel: () => void;
+  isSubmitting?: boolean;
+  onSubmit?: (data: any) => Promise<void>;
+  isEditMode?: boolean;
+  submitButtonLabel?: string;
+}
+
+export function TemplateForm({
+  topics,
+  initialData,
+  handleSave,
+  handleCancel,
+  isSubmitting = false,
+  onSubmit,
+  isEditMode = false,
+  submitButtonLabel = "Save Template"
+}: TemplateFormProps) {
+  const saveHandler = onSubmit || handleSave;
+
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    topicId: '',
+    isPublic: true,
+    isQuiz: false,
+    showScoreImmediately: false,
+
+    customString1State: false,
+    customString1Question: '',
+    customString2State: false,
+    customString2Question: '',
+    customString3State: false,
+    customString3Question: '',
+    customString4State: false,
+    customString4Question: '',
+
+    customText1State: false,
+    customText1Question: '',
+    customText2State: false,
+    customText2Question: '',
+    customText3State: false,
+    customText3Question: '',
+    customText4State: false,
+    customText4Question: '',
+
+    customInt1State: false,
+    customInt1Question: '',
+    customInt2State: false,
+    customInt2Question: '',
+    customInt3State: false,
+    customInt3Question: '',
+    customInt4State: false,
+    customInt4Question: '',
+
+    customCheckbox1State: false,
+    customCheckbox1Question: '',
+    customCheckbox2State: false,
+    customCheckbox2Question: '',
+    customCheckbox3State: false,
+    customCheckbox3Question: '',
+    customCheckbox4State: false,
+    customCheckbox4Question: '',
+
+    scoringCriteria: {} as ScoringCriteria,
+
+    imageUrl: '',
   });
 
-  // DnD setup for question reordering
+  const [fieldOrder, setFieldOrder] = useState<string[]>([]);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+
   const sensors = useSensors(
-    useSensor(PointerSensor),
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
   );
 
-  const handleDragEnd = (event: DragEndEvent) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSwitchChange = (name: string, checked: boolean) => {
+    setFormData(prev => ({ ...prev, [name]: checked }));
+
+    if (checked && !fieldOrder.includes(name.replace('State', ''))) {
+      setFieldOrder(prev => [...prev, name.replace('State', '')]);
+    }
+
+    if (!checked) {
+      setFieldOrder(prev => prev.filter(field => field !== name.replace('State', '')));
+    }
+  };
+
+  const handleCheckboxChange = (name: string, checked: boolean) => {
+    setFormData(prev => ({ ...prev, [name]: checked }));
+  };
+
+  const onSubmitForm = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const dataToSave = {
+      ...formData,
+      questionOrder: fieldOrder,
+    };
+
+    await saveHandler(dataToSave);
+  };
+
+  const handleDragEnd = (event: any) => {
     const { active, over } = event;
-    
+
     if (over && active.id !== over.id) {
-      setQuestionOrder((items) => {
-        const oldIndex = items.indexOf(active.id.toString());
-        const newIndex = items.indexOf(over.id.toString());
-        
-        return arrayMove(items, oldIndex, newIndex);
+      setFieldOrder(currentOrder => {
+        const oldIndex = currentOrder.indexOf(active.id as string);
+        const newIndex = currentOrder.indexOf(over.id as string);
+        return arrayMove(currentOrder, oldIndex, newIndex);
       });
     }
   };
 
-  const toggleQuestionField = (fieldName: string, enabled: boolean) => {
-    if (!template) return;
-    
-    const stateKey = `${fieldName}State`;
-    
-    setTemplate({
-      ...template,
-      [stateKey]: enabled,
-    });
+  const { getRootProps, getInputProps } = useDropzone({
+    accept: {
+      'image/*': ['.jpeg', '.jpg', '.png', '.gif']
+    },
+    maxFiles: 1,
+    onDrop: acceptedFiles => {
+      if (acceptedFiles.length > 0) {
+        const file = acceptedFiles[0];
+        const reader = new FileReader();
 
-    // If enabling a field that's not in the order, add it
-    if (enabled && !questionOrder.includes(fieldName)) {
-      setQuestionOrder([...questionOrder, fieldName]);
-    }
-  };
+        reader.onload = () => {
+          const dataUrl = reader.result as string;
+          setPreviewImage(dataUrl);
+          setFormData(prev => ({ ...prev, imageUrl: dataUrl }));
+        };
 
-  const updateQuestionText = (fieldName: string, text: string) => {
-    if (!template) return;
-    
-    const questionKey = `${fieldName}Question`;
-    
-    setTemplate({
-      ...template,
-      [questionKey]: text,
-    });
-  };
-
-  const addNewQuestion = (type: 'String' | 'Text' | 'Int' | 'Checkbox') => {
-    if (!template) return;
-    
-    // Find the next available slot (1-4) for the given type
-    for (let i = 1; i <= 4; i++) {
-      const fieldName = `custom${type}${i}`;
-      const stateKey = `${fieldName}State`;
-      
-      if (!template[stateKey]) {
-        // Enable this field
-        toggleQuestionField(fieldName, true);
-        
-        // Update the question text to a default value
-        const questionKey = `${fieldName}Question`;
-        setTemplate({
-          ...template,
-          [stateKey]: true,
-          [questionKey]: `New ${type} Question`,
-        });
-        
-        // Add to the order if not already there
-        if (!questionOrder.includes(fieldName)) {
-          setQuestionOrder([...questionOrder, fieldName]);
-        }
-        
-        return;
+        reader.readAsDataURL(file);
       }
     }
-    
-    toast({
-      title: "Maximum fields reached",
-      description: `You can have at most 4 ${type.toLowerCase()} questions.`,
-      variant: "default"
-    });
+  });
+
+  const removeImage = () => {
+    setPreviewImage(null);
+    setFormData(prev => ({ ...prev, imageUrl: '' }));
   };
 
-  const removeQuestion = (fieldName: string) => {
-    if (!template) return;
-    
-    // Disable the field
-    const stateKey = `${fieldName}State`;
-    
-    setTemplate({
-      ...template,
-      [stateKey]: false,
-    });
-    
-    // Remove from order
-    setQuestionOrder(questionOrder.filter(item => item !== fieldName));
-  };
+  const getScoringCriteriaAsString = (key: string): string => {
+    const criteria = formData.scoringCriteria[key];
+    if (!criteria) return '';
 
-  const countActiveFieldsOfType = (type: string): number => {
-    if (!template) return 0;
-    
-    let count = 0;
-    for (let i = 1; i <= 4; i++) {
-      const stateKey = `custom${type}${i}State`;
-      if (template[stateKey]) {
-        count++;
-      }
+    if (typeof criteria.answer === 'boolean') {
+      return '';
     }
-    return count;
+    return String(criteria.answer || '');
   };
 
-  const handleSubmit = async (data: z.infer<typeof templateSchema>) => {
-    try {
-      setSaving(true);
-      
-      // Prepare the payload with all necessary fields
-      const payload: Record<string, any> = {
-        ...data,
-        version: template.version,
-        questionOrder: JSON.stringify(questionOrder),
+  const getScoringCriteriaAsBoolean = (key: string): boolean => {
+    const criteria = formData.scoringCriteria[key];
+    return criteria?.answer === true;
+  };
+
+  useEffect(() => {
+    if (initialData) {
+      const parsedData = {
+        ...initialData,
       };
-      
-      // Add all question fields to the payload
-      for (let i = 1; i <= 4; i++) {
-        ['String', 'Text', 'Int', 'Checkbox'].forEach(type => {
-          const fieldName = `custom${type}${i}`;
-          const stateKey = `${fieldName}State`;
-          const questionKey = `${fieldName}Question`;
-          
-          payload[stateKey] = template[stateKey] || false;
-          payload[questionKey] = template[questionKey] || '';
-        });
+
+      if (typeof initialData.scoringCriteria === 'string') {
+        try {
+          parsedData.scoringCriteria = JSON.parse(initialData.scoringCriteria);
+        } catch (e) {
+          console.error("Error parsing scoring criteria:", e);
+          parsedData.scoringCriteria = {};
+        }
       }
-      
-      await onSubmit(payload);
-      
-    } catch (error) {
-      console.error("Error saving template:", error);
-      toast({
-        title: "Error",
-        description: "Failed to save template. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setSaving(false);
+
+      setFormData(parsedData);
+
+      if (initialData.imageUrl) {
+        setPreviewImage(initialData.imageUrl);
+      }
+
+      let order: string[] = [];
+      try {
+        if (initialData.questionOrder) {
+          if (typeof initialData.questionOrder === 'string') {
+            order = JSON.parse(initialData.questionOrder);
+          } else if (Array.isArray(initialData.questionOrder)) {
+            order = initialData.questionOrder;
+          }
+        }
+      } catch (e) {
+        console.error("Error parsing question order:", e);
+      }
+
+      if (!order || !Array.isArray(order) || order.length === 0) {
+        order = Object.keys(initialData)
+          .filter(key => key.endsWith('State') && initialData[key] === true)
+          .map(key => key.replace('State', ''));
+      }
+
+      setFieldOrder(order);
     }
-  };
+  }, [initialData]);
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-4">
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-            {/* Basic template information */}
-            <FormField
-              control={form.control}
+    <form onSubmit={onSubmitForm} className="space-y-8">
+      <Card>
+        <CardHeader>
+          <CardTitle>Basic Information</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="title">Title <span className="text-red-500">*</span></Label>
+            <Input
+              id="title"
               name="title"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Template Title</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Enter template title" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+              value={formData.title}
+              onChange={handleInputChange}
+              required
+              placeholder="Enter a title for your form"
             />
-            
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Description</FormLabel>
-                  <FormControl>
-                    <Textarea 
-                      placeholder="Enter a description of this template" 
-                      {...field} 
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="topicId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Topic</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a topic" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {topics.map((topic) => (
-                        <SelectItem key={topic.id} value={topic.id}>
-                          {topic.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="isPublic"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-                  <FormControl>
-                    <Checkbox
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
-                  <div className="space-y-1 leading-none">
-                    <FormLabel>
-                      Make this template public
-                    </FormLabel>
-                    <FormDescription>
-                      Public templates are visible to all users. Private templates are only visible to you.
-                    </FormDescription>
-                  </div>
-                </FormItem>
-              )}
-            />
+          </div>
 
-            {/* Question section */}
-            <div className="bg-muted/20 border rounded-md p-6 space-y-6">
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <div>
-                  <h3 className="text-lg font-medium">Questions</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Add and configure questions for your form
-                  </p>
-                </div>
-                
-                <div className="flex flex-wrap gap-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => addNewQuestion('String')}
-                    disabled={countActiveFieldsOfType('String') >= 4}
-                    className="gap-1"
-                    type="button" // Explicitly set type to button to prevent form submission
-                  >
-                    <PlusCircle className="h-3.5 w-3.5" />
-                    Add Text Field
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => addNewQuestion('Text')}
-                    disabled={countActiveFieldsOfType('Text') >= 4}
-                    className="gap-1"
-                    type="button" // Explicitly set type to button to prevent form submission
-                  >
-                    <PlusCircle className="h-3.5 w-3.5" />
-                    Add Text Area
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => addNewQuestion('Int')}
-                    disabled={countActiveFieldsOfType('Int') >= 4}
-                    className="gap-1"
-                    type="button" // Explicitly set type to button to prevent form submission
-                  >
-                    <PlusCircle className="h-3.5 w-3.5" />
-                    Add Number
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => addNewQuestion('Checkbox')}
-                    disabled={countActiveFieldsOfType('Checkbox') >= 4}
-                    className="gap-1"
-                    type="button" // Explicitly set type to button to prevent form submission
-                  >
-                    <PlusCircle className="h-3.5 w-3.5" />
-                    Add Checkbox
-                  </Button>
-                </div>
-              </div>
-              
-              <div className="space-y-2 py-2">
-                <DndContext 
-                  sensors={sensors}
-                  collisionDetection={closestCenter}
-                  onDragEnd={handleDragEnd}
+          <div className="space-y-2">
+            <Label htmlFor="description">Description</Label>
+            <Textarea
+              id="description"
+              name="description"
+              value={formData.description || ''}
+              onChange={handleInputChange}
+              placeholder="Enter a description for your form"
+              rows={3}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Template Image (Optional)</Label>
+            {previewImage ? (
+              <div className="relative overflow-hidden rounded-md border border-border">
+                <img
+                  src={previewImage}
+                  alt="Template preview"
+                  className="max-h-40 w-full object-cover"
+                />
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="destructive"
+                  className="absolute top-2 right-2"
+                  onClick={removeImage}
                 >
-                  <SortableContext
-                    items={questionOrder}
-                    strategy={verticalListSortingStrategy}
-                  >
-                    {questionOrder.map(fieldName => {
-                      const stateKey = `${fieldName}State`;
-                      const questionKey = `${fieldName}Question`;
-                      
-                      // Parse field name to get type and index
-                      const typeMatch = fieldName.match(/custom([A-Za-z]+)(\d)/);
-                      
-                      if (!typeMatch) return null;
-                      
-                      const [, type, index] = typeMatch;
-                      let label;
-                      
-                      switch (type) {
-                        case 'String':
-                          label = `Text Field ${index}`;
-                          break;
-                        case 'Text':
-                          label = `Text Area ${index}`;
-                          break;
-                        case 'Int':
-                          label = `Number ${index}`;
-                          break;
-                        case 'Checkbox':
-                          label = `Checkbox ${index}`;
-                          break;
-                        default:
-                          label = `Question ${index}`;
-                      }
-                      
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              <div
+                {...getRootProps()}
+                className="border-2 border-dashed border-border rounded-md p-6 hover:bg-accent/50 transition-colors cursor-pointer text-center"
+              >
+                <input {...getInputProps()} />
+                <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">Drag &amp; drop an image here, or click to select one</p>
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="topicId">Topic <span className="text-red-500">*</span></Label>
+            <select
+              id="topicId"
+              name="topicId"
+              value={formData.topicId}
+              onChange={handleInputChange}
+              required
+              className="w-full p-2 border rounded-md bg-background"
+            >
+              <option value="">Select a topic</option>
+              {topics.map((topic) => (
+                <option key={topic.id} value={topic.id}>
+                  {topic.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex flex-col space-y-4 pt-2">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="isPublic">Make this template public</Label>
+              <Switch
+                id="isPublic"
+                checked={formData.isPublic}
+                onCheckedChange={(checked) => handleSwitchChange('isPublic', checked)}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <Label htmlFor="isQuiz">
+                This is a quiz or assessment
+                <span className="block text-xs text-muted-foreground">
+                  Enable scoring for responses
+                </span>
+              </Label>
+              <Switch
+                id="isQuiz"
+                checked={formData.isQuiz}
+                onCheckedChange={(checked) => handleSwitchChange('isQuiz', checked)}
+              />
+            </div>
+
+            {formData.isQuiz && (
+              <div className="flex items-center justify-between pl-6">
+                <Label htmlFor="showScoreImmediately">
+                  Show score immediately
+                  <span className="block text-xs text-muted-foreground">
+                    Display score to users after submission
+                  </span>
+                </Label>
+                <Switch
+                  id="showScoreImmediately"
+                  checked={formData.showScoreImmediately}
+                  onCheckedChange={(checked) => handleSwitchChange('showScoreImmediately', checked)}
+                />
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Questions</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium">Short Text Questions</h3>
+
+            <div className="space-y-4">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="customString1State"
+                  checked={formData.customString1State}
+                  onCheckedChange={(checked) =>
+                    handleSwitchChange('customString1State', checked === true)}
+                />
+                <Label htmlFor="customString1State" className="font-normal">
+                  Short Text Question 1
+                </Label>
+              </div>
+
+              {formData.customString1State && (
+                <div className="ml-6">
+                  <Input
+                    name="customString1Question"
+                    value={formData.customString1Question}
+                    onChange={handleInputChange}
+                    placeholder="Enter your question"
+                  />
+                  {formData.isQuiz && (
+                    <div className="mt-2">
+                      <Label className="text-xs">Correct answer (for scoring)</Label>
+                      <Input
+                        name="customString1Answer"
+                        value={getScoringCriteriaAsString('customString1Answer')}
+                        onChange={(e) => {
+                          setFormData(prev => ({
+                            ...prev,
+                            scoringCriteria: {
+                              ...prev.scoringCriteria,
+                              customString1Answer: {
+                                answer: e.target.value,
+                                points: 5
+                              }
+                            }
+                          }));
+                        }}
+                        placeholder="Enter correct answer"
+                        className="mt-1"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium">Question Order</h3>
+            <p className="text-sm text-muted-foreground">Drag and drop questions to reorder them.</p>
+
+            {fieldOrder.length > 0 ? (
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                modifiers={[restrictToVerticalAxis, restrictToParentElement]}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext items={fieldOrder} strategy={verticalListSortingStrategy}>
+                  <div className="space-y-2">
+                    {fieldOrder.map((fieldId) => {
+                      const questionKey = `${fieldId}Question`;
+                      const question = formData[questionKey as keyof typeof formData] || fieldId;
                       return (
                         <SortableQuestionField
-                          key={fieldName}
-                          id={fieldName}
-                          label={label}
-                          enabled={template[stateKey] || false}
-                          question={template[questionKey] || ''}
-                          onToggle={(enabled) => toggleQuestionField(fieldName, enabled)}
-                          onQuestionChange={(text) => updateQuestionText(fieldName, text)}
-                          onDelete={() => removeQuestion(fieldName)}
-                          currentFieldCount={questionOrder.filter(item => item.includes(type)).length}
-                          maxFields={4}
+                          key={fieldId}
+                          id={fieldId}
+                          question={typeof question === 'string' ? question : String(fieldId)}
                         />
                       );
                     })}
-                  </SortableContext>
-                </DndContext>
-                
-                {questionOrder.length === 0 && (
-                  <div className="text-center py-8">
-                    <p className="text-lg font-medium text-muted-foreground">No questions yet</p>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Add questions using the buttons above
-                    </p>
                   </div>
-                )}
+                </SortableContext>
+              </DndContext>
+            ) : (
+              <div className="text-center p-4 border border-dashed rounded-md text-muted-foreground">
+                No questions have been enabled. Enable questions above to arrange their order.
               </div>
-            </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
-            <div className="flex justify-end space-x-2">
-              <Button type="submit" disabled={saving}>
-                {saving ? 'Saving...' : submitButtonLabel}
-              </Button>
-            </div>
-          </form>
-        </Form>
+      <div className="flex justify-end gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={handleCancel}
+        >
+          Cancel
+        </Button>
+        <Button
+          type="submit"
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? 'Saving...' : submitButtonLabel}
+        </Button>
       </div>
-    </div>
+    </form>
   );
-};
+}
+
+export default TemplateForm;

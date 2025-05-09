@@ -1,192 +1,278 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { Button, buttonVariants } from "@/components/ui/button";
-import { 
-  BookTemplate,
-  Menu,
-  X,
-  User,
-  LogIn
-} from "lucide-react";
-import { useAuth } from "@/contexts/auth-context";
-import { cn } from "@/lib/utils";
+import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { BookTemplate, Menu, X, LogIn, User } from 'lucide-react';
+import { useAuth } from '@/contexts/auth-context';
+import { ThemeToggle } from '@/components/theme-toggle';
+import { cn } from '@/lib/utils';
 import {
   NavigationMenu,
+  NavigationMenuContent,
   NavigationMenuItem,
   NavigationMenuLink,
   NavigationMenuList,
-  navigationMenuTriggerStyle,
-} from "@/components/ui/navigation-menu";
-import { ThemeToggle } from "@/components/theme-toggle";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { useHasMounted } from "@/hooks/use-mounted";
+  NavigationMenuTrigger,
+} from '@/components/ui/navigation-menu';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 export function Navbar() {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const auth = useAuth();
-  const user = auth?.user;
   const pathname = usePathname();
-  const [isScrolled, setIsScrolled] = useState(false);
-  const hasMounted = useHasMounted();
-
-  const isActive = (path: string) => pathname === path;
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 10);
-    };
-
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
+    setMounted(true);
   }, []);
 
+  // Don't show navbar on dashboard pages - they have their own layout
+  if (pathname?.startsWith('/dashboard') || pathname?.startsWith('/admin')) {
+    return null;
+  }
+
+  // Close mobile menu when clicking outside
+  const closeMobileMenu = () => {
+    setMobileMenuOpen(false);
+  };
+
+  // Navigation items based on authentication status
   const navItems = [
-    { title: "Home", href: "/" },
-    { title: "Templates", href: "/templates" },
-    { title: "Features", href: "/features" },
-    { title: "Pricing", href: "/pricing" },
+    { label: 'Home', href: '/' },
+    { label: 'Templates', href: '/templates' },
+    { label: 'About', href: '/about' },
+    { label: 'Pricing', href: '/pricing' },
   ];
 
-  // Don't render links until client-side hydration is complete
-  if (!hasMounted) {
-    return (
-      <header className={cn(
-        "sticky top-0 z-40 w-full transition-all duration-200",
-        "bg-background/95 backdrop-blur-sm border-b shadow-sm"
-      )}>
-        <div className="container flex h-16 items-center justify-between p-4">
-          <div className="flex gap-6 items-center">
-            <div className="flex items-center gap-2">
-              <BookTemplate className="h-6 w-6" />
-              <span className="text-lg font-semibold">ReadyForms</span>
-            </div>
-          </div>
-          <div></div>
-        </div>
-      </header>
-    );
+  // User is authenticated
+  const userMenuItems = auth?.user ? [
+    { label: 'Dashboard', href: '/dashboard' },
+    { label: 'My Templates', href: '/dashboard/templates' },
+    { label: 'Profile', href: '/profile' },
+    { label: 'Settings', href: '/settings' },
+  ] : [];
+
+  if (!mounted) {
+    return null;
   }
 
   return (
-    <header className={cn(
-      "sticky top-0 z-40 w-full transition-all duration-200",
-      isScrolled 
-        ? "bg-background/95 backdrop-blur-sm border-b shadow-sm" 
-        : "bg-transparent"
-    )}>
-      <div className="container flex h-16 items-center justify-between p-4">
-        <div className="flex gap-6 items-center">
+    <header className="sticky top-0 z-40 w-full bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
+      <div className="container flex h-16 items-center justify-between">
+        {/* Logo */}
+        <div className="flex items-center gap-2">
           <Link href="/" className="flex items-center gap-2">
             <BookTemplate className="h-6 w-6" />
-            <span className="text-lg font-semibold">ReadyForms</span>
+            <span className="font-bold text-lg">ReadyForms</span>
           </Link>
+        </div>
 
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex">
-            <NavigationMenu>
-              <NavigationMenuList>
-                {navItems.map((item) => (
-                  <NavigationMenuItem key={item.href}>
-                    <Link href={item.href} legacyBehavior passHref>
-                      <NavigationMenuLink
-                        className={cn(
-                          navigationMenuTriggerStyle(),
-                          isActive(item.href) && "font-medium bg-accent"
-                        )}
-                      >
-                        {item.title}
-                      </NavigationMenuLink>
-                    </Link>
-                  </NavigationMenuItem>
-                ))}
-              </NavigationMenuList>
-            </NavigationMenu>
+        {/* Desktop Navigation */}
+        <div className="hidden md:flex items-center gap-6">
+          <NavigationMenu>
+            <NavigationMenuList>
+              {navItems.map((item) => (
+                <NavigationMenuItem key={item.href}>
+                  <Link href={item.href} legacyBehavior passHref>
+                    <NavigationMenuLink className={cn(
+                      "group inline-flex h-9 w-max items-center justify-center rounded-md bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none disabled:pointer-events-none disabled:opacity-50",
+                      pathname === item.href && "bg-accent text-accent-foreground"
+                    )}>
+                      {item.label}
+                    </NavigationMenuLink>
+                  </Link>
+                </NavigationMenuItem>
+              ))}
+
+              {auth?.user && auth.user.isAdmin && (
+                <NavigationMenuItem>
+                  <Link href="/admin" legacyBehavior passHref>
+                    <NavigationMenuLink className="group inline-flex h-9 w-max items-center justify-center rounded-md bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground">
+                      Admin
+                    </NavigationMenuLink>
+                  </Link>
+                </NavigationMenuItem>
+              )}
+            </NavigationMenuList>
+          </NavigationMenu>
+
+          <ThemeToggle />
+
+          <div>
+            {auth?.user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                    <Avatar className="h-8 w-8">
+                      <AvatarFallback>
+                        {auth.user.name
+                          .split(" ")
+                          .map((n) => n[0])
+                          .join("")
+                          .toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>
+                    <div className="flex flex-col">
+                      <span>{auth.user.name}</span>
+                      <span className="text-xs text-muted-foreground">{auth.user.email}</span>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {userMenuItems.map((item) => (
+                    <DropdownMenuItem key={item.href} asChild>
+                      <Link href={item.href}>{item.label}</Link>
+                    </DropdownMenuItem>
+                  ))}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => auth.logout()}>
+                    Log out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Button asChild variant="ghost" size="sm">
+                  <Link href="/auth/login">
+                    <LogIn className="h-4 w-4 mr-2" />
+                    Log in
+                  </Link>
+                </Button>
+                <Button asChild size="sm">
+                  <Link href="/auth/register">Sign up</Link>
+                </Button>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Desktop - Right side menu */}
-        <div className="hidden md:flex items-center gap-4">
-          <ThemeToggle />
-          
-          {user ? (
-            <Link href="/dashboard" className={cn(buttonVariants({ size: "sm" }), "gap-2")}>
-              <User className="h-4 w-4" />
-              Dashboard
-            </Link>
+        {/* Mobile menu toggle */}
+        <button
+          className="md:hidden"
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+        >
+          {mobileMenuOpen ? (
+            <X className="h-6 w-6" />
           ) : (
-            <div className="flex items-center gap-2">
-              <Link href="/auth/login" className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "gap-1")}>
-                <LogIn className="h-4 w-4" />
-                Log In
-              </Link>
-              <Link href="/auth/register" className={cn(buttonVariants({ size: "sm" }))}>
-                Sign Up
-              </Link>
-            </div>
+            <Menu className="h-6 w-6" />
           )}
-        </div>
+        </button>
+      </div>
 
-        {/* Mobile - Sheet navigation */}
-        <div className="md:hidden flex items-center gap-4">
-          <ThemeToggle />
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="md:hidden">
-                <Menu className="h-5 w-5" />
-                <span className="sr-only">Toggle menu</span>
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="right">
-              <div className="flex flex-col h-full">
-                <div className="border-b py-4">
-                  <Link href="/" className="flex items-center gap-2">
-                    <BookTemplate className="h-6 w-6" />
-                    <span className="font-semibold">ReadyForms</span>
+      {/* Mobile menu */}
+      {mobileMenuOpen && (
+        <div className="md:hidden">
+          <div className="fixed inset-0 z-50" onClick={closeMobileMenu}>
+            <div className="absolute inset-0 bg-black/50" />
+            <div className="fixed right-0 top-0 h-full w-3/4 max-w-sm bg-background p-6 shadow-lg" onClick={(e) => e.stopPropagation()}>
+              <div className="flex justify-end mb-8">
+                <Button variant="ghost" size="icon" onClick={closeMobileMenu}>
+                  <X className="h-6 w-6" />
+                </Button>
+              </div>
+
+              <div className="space-y-4">
+                {navItems.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={cn(
+                      "flex py-2 text-lg",
+                      pathname === item.href && "font-bold text-primary"
+                    )}
+                    onClick={closeMobileMenu}
+                  >
+                    {item.label}
                   </Link>
-                </div>
-                <nav className="flex-1 py-4">
-                  <ul className="space-y-2">
-                    {navItems.map((item) => (
-                      <li key={item.href}>
-                        <Link 
-                          href={item.href} 
-                          className={cn(
-                            "flex items-center py-2 px-3 rounded-md text-sm font-medium",
-                            isActive(item.href) 
-                              ? "bg-accent text-accent-foreground"
-                              : "hover:bg-accent hover:text-accent-foreground"
-                          )}
+                ))}
+
+                {auth?.user ? (
+                  <>
+                    <div className="pt-4 border-t">
+                      <div className="flex items-center mb-4">
+                        <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center mr-2">
+                          {auth.user.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <div className="font-medium">{auth.user.name}</div>
+                          <div className="text-sm text-muted-foreground">{auth.user.email}</div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-3">
+                        {userMenuItems.map((item) => (
+                          <Link
+                            key={item.href}
+                            href={item.href}
+                            className="flex py-1"
+                            onClick={closeMobileMenu}
+                          >
+                            {item.label}
+                          </Link>
+                        ))}
+
+                        {auth?.user?.isAdmin && (
+                          <Link
+                            href="/admin"
+                            className="flex py-1"
+                            onClick={closeMobileMenu}
+                          >
+                            Admin
+                          </Link>
+                        )}
+
+                        <Button 
+                          variant="destructive"
+                          className="w-full mt-2"
+                          onClick={() => {
+                            auth.logout();
+                            closeMobileMenu();
+                          }}
                         >
-                          {item.title}
+                          Log out
+                        </Button>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="pt-4 border-t">
+                    <div className="flex flex-col space-y-3">
+                      <Button asChild>
+                        <Link href="/auth/login" onClick={closeMobileMenu}>
+                          Log in
                         </Link>
-                      </li>
-                    ))}
-                  </ul>
-                </nav>
-                <div className="border-t py-4 flex flex-col gap-2">
-                  {user ? (
-                    <Link href="/dashboard" className={cn(buttonVariants(), "w-full gap-2")}>
-                      <User className="h-4 w-4" />
-                      Dashboard
-                    </Link>
-                  ) : (
-                    <>
-                      <Link href="/auth/login" className={cn(buttonVariants({ variant: "outline" }), "w-full")}>
-                        Log In
-                      </Link>
-                      <Link href="/auth/register" className={cn(buttonVariants(), "w-full")}>
-                        Sign Up
-                      </Link>
-                    </>
-                  )}
+                      </Button>
+                      <Button asChild variant="outline">
+                        <Link href="/auth/register" onClick={closeMobileMenu}>
+                          Sign up
+                        </Link>
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="mt-4 pt-4 border-t flex justify-between items-center">
+                  <div>Theme</div>
+                  <ThemeToggle />
                 </div>
               </div>
-            </SheetContent>
-          </Sheet>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
     </header>
   );
 }
