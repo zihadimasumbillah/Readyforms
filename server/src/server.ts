@@ -1,108 +1,95 @@
-import express from 'express';
-import cors from 'cors';
+import express, { Express } from 'express';
+import http from 'http';
 import dotenv from 'dotenv';
-import apiRoutes from './routes';
-import { sequelize } from './models';
-import morgan from 'morgan';
-import path from 'path';
-import fs from 'fs';
+import { populateDefaults } from './utils/ensure-test-users';
+import sequelize from './config/database';
+import { syncModels } from './models/index';
 
 dotenv.config();
 
-const app = express();
-const PORT = process.env.PORT || 3001;
+const app: Express = require('./app');
+const PORT: number = parseInt(process.env.PORT || '3001');
 
-const allowedOrigins = [
-  'http://localhost:3000',                   
-  'https://readyformss.vercel.app',          
-];
-
-if (process.env.CLIENT_URL) {
-  const additionalOrigins = process.env.CLIENT_URL.split(',').map(origin => origin.trim());
-  allowedOrigins.push(...additionalOrigins);
+// Interface for route tracking
+interface Route {
+  path: string;
+  methods: string[];
 }
-
-console.log('CORS allowed origins:', allowedOrigins);
-
-app.use(cors({
-  origin: function(origin, callback) {
-    if (!origin) return callback(null, true);
-    
-    if (process.env.NODE_ENV === 'development' || process.env.ALLOW_ALL_ORIGINS === 'true') {
-      return callback(null, true);
-    } else if (allowedOrigins.indexOf(origin) !== -1) {
-      return callback(null, true);
-    } else {
-      console.warn(`CORS blocked request from origin: ${origin}`);
-      return callback(null, true); 
-    }
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Version']
-}));
-
-
-app.options('*', cors());
-
-app.use(express.json());
-
-if (process.env.NODE_ENV === 'development') {
-  app.use(morgan('dev'));
-} else {
-  const logDir = path.join(__dirname, '../logs');
-  if (!fs.existsSync(logDir)) {
-    fs.mkdirSync(logDir);
-  }
-  const accessLogStream = fs.createWriteStream(path.join(logDir, 'access.log'), { flags: 'a' });
-  app.use(morgan('combined', { stream: accessLogStream }));
-}
-
-app.use('/api', apiRoutes);
-
-app.get('/', (req, res) => {
-  res.send('ReadyForms API is running!');
-});
-
 
 const startServer = async () => {
   try {
-    console.log('Connecting to database...');
+    // Connect to the database
     await sequelize.authenticate();
     console.log('Database connection established successfully.');
-
-    // Only sync database in development mode
-    if (process.env.NODE_ENV === 'development') {
-      console.log('Syncing database schema...');
-      await sequelize.sync();
-    }
-
-    // Only start the server if not in a serverless environment (Vercel)
-    const isServerless = process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_VERSION;
     
-    if (!isServerless) {
-      app.listen(PORT, () => {
-        console.log(`Server is running on port ${PORT}`);
-        console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-        console.log(`Client URL: ${process.env.CLIENT_URL || 'Not specified in .env'}`);
-      });
-    } else {
-      console.log('Running in serverless environment, skipping listen()');
+    // Sync database models
+    await syncModels();
+    console.log('Database models synchronized successfully.');
+    
+    // Ensure default users exist in development/test environments
+    if (process.env.NODE_ENV !== 'production') {
+      await populateDefaults();
     }
+    
+    // Create an HTTP server
+    const server = http.createServer(app);
+    
+    // Log all available routes if in development
+    if (process.env.NODE_ENV === 'development') {
+      const routes: Route[] = []; // Use the Route interface for type safety
+      
+      app._router.stack.forEach((middleware: any) => {
+        if (middleware.route) {
+          // Routes registered directly
+          routes.push({
+            path: middleware.route.path,
+            methods: Object.keys(middleware.route.methods)
+          });
+        } else if (middleware.name === 'router') {
+          // Routes added with router.use
+          middleware.handle.stack.forEach((handler: any) => {
+            if (handler.route) {
+              const path = handler.route.path;
+              routes.push({
+                path: middleware.regexp.toString().includes('/api') ? `/api${path}` : path,
+                methods: Object.keys(handler.route.methods)
+              });
+            }
+          });
+        }
+      });
+      
+      console.log('\nAPI Routes:');
+      console.log('===========');
+      routes.forEach(route => {
+        console.log(`${route.methods.join(', ').toUpperCase()} ${route.path}`);
+      });
+    }
+    
+    // Start the server
+    server.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+      console.log(`Environment: ${process.env.NODE_ENV}`);
+      console.log(`Database: ${process.env.DATABASE_URL ? 'Using DATABASE_URL' : 'Using individual parameters'}`);
+    });
+    
+    // Handle graceful shutdown
+    process.on('SIGTERM', () => {
+      console.log('SIGTERM signal received: closing HTTP server');
+      server.close(() => {
+        console.log('HTTP server closed');
+        sequelize.close().then(() => {
+          console.log('Database connections closed');
+          process.exit(0);
+        });
+      });
+    });
   } catch (error) {
-    console.error('Unable to connect to the database:', error);
-    throw error; // Rethrow to halt startup in case of database connection failure
+    console.error('Error starting server:', error);
+    process.exit(1);
   }
 };
 
-// In development or when running as a standalone server, start the server
-// In production (Vercel), the server will be imported as a module
-if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
-  startServer()
-    .catch(error => {
-      console.error('Unable to connect to the database. Please check your database configuration.');
-      process.exit(1);
-    });
-}
+startServer();
 
 export default app;

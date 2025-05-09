@@ -6,36 +6,84 @@ const app = express();
 
 app.use(express.json());
 
-const corsOptions = {
-  origin: function(origin, callback) {
-    if (process.env.NODE_ENV === 'test') {
-      callback(null, true);
-      return;
-    }
-    const allowedOrigins = process.env.CLIENT_URL ? 
-      process.env.CLIENT_URL.split(',') : 
-      ['http://localhost:3000'];
-      
-    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true
-};
+// Debug logging for incoming requests
+if (process.env.NODE_ENV === 'development') {
+  app.use((req, res, next) => {
+    console.log(`Incoming request: ${req.method} ${req.path}`);
+    console.log('Origin:', req.headers.origin);
+    console.log('Headers:', JSON.stringify(req.headers));
+    next();
+  });
+}
 
-app.use(cors(corsOptions));
+// Simple CORS configuration that works reliably in all environments
+app.use(cors({
+  origin: '*',  // Allow all origins - this is ok for a public API
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Version']
+}));
 
+// Special ping endpoint for connectivity testing
+app.get('/api/ping', (req, res) => {
+  res.status(200).json({ 
+    message: 'pong', 
+    server: 'ReadyForms API',
+    env: process.env.NODE_ENV,
+    origin: req.headers.origin || 'No origin',
+    timestamp: new Date().toISOString() 
+  });
+});
+
+// Health check route that doesn't require API prefix
+app.get('/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'ok',
+    message: 'Server is responding',
+    env: process.env.NODE_ENV,
+    timestamp: new Date().toISOString() 
+  });
+});
+
+// CORS testing endpoint
+app.get('/debug-cors', (req, res) => {
+  res.json({
+    message: 'CORS is configured correctly',
+    origin: req.headers.origin || 'No origin',
+    env: process.env.NODE_ENV,
+    headers: req.headers,
+    corsSettings: {
+      allowedOrigins: '*'
+    }
+  });
+});
+
+// Mount API routes
 app.use('/api', routes);
 
-app.get('/api/ping', (req, res) => {
-  res.json({ message: 'pong', timestamp: new Date() });
+// Catch-all route for API routes that don't match
+app.all('/api/*', (req, res) => {
+  res.status(404).json({
+    message: 'API endpoint not found',
+    path: req.path,
+    method: req.method,
+    baseUrl: req.baseUrl,
+    timestamp: new Date().toISOString()
+  });
 });
 
 // Global error handling middleware
 app.use((err, req, res, next) => {
   console.error('Error caught by global error handler:', err);
+  
+  // Handle CORS error
+  if (err.message && err.message.includes('not allowed by CORS')) {
+    return res.status(403).json({
+      message: 'CORS Error',
+      error: err.message,
+      origin: req.headers.origin,
+      timestamp: new Date().toISOString()
+    });
+  }
   
   // Check if this is a database connection error
   const isDbConnectionError = err.name === 'SequelizeConnectionError' || 
@@ -60,12 +108,13 @@ app.use((err, req, res, next) => {
 });
 
 // Add health check directly in the app file as a fallback
-app.get('/health', (req, res) => {
+app.get('/', (req, res) => {
   res.status(200).json({ 
-    status: 'ok',
-    message: 'Server is responding',
+    message: 'ReadyForms API Server',
+    status: 'Running',
     timestamp: new Date().toISOString() 
   });
 });
 
+// Export the Express app
 module.exports = app;
