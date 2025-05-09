@@ -10,12 +10,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { RefreshCw, CheckCircle, AlertCircle, Database } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { useRouter } from "next/navigation";
-import healthService, { HealthCheckResponse } from "@/lib/api/health-service";
+import healthService, { EndpointStatusResponse } from "@/lib/api/health-service";
 
 export default function ApiStatusPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [endpointStatus, setEndpointStatus] = useState<HealthCheckResponse | null>(null);
+  const [endpointStatus, setEndpointStatus] = useState<EndpointStatusResponse | null>(null);
   const auth = useAuth();
   const router = useRouter();
   const user = auth?.user;
@@ -116,21 +116,21 @@ export default function ApiStatusPage() {
                 <Skeleton key={i} className="h-12 w-full" />
               ))}
             </div>
-          ) : endpointStatus?.endpoints && endpointStatus.endpoints.length > 0 ? (
+          ) : endpointStatus?.endpoints && Object.keys(endpointStatus.endpoints).length > 0 ? (
             <div className="space-y-4">
-              {endpointStatus.endpoints.map((endpoint, index) => (
+              {Object.entries(endpointStatus.endpoints).map(([name, endpoint], index) => (
                 <div key={index} className="flex justify-between items-center p-3 border rounded-md">
                   <div className="flex items-center">
-                    {endpoint.status === 'healthy' ? (
+                    {endpoint.status === 'up' ? (
                       <CheckCircle className="h-4 w-4 mr-2 text-green-600" />
                     ) : (
                       <AlertCircle className="h-4 w-4 mr-2 text-red-600" />
                     )}
-                    <span className="font-medium">{endpoint.name}</span>
+                    <span className="font-medium">{name}</span>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <Badge variant={endpoint.status === 'healthy' ? 'outline' : 'destructive'}>
-                      {endpoint.status === 'healthy' ? 'Healthy' : 'Unhealthy'}
+                    <Badge variant={endpoint.status === 'up' ? 'outline' : 'destructive'}>
+                      {endpoint.status === 'up' ? 'Healthy' : 'Unhealthy'}
                     </Badge>
                     {endpoint.responseTime && (
                       <span className="text-sm text-muted-foreground">

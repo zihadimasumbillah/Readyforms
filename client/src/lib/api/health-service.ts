@@ -6,7 +6,7 @@ import apiClient from './api-client';
 export interface HealthCheckResponse {
   success: boolean;
   corsStatus?: string;
-  status?: string;
+  status: string;  // Making this required
   message?: string;
   error?: string;
   timestamp: Date;
@@ -16,7 +16,7 @@ export interface HealthCheckResponse {
 /**
  * Response type for endpoint status checks
  */
-export interface EndpointStatusResponse {
+export interface EndpointStatusResponse extends HealthCheckResponse {
   status: 'healthy' | 'degraded' | 'unhealthy';
   endpoints: {
     [key: string]: {
@@ -25,7 +25,6 @@ export interface EndpointStatusResponse {
       error?: string;
     }
   };
-  timestamp: Date;
   message: string;
 }
 
@@ -38,7 +37,7 @@ export const healthService = {
       const response = await apiClient.get('/health/status');
       return {
         success: true,
-        status: response.data.status,
+        status: response.data.status || 'up',
         message: response.data.message,
         timestamp: new Date()
       };
@@ -46,6 +45,7 @@ export const healthService = {
       console.error('Failed to fetch health status:', error);
       return {
         success: false,
+        status: 'down',
         error: error.message,
         timestamp: new Date()
       };
@@ -144,7 +144,8 @@ export const healthService = {
             ping: pingTime
           },
           database: {
-            status: healthStatus.status === 'up' ? 'ok' : 'error',
+            // Check if status exists and if it's 'up'
+            status: healthStatus.success && (healthStatus.status === 'up' || healthStatus.status === 'healthy') ? 'ok' : 'error',
             error: healthStatus.error
           },
           cors: {
@@ -175,6 +176,7 @@ export const healthService = {
     try {
       const response = await apiClient.get('/health/endpoints');
       return {
+        success: true,
         status: response.data.status || 'healthy',
         endpoints: response.data.endpoints || {},
         timestamp: new Date(),
@@ -183,6 +185,7 @@ export const healthService = {
     } catch (error: any) {
       console.error('Endpoints check failed:', error);
       return {
+        success: false,
         status: 'unhealthy',
         endpoints: {
           'api': {
