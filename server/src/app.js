@@ -1,22 +1,35 @@
 const express = require('express');
 const cors = require('cors');
-const routes = require('./routes').default;
-
 const app = express();
 
-app.use(express.json());
-
-// Debug logging for incoming requests
-if (process.env.NODE_ENV === 'development') {
-  app.use((req, res, next) => {
-    console.log(`Incoming request: ${req.method} ${req.path}`);
-    console.log('Origin:', req.headers.origin);
-    console.log('Headers:', JSON.stringify(req.headers));
-    next();
+// Check if we can load routes 
+let routes;
+try {
+  routes = require('./routes').default;
+} catch (error) {
+  console.error('Failed to load API routes:', error);
+  // Create fallback routes
+  routes = express.Router();
+  routes.get('/', (req, res) => {
+    res.status(200).json({ 
+      message: 'ReadyForms API Server (Reduced Functionality)',
+      status: 'Limited',
+      error: 'Database connection issue',
+      timestamp: new Date().toISOString() 
+    });
+  });
+  routes.get('/health', (req, res) => {
+    res.status(200).json({ 
+      status: 'limited',
+      message: 'Server is responding with limited functionality',
+      timestamp: new Date().toISOString() 
+    });
   });
 }
 
-// Simple CORS configuration that works reliably in all environments
+app.use(express.json());
+
+// Simple CORS configuration that works in all environments
 app.use(cors({
   origin: function(origin, callback) {
     callback(null, true); // Allow all origins
@@ -111,7 +124,8 @@ app.use((err, req, res, next) => {
   // Check if this is a database connection error
   const isDbConnectionError = err.name === 'SequelizeConnectionError' || 
                              err.name === 'SequelizeConnectionRefusedError' ||
-                             (err.original && err.original.code === 'ECONNREFUSED');
+                             (err.original && err.original.code === 'ECONNREFUSED') ||
+                             err.message.includes('pg package');
   
   if (isDbConnectionError) {
     console.error('Database connection error detected in error handler');
