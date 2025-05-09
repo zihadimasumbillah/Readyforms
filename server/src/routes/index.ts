@@ -62,4 +62,12 @@ router.use('/admin', adminRoutes);
 router.use('/dashboard', dashboardRoutes);
 router.use('/health', healthRoutes);
 
+// Add a fallback route
+router.use('*', (req, res) => {
+  res.status(404).json({
+    message: 'API route not found',
+    path: req.originalUrl
+  });
+});
+
 export default router;

@@ -8,13 +8,15 @@ dotenv.config();
 // Use environment port or default to 3001
 const PORT = process.env.PORT || 3001;
 
-// Determine if running in serverless environment
+// Determine if running in serverless environment or jest test
 const isServerlessEnv = process.env.VERCEL === '1' || 
                        process.env.AWS_LAMBDA_FUNCTION_VERSION !== undefined ||
                        process.env.NETLIFY !== undefined;
+                       
+const isTestEnv = process.env.NODE_ENV === 'test';
 
-// Only start the server when not in a serverless environment
-if (!isServerlessEnv) {
+// Only start the server if not in a serverless environment or test
+if (!isServerlessEnv && !isTestEnv) {
   // Initialize database and then start the server
   const startServer = async () => {
     try {
@@ -34,5 +36,6 @@ if (!isServerlessEnv) {
   startServer();
 }
 
-// Export the Express app for serverless environments (Vercel)
+// Export the Express app for serverless environments and testing
 export default app;
+module.exports = app;

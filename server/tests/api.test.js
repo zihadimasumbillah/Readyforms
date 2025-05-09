@@ -1,7 +1,7 @@
 const request = require('supertest');
 const bcrypt = require('bcryptjs');
-const app = require('../src/app');
-const { sequelize, User, Topic, Tag, Template } = require('../src/models');
+const server = require('./server');
+const { sequelize, User, Topic, Tag, Template } = require('../dist/src/models');
 
 let adminToken = '';
 let userToken = '';
@@ -70,7 +70,7 @@ beforeAll(async () => {
 
 describe('Health Check API', () => {
   test('Ping endpoint should respond', async () => {
-    const res = await request(app).get('/api/ping');
+    const res = await request(server).get('/api/ping');
     expect(res.status).toBe(200);
     expect(res.body).toHaveProperty('message', 'pong');
     expect(res.body).toHaveProperty('timestamp');
@@ -79,7 +79,7 @@ describe('Health Check API', () => {
 
 describe('Authentication API', () => {
   test('Register a new user should succeed', async () => {
-    const res = await request(app)
+    const res = await request(server)
       .post('/api/auth/register')
       .send({
         name: 'Test Register User',
@@ -96,7 +96,7 @@ describe('Authentication API', () => {
   });
   
   test('Login with admin credentials should succeed', async () => {
-    const res = await request(app)
+    const res = await request(server)
       .post('/api/auth/login')
       .send({
         email: 'api-admin@example.com',
@@ -110,7 +110,7 @@ describe('Authentication API', () => {
   });
   
   test('Login with user credentials should succeed', async () => {
-    const res = await request(app)
+    const res = await request(server)
       .post('/api/auth/login')
       .send({
         email: 'api-user@example.com',
@@ -124,7 +124,7 @@ describe('Authentication API', () => {
   });
   
   test('Login with incorrect password should fail', async () => {
-    const res = await request(app)
+    const res = await request(server)
       .post('/api/auth/login')
       .send({
         email: 'api-admin@example.com',
@@ -136,7 +136,7 @@ describe('Authentication API', () => {
   });
   
   test('Get current user should return user profile', async () => {
-    const res = await request(app)
+    const res = await request(server)
       .get('/api/auth/me')
       .set('Authorization', `Bearer ${userToken}`);
     
@@ -146,7 +146,7 @@ describe('Authentication API', () => {
   });
   
   test('Update user preferences should succeed', async () => {
-    const res = await request(app)
+    const res = await request(server)
       .put('/api/auth/preferences')
       .set('Authorization', `Bearer ${userToken}`)
       .send({
@@ -162,7 +162,7 @@ describe('Authentication API', () => {
 
 describe('Topics API', () => {
   test('Get all topics should succeed', async () => {
-    const res = await request(app)
+    const res = await request(server)
       .get('/api/topics')
       .set('Authorization', `Bearer ${userToken}`);
     
@@ -172,7 +172,7 @@ describe('Topics API', () => {
   });
   
   test('Create topic as admin should succeed', async () => {
-    const res = await request(app)
+    const res = await request(server)
       .post('/api/topics')
       .set('Authorization', `Bearer ${adminToken}`)
       .send({
@@ -186,7 +186,7 @@ describe('Topics API', () => {
   });
   
   test('Get topic by ID should succeed', async () => {
-    const res = await request(app)
+    const res = await request(server)
       .get(`/api/topics/${topicId}`)
       .set('Authorization', `Bearer ${userToken}`);
     
@@ -196,7 +196,7 @@ describe('Topics API', () => {
   });
   
   test('Create topic as non-admin should fail', async () => {
-    const res = await request(app)
+    const res = await request(server)
       .post('/api/topics')
       .set('Authorization', `Bearer ${userToken}`)
       .send({
@@ -225,7 +225,7 @@ describe('Templates API', () => {
       tags: ['API Test', 'Sample']
     };
     
-    const res = await request(app)
+    const res = await request(server)
       .post('/api/templates')
       .set('Authorization', `Bearer ${userToken}`)
       .send(templateData);
@@ -237,7 +237,7 @@ describe('Templates API', () => {
   });
   
   test('Get all templates should succeed', async () => {
-    const res = await request(app)
+    const res = await request(server)
       .get('/api/templates')
       .set('Authorization', `Bearer ${userToken}`);
     
@@ -247,7 +247,7 @@ describe('Templates API', () => {
   });
   
   test('Get template by ID should succeed', async () => {
-    const res = await request(app)
+    const res = await request(server)
       .get(`/api/templates/${templateId}`)
       .set('Authorization', `Bearer ${userToken}`);
     
@@ -257,7 +257,7 @@ describe('Templates API', () => {
   });
   
   test('Search templates should work', async () => {
-    const res = await request(app)
+    const res = await request(server)
       .get('/api/templates/search?query=API')
       .set('Authorization', `Bearer ${userToken}`);
     
@@ -269,13 +269,13 @@ describe('Templates API', () => {
   
   test('Update template should succeed', async () => {
     // First get the template to get its version
-    const getRes = await request(app)
+    const getRes = await request(server)
       .get(`/api/templates/${templateId}`)
       .set('Authorization', `Bearer ${userToken}`);
     
     const version = getRes.body.version;
     
-    const res = await request(app)
+    const res = await request(server)
       .put(`/api/templates/${templateId}`)
       .set('Authorization', `Bearer ${userToken}`)
       .send({
@@ -300,7 +300,7 @@ describe('Templates API', () => {
 
 describe('Form Response API', () => {
   test('Submit form response should succeed', async () => {
-    const res = await request(app)
+    const res = await request(server)
       .post('/api/responses')
       .set('Authorization', `Bearer ${userToken}`)
       .send({
@@ -319,7 +319,7 @@ describe('Form Response API', () => {
   test('Get responses for template should succeed', async () => {
     // First make sure we have a response by submitting another one
     if (!formResponseId) {
-      const createRes = await request(app)
+      const createRes = await request(server)
         .post('/api/responses')
         .set('Authorization', `Bearer ${adminToken}`)
         .send({
@@ -330,7 +330,7 @@ describe('Form Response API', () => {
       formResponseId = createRes.body.id;
     }
     
-    const res = await request(app)
+    const res = await request(server)
       .get(`/api/responses/template/${templateId}`)
       .set('Authorization', `Bearer ${adminToken}`);
     
@@ -340,7 +340,7 @@ describe('Form Response API', () => {
   });
   
   test('Get specific response should succeed', async () => {
-    const res = await request(app)
+    const res = await request(server)
       .get(`/api/responses/${formResponseId}`)
       .set('Authorization', `Bearer ${userToken}`);
     
@@ -351,7 +351,7 @@ describe('Form Response API', () => {
   test('Get user responses should succeed', async () => {
     // First ensure we have a response by submitting another one if needed
     if (!formResponseId) {
-      const createRes = await request(app)
+      const createRes = await request(server)
         .post('/api/responses')
         .set('Authorization', `Bearer ${userToken}`)
         .send({
@@ -362,7 +362,7 @@ describe('Form Response API', () => {
       formResponseId = createRes.body.id;
     }
     
-    const res = await request(app)
+    const res = await request(server)
       .get('/api/responses/user')
       .set('Authorization', `Bearer ${userToken}`);
     
@@ -372,7 +372,7 @@ describe('Form Response API', () => {
   });
   
   test('Get aggregate data should succeed', async () => {
-    const res = await request(app)
+    const res = await request(server)
       .get(`/api/responses/aggregate/${templateId}`)
       .set('Authorization', `Bearer ${userToken}`);
     
@@ -383,7 +383,7 @@ describe('Form Response API', () => {
 
 describe('Comments API', () => {
   test('Create comment should succeed', async () => {
-    const res = await request(app)
+    const res = await request(server)
       .post('/api/comments')
       .set('Authorization', `Bearer ${userToken}`)
       .send({
@@ -397,7 +397,7 @@ describe('Comments API', () => {
   });
   
   test('Get comments for template should succeed', async () => {
-    const res = await request(app)
+    const res = await request(server)
       .get(`/api/comments/template/${templateId}`)
       .set('Authorization', `Bearer ${userToken}`);
     
@@ -408,13 +408,13 @@ describe('Comments API', () => {
   
   test('Delete comment should succeed', async () => {
     // First get the comment to get its version
-    const comment = await request(app)
+    const comment = await request(server)
       .get(`/api/comments/template/${templateId}`)
       .set('Authorization', `Bearer ${userToken}`);
     
     const version = comment.body[0].version;
     
-    const res = await request(app)
+    const res = await request(server)
       .delete(`/api/comments/${commentId}`)
       .set('Authorization', `Bearer ${userToken}`)
       .send({ version });
@@ -425,7 +425,7 @@ describe('Comments API', () => {
 
 describe('Like API', () => {
   test('Like template should succeed', async () => {
-    const res = await request(app)
+    const res = await request(server)
       .post(`/api/likes/template/${templateId}`)
       .set('Authorization', `Bearer ${userToken}`);
     
@@ -434,7 +434,7 @@ describe('Like API', () => {
   });
   
   test('Check like status should return true', async () => {
-    const res = await request(app)
+    const res = await request(server)
       .get(`/api/likes/check/${templateId}`)
       .set('Authorization', `Bearer ${userToken}`);
     
@@ -443,7 +443,7 @@ describe('Like API', () => {
   });
   
   test('Count likes should work', async () => {
-    const res = await request(app)
+    const res = await request(server)
       .get(`/api/likes/count/${templateId}`)
       .set('Authorization', `Bearer ${userToken}`);
     
@@ -452,7 +452,7 @@ describe('Like API', () => {
   });
   
   test('Get likes by template should work', async () => {
-    const res = await request(app)
+    const res = await request(server)
       .get(`/api/likes/template/${templateId}`)
       .set('Authorization', `Bearer ${userToken}`);
     
@@ -461,7 +461,7 @@ describe('Like API', () => {
   });
   
   test('Unlike template should succeed', async () => {
-    const res = await request(app)
+    const res = await request(server)
       .delete(`/api/likes/template/${templateId}`)
       .set('Authorization', `Bearer ${userToken}`);
     
@@ -472,7 +472,7 @@ describe('Like API', () => {
 
 describe('Admin API', () => {
   test('Get users as admin should succeed', async () => {
-    const res = await request(app)
+    const res = await request(server)
       .get('/api/admin/users')
       .set('Authorization', `Bearer ${adminToken}`);
     
@@ -483,7 +483,7 @@ describe('Admin API', () => {
   });
   
   test('Get dashboard stats as admin should succeed', async () => {
-    const res = await request(app)
+    const res = await request(server)
       .get('/api/admin/dashboard-stats')
       .set('Authorization', `Bearer ${adminToken}`);
     
@@ -494,7 +494,7 @@ describe('Admin API', () => {
   });
   
   test('Access admin API as non-admin should fail', async () => {
-    const res = await request(app)
+    const res = await request(server)
       .get('/api/admin/users')
       .set('Authorization', `Bearer ${userToken}`);
     
@@ -504,7 +504,7 @@ describe('Admin API', () => {
 
 describe('Dashboard API', () => {
   test('Get user stats should succeed', async () => {
-    const res = await request(app)
+    const res = await request(server)
       .get('/api/dashboard/stats')
       .set('Authorization', `Bearer ${userToken}`);
     
@@ -517,13 +517,13 @@ describe('Dashboard API', () => {
 describe('Clean up & test template deletion', () => {
   test('Delete template should succeed', async () => {
     // First get the template to get current version
-    const getRes = await request(app)
+    const getRes = await request(server)
       .get(`/api/templates/${templateId}`)
       .set('Authorization', `Bearer ${userToken}`);
     
     const version = getRes.body.version;
     
-    const res = await request(app)
+    const res = await request(server)
       .delete(`/api/templates/${templateId}`)
       .set('Authorization', `Bearer ${userToken}`)
       .send({ version });
@@ -537,6 +537,7 @@ afterAll(async () => {
   console.log('Cleaning up test environment...');
   try {
     await sequelize.close();
+    await server.close(); // Close the server when done
     console.log('Test database connection closed');
   } catch (error) {
     console.error('Error closing database connection:', error);

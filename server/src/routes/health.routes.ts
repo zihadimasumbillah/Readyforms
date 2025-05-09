@@ -1,30 +1,31 @@
 import { Router } from 'express';
-import { healthController } from '../controllers/health.controller';
+import { healthCheck, pingApi, corsTest } from '../controllers/health.controller';
 
 const router = Router();
 
-/**
- * @route GET /api/health/ping
- * @access Public
- */
-router.get('/ping', healthController.ping);
+// Health check endpoints
+router.get('/', (req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    message: 'API health check passed',
+    timestamp: new Date().toISOString()
+  });
+});
 
-/**
- * @route GET /api/health/status
- * @access Public
- */
-router.get('/status', healthController.status);
+router.get('/ping', (req, res) => {
+  res.status(200).json({
+    message: 'pong',
+    timestamp: new Date().toISOString()
+  });
+});
 
-/**
- * @route GET /api/health/cors
- * @access Public
- */
-router.get('/cors', healthController.corsCheck);
+router.get('/cors', (req, res) => {
+  res.status(200).json({
+    message: 'CORS test successful',
+    origin: req.headers.origin || 'No origin header',
+    timestamp: new Date().toISOString()
+  });
+});
 
-/**
- * @route GET /api/health/debug
- * @access Protected (requires debug token in production)
- */
-router.get('/debug', healthController.debug);
-
+// Export the router - make sure there's only one default export
 export default router;
