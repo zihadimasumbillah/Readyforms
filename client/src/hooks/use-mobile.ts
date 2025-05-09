@@ -1,25 +1,32 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from 'react';
 
-/**
- * @param breakpoint 
- * @returns Boolean indicating if the device is considered mobile
- */
-export const useIsMobile = (breakpoint: number = 768) => {
-  const [isMobile, setIsMobile] = useState(false);
-  
+export function useMobile(): boolean {
+  const [isMobile, setIsMobile] = useState<boolean>(false);
+
   useEffect(() => {
-    const checkIfMobile = () => {
-      setIsMobile(window.innerWidth < breakpoint);
-    };
-
-    if (typeof window !== "undefined") {
-      checkIfMobile();
-      window.addEventListener("resize", checkIfMobile);
-      return () => window.removeEventListener("resize", checkIfMobile);
+    // Check if window is defined (for SSR)
+    if (typeof window !== 'undefined') {
+      const handleResize = () => {
+        // Default breakpoint for mobile is 768px
+        setIsMobile(window.innerWidth < 768);
+      };
+      
+      // Set the initial value
+      handleResize();
+      
+      // Add event listener
+      window.addEventListener('resize', handleResize);
+      
+      // Remove event listener on cleanup
+      return () => window.removeEventListener('resize', handleResize);
     }
-  }, [breakpoint]);
-  
+    
+    return undefined;
+  }, []);
+
   return isMobile;
-};
+}
+
+export default useMobile;

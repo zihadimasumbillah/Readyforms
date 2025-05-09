@@ -17,7 +17,6 @@ class Topic extends Model<TopicAttributes> implements TopicAttributes {
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 
-  // Static methods
   static initialize(sequelize: Sequelize) {
     Topic.init({
       id: {

@@ -1,81 +1,67 @@
 import apiClient from './api-client';
 
-export interface LikeStatus {
-  liked: boolean;
-}
-
-export interface LikeCount {
-  count: number;
-}
-
-export interface LikeResponse {
-  message: string;
-  liked: boolean;
-}
-
 export const likeService = {
   /**
-   * Check if the current user has liked a template
-   * @param templateId The ID of the template to check
+   * Like a template
    */
-  async checkLike(templateId: string): Promise<boolean> {
+  async likeTemplate(templateId: string): Promise<{ liked: boolean }> {
     try {
-      const response = await apiClient.get<LikeStatus>(`/likes/check/${templateId}`);
-      return response.data.liked;
-    } catch (error) {
-      console.error('Error checking like status:', error);
-      return false;
-    }
-  },
-  
-  /**
-   * Get the number of likes for a template
-   * @param templateId The ID of the template
-   */
-  async getLikeCount(templateId: string): Promise<number> {
-    try {
-      const response = await apiClient.get<LikeCount>(`/likes/count/${templateId}`);
-      return response.data.count;
-    } catch (error) {
-      console.error('Error getting like count:', error);
-      return 0;
-    }
-  },
-  
-  /**
-   * Toggle like status for a template (like or unlike)
-   * @param templateId The ID of the template to toggle like status
-   */
-  async toggleLike(templateId: string): Promise<LikeResponse> {
-    try {
-      // First check if already liked
-      const isLiked = await this.checkLike(templateId);
-      
-      if (isLiked) {
-        // If liked, unlike it
-        const response = await apiClient.delete<LikeResponse>(`/likes/template/${templateId}`);
-        return response.data;
-      } else {
-        // If not liked, like it
-        const response = await apiClient.post<LikeResponse>(`/likes/template/${templateId}`);
-        return response.data;
-      }
+      const response = await apiClient.post(`/likes/template/${templateId}`);
+      return response.data;
     } catch (error: any) {
-      console.error('Error toggling like:', error);
-      throw error.response?.data || { message: 'Failed to update like status' };
+      console.error(`Failed to like template ${templateId}:`, error);
+      throw error;
     }
   },
 
   /**
-   * Get all likes for a template (admin only)
-   * @param templateId The ID of the template
+   * Unlike a template
    */
-  async getLikesByTemplate(templateId: string): Promise<any> {
+  async unlikeTemplate(templateId: string): Promise<{ liked: boolean }> {
+    try {
+      const response = await apiClient.delete(`/likes/template/${templateId}`);
+      return response.data;
+    } catch (error: any) {
+      console.error(`Failed to unlike template ${templateId}:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Check if user has liked a template
+   */
+  async checkLikeStatus(templateId: string): Promise<{ liked: boolean }> {
+    try {
+      const response = await apiClient.get(`/likes/check/${templateId}`);
+      return response.data;
+    } catch (error: any) {
+      console.error(`Failed to check like status for template ${templateId}:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Count likes for a template
+   */
+  async getLikesCount(templateId: string): Promise<{ count: number }> {
+    try {
+      const response = await apiClient.get(`/likes/count/${templateId}`);
+      return response.data;
+    } catch (error: any) {
+      console.error(`Failed to get likes count for template ${templateId}:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get likes by template
+   */
+  async getLikesByTemplate(templateId: string): Promise<{ likesCount: number, likes: any[] }> {
     try {
       const response = await apiClient.get(`/likes/template/${templateId}`);
       return response.data;
-    } catch (error) {
-      console.error('Error getting likes by template:', error);
+    } catch (error: any) {
+      console.error(`Failed to get likes for template ${templateId}:`, error);
       throw error;
     }
   }

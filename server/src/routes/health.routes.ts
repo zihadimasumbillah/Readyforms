@@ -16,10 +16,15 @@ router.get('/ping', healthController.ping);
 router.get('/status', healthController.status);
 
 /**
-
  * @route GET /api/health/cors
  * @access Public
  */
 router.get('/cors', healthController.corsCheck);
+
+/**
+ * @route GET /api/health/debug
+ * @access Protected (requires debug token in production)
+ */
+router.get('/debug', healthController.debug);
 
 export default router;

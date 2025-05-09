@@ -2,12 +2,12 @@ import { Model, DataTypes, Sequelize } from 'sequelize';
 import Template from './Template';
 
 interface UserAttributes {
-  id?: string; // Make id optional for creation
+  id?: string; 
   name: string;
   email: string;
   password: string;
   isAdmin: boolean;
-  blocked?: boolean; // Make blocked optional with default value
+  blocked?: boolean; 
   language: string;
   theme: string;
   lastLoginAt?: Date;
@@ -30,7 +30,6 @@ class User extends Model<UserAttributes> implements UserAttributes {
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 
-  // Static methods
   static initialize(sequelize: Sequelize) {
     User.init({
       id: {

@@ -15,9 +15,35 @@ export const tagService = {
     try {
       const response = await apiClient.get('/tags');
       return response.data;
-    } catch (error) {
-      console.error('Error fetching tags:', error);
-      return [];
+    } catch (error: any) {
+      console.error('Failed to fetch tags:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Create new tag (admin only)
+   */
+  async createTag(name: string): Promise<Tag> {
+    try {
+      const response = await apiClient.post('/tags', { name });
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to create tag:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Update tag (admin only)
+   */
+  async updateTag(tagId: string, name: string): Promise<Tag> {
+    try {
+      const response = await apiClient.put(`/tags/${tagId}`, { name });
+      return response.data;
+    } catch (error: any) {
+      console.error(`Failed to update tag ${tagId}:`, error);
+      throw error;
     }
   },
 

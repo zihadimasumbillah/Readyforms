@@ -12,5 +12,5 @@ export const adminMiddleware = (req: Request, res: Response, next: NextFunction)
   next();
 };
 
-export const isAdmin = adminMiddleware; // Alias for backward compatibility
-export default adminMiddleware; // Default export for backward compatibility
+export const isAdmin = adminMiddleware; 
+export default adminMiddleware; 

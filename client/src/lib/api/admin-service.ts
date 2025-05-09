@@ -36,7 +36,7 @@ export const adminService = {
   /**
    * Get all users with pagination
    */
-  async getUsers(page = 1, limit = 10): Promise<PaginatedResponse<User>> {
+  async getUsers(page = 1, limit = 10): Promise<{ users: User[], pagination: any }> {
     try {
       const response = await apiClient.get(`/admin/users?page=${page}&limit=${limit}`);
       return response.data;
@@ -114,7 +114,7 @@ export const adminService = {
   /**
    * Get all templates
    */
-  async getAllTemplates(page = 1, limit = 10): Promise<PaginatedResponse<Template>> {
+  async getAllTemplates(page = 1, limit = 10): Promise<{ templates: Template[], pagination: any }> {
     try {
       const response = await apiClient.get(`/admin/templates?page=${page}&limit=${limit}`);
       return response.data;
@@ -140,12 +140,37 @@ export const adminService = {
   /**
    * Get all form responses
    */
-  async getAllResponses(page = 1, limit = 10): Promise<PaginatedResponse<FormResponse>> {
+  async getAllResponses(page = 1, limit = 10): Promise<{ responses: FormResponse[], pagination: any }> {
     try {
       const response = await apiClient.get(`/admin/responses?page=${page}&limit=${limit}`);
       return response.data;
     } catch (error: any) {
       console.error('Failed to fetch responses:', error);
+      throw error;
+    }
+  },
+  
+  /**
+   * Get form response by ID
+   */
+  async getFormResponseById(responseId: string): Promise<FormResponse> {
+    try {
+      const response = await apiClient.get(`/admin/responses/${responseId}`);
+      return response.data;
+    } catch (error: any) {
+      console.error(`Failed to fetch form response ${responseId}:`, error);
+      throw error;
+    }
+  },
+  
+  /**
+   * Delete form response
+   */
+  async deleteFormResponse(responseId: string): Promise<void> {
+    try {
+      await apiClient.delete(`/admin/responses/${responseId}`);
+    } catch (error: any) {
+      console.error(`Failed to delete form response ${responseId}:`, error);
       throw error;
     }
   },

@@ -1,28 +1,82 @@
 "use client";
 
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { authService } from '@/lib/api/auth-service';
 import { User } from '@/types';
-import { useRouter } from 'next/navigation';
 
 interface AuthContextType {
   user: User | null;
-  isLoading: boolean;
-  login: (token: string, user: User) => void;
+  loading: boolean;
+  error: Error | null;
+  login: (email: string, password: string) => Promise<void>;
+  register: (name: string, email: string, password: string, language?: string, theme?: string) => Promise<void>;
   logout: () => void;
-  refreshUser: () => Promise<User | null>;
+  updatePreferences: (language?: string, theme?: string) => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType | null>(null);
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const router = useRouter();
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
 
-  const login = (token: string, userData: User) => {
-    localStorage.setItem('token', token);
-    setUser(userData);
+  useEffect(() => {
+    // Check for existing token and load user data on mount
+    const fetchCurrentUser = async () => {
+      try {
+        setLoading(true);
+        
+        if (authService.isLoggedIn()) {
+          const currentUser = await authService.getCurrentUser();
+          setUser(currentUser);
+        }
+      } catch (error) {
+        console.error('Error fetching current user:', error);
+        // Clear invalid token
+        authService.logout();
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCurrentUser();
+  }, []);
+
+  const login = async (email: string, password: string) => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const response = await authService.login(email, password);
+      setUser(response.user);
+    } catch (error: any) {
+      setError(error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const register = async (
+    name: string, 
+    email: string, 
+    password: string, 
+    language = 'en', 
+    theme = 'light'
+  ) => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const response = await authService.register(name, email, password, language, theme);
+      setUser(response.user);
+    } catch (error: any) {
+      setError(error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
   };
 
   const logout = () => {
@@ -30,41 +84,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
   };
 
-  const refreshUser = async (): Promise<User | null> => {
+  const updatePreferences = async (language?: string, theme?: string) => {
     try {
-      const userData = await authService.getCurrentUser();
-      setUser(userData);
-      return userData;
-    } catch (error) {
-      console.error('Failed to refresh user data:', error);
-      return null;
+      const updatedUser = await authService.updatePreferences(language, theme);
+      setUser(prevUser => {
+        if (!prevUser) return null;
+        return {
+          ...prevUser,
+          language: updatedUser.language,
+          theme: updatedUser.theme
+        };
+      });
+    } catch (error: any) {
+      setError(error);
+      throw error;
     }
   };
 
-  useEffect(() => {
-    const loadUser = async () => {
-      setIsLoading(true);
-      try {
-        if (authService.isLoggedIn()) {
-          const userData = await authService.getCurrentUser();
-          setUser(userData);
-        }
-      } catch (error) {
-        console.error('Failed to load user:', error);
-        authService.logout();
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadUser();
-  }, []);
-
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, logout, refreshUser }}>
+    <AuthContext.Provider 
+      value={{
+        user,
+        loading,
+        error,
+        login,
+        register,
+        logout,
+        updatePreferences
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
-}
+};
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  
+  return context;
+};
+
+export default AuthContext;

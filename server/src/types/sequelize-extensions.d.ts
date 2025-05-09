@@ -8,7 +8,6 @@ declare global {
   }
 }
 
-// Add custom methods to the ModelStatic interface
 declare module 'sequelize' {
   interface ModelStatic<M extends Model> {
     associate?: (models: Record<string, any>) => void;

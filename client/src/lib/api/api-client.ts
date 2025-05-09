@@ -8,7 +8,8 @@ const getBaseUrl = () => {
   }
   
   // For client-side rendering
-  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+  const urlFromEnv = process.env.NEXT_PUBLIC_API_URL;
+  return urlFromEnv || 'http://localhost:3001/api';
 };
 
 const apiClient = axios.create({
@@ -31,17 +32,21 @@ apiClient.interceptors.request.use(
     
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => {
+    return Promise.reject(error);
+  }
 );
 
 // Add a response interceptor to handle common errors
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    return response;
+  },
   (error) => {
     // Handle token expiration or auth errors
     if (error.response && error.response.status === 401) {
       if (typeof window !== 'undefined') {
-        // Clear token if unauthorized
+        // Clear token on auth errors
         localStorage.removeItem('token');
         
         // Don't redirect if already on login page to avoid redirect loops

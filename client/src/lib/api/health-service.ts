@@ -1,101 +1,137 @@
-import axios from 'axios';
 import apiClient from './api-client';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
-
-export interface EndpointStatus {
-  status: 'healthy' | 'unhealthy';
-  name: string;
-  message?: string;
-  responseTime?: number;
-}
-
-export interface HealthCheckResponse {
-  status: 'healthy' | 'unhealthy';
-  timestamp: string;
-  endpoints: EndpointStatus[];
-}
-
-const healthService = {
+export const healthService = {
   /**
-   * Check if the API is healthy
+   * Get health status
    */
-  checkHealth: async (): Promise<boolean> => {
+  async getStatus(): Promise<any> {
     try {
-      await axios.get(`${API_URL}/health`, { timeout: 3000 });
-      return true;
-    } catch (error) {
-      console.error('Health check failed:', error);
-      return false;
+      const response = await apiClient.get('/health/status');
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to fetch health status:', error);
+      throw error;
     }
   },
 
   /**
-   * Get detailed health status of all endpoints
+   * Check CORS configuration
    */
-  checkEndpoints: async (): Promise<HealthCheckResponse> => {
+  async checkCors(): Promise<any> {
     try {
-      // Use the admin health check endpoint
-      const response = await apiClient.get<HealthCheckResponse>('/health/check');
-      return response.data;
-    } catch (error) {
-      console.error('Error checking endpoints:', error);
-      // Return a fallback response
+      const response = await apiClient.get('/health/cors');
       return {
-        status: 'unhealthy',
-        timestamp: new Date().toISOString(),
-        endpoints: [
-          {
-            name: 'API',
-            status: 'unhealthy',
-            message: 'Failed to connect to health check service'
-          }
-        ]
+        success: true,
+        corsStatus: response.data.corsStatus,
+        timestamp: new Date()
+      };
+    } catch (error: any) {
+      console.error('CORS check failed:', error);
+      return {
+        success: false,
+        error: error.message,
+        timestamp: new Date()
       };
     }
   },
 
   /**
-   * Get system health metrics
+   * Ping the API server to check connectivity
    */
-  getSystemHealth: async (): Promise<any> => {
+  async ping(): Promise<any> {
     try {
-      const response = await apiClient.get<any>('/health/system');
-      return response.data;
-    } catch (error) {
-      console.error('Error getting system health:', error);
-      return null;
+      const response = await apiClient.get('/ping');
+      return {
+        success: true,
+        message: response.data.message,
+        timestamp: response.data.timestamp
+      };
+    } catch (error: any) {
+      console.error('API ping failed:', error);
+      return {
+        success: false,
+        error: error.message,
+        timestamp: new Date()
+      };
     }
   },
 
   /**
-   * Get the health status of the API and all its endpoints
-   * @returns Health check response
+   * Comprehensive health check of the API and its services
    */
-  async getHealthStatus(): Promise<HealthCheckResponse> {
+  async checkHealth(): Promise<{
+    status: 'ok' | 'error';
+    services: {
+      api: {
+        status: 'ok' | 'error';
+        ping?: number;
+        error?: string;
+      };
+      database: {
+        status: 'ok' | 'error';
+        error?: string;
+      };
+      cors: {
+        status: 'ok' | 'error';
+        error?: string;
+      };
+    };
+    timestamp: Date;
+  }> {
     try {
-      // Use the admin health check endpoint
-      const response = await apiClient.get<HealthCheckResponse>('/health/check');
-      return response.data;
-    } catch (error) {
-      console.error('Error checking endpoints:', error);
-      // Return a fallback response
+      const startTime = performance.now();
+      
+      // Try to get the health status
+      const healthStatus = await this.getStatus().catch(err => ({
+        status: 'error',
+        database: { status: 'error', error: err.message },
+        services: {}
+      }));
+      
+      const endTime = performance.now();
+      const pingTime = Math.round(endTime - startTime);
+      
+      // Try CORS check separately
+      const corsCheck = await this.checkCors().catch(err => ({
+        success: false,
+        error: err.message
+      }));
+      
       return {
-        status: 'unhealthy',
-        timestamp: new Date().toISOString(),
-        endpoints: [{
-          name: 'API',
-          status: 'unhealthy',
-          message: 'Could not connect to API'
-        }]
+        status: healthStatus.status === 'up' && corsCheck.success ? 'ok' : 'error',
+        services: {
+          api: {
+            status: pingTime < 5000 ? 'ok' : 'error',
+            ping: pingTime
+          },
+          database: {
+            status: healthStatus.database?.connected ? 'ok' : 'error',
+            error: healthStatus.database?.error
+          },
+          cors: {
+            status: corsCheck.success ? 'ok' : 'error',
+            error: corsCheck.error
+          }
+        },
+        timestamp: new Date()
+      };
+    } catch (error: any) {
+      console.error('Health check failed:', error);
+      return {
+        status: 'error',
+        services: {
+          api: { status: 'error', error: error.message },
+          database: { status: 'error' },
+          cors: { status: 'error' }
+        },
+        timestamp: new Date()
       };
     }
   }
 };
 
-// Export the checkApiHealth function specifically for compatibility
+// Export a convenience function for checking health
 export const checkApiHealth = healthService.checkHealth;
 
-// Export both as default and named export
-export { healthService };
+// Export the service as default
 export default healthService;

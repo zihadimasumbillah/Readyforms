@@ -59,11 +59,9 @@ class FormResponse extends Model<FormResponseAttributes> implements FormResponse
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
   
-  // For associations
   public template?: Template;
   public user?: User;
 
-  // Static methods
   static initialize(sequelize: Sequelize) {
     FormResponse.init({
       id: {

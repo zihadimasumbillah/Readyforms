@@ -1,119 +1,99 @@
 import apiClient from './api-client';
 import { Template } from '@/types';
 
-export interface TemplateCreateData {
-  title: string;
-  topicId: string;
-  description?: string;
-  isPublic?: boolean;
-  tags?: string[];
-  isQuiz?: boolean;
-  showScoreImmediately?: boolean;
-  scoringCriteria?: string;
-  questionOrder?: string;
-  [key: string]: any; 
-}
-
-export interface TemplateUpdateData extends Partial<Omit<Template, 'tags'>> {
-  title: string;
-  topicId: string;
-  version: number; 
-  tags?: string[]; 
-  [key: string]: any; 
-}
-
-export interface TemplateListOptions {
-  query?: string;
-  tag?: string;
-  topicId?: string;
-  limit?: number;
-  page?: number;
-  sort?: 'newest' | 'oldest' | 'popular';
-}
-
 export const templateService = {
-  
-  async getAllTemplates(options?: TemplateListOptions): Promise<Template[]> {
+  /**
+   * Get all templates
+   */
+  async getAllTemplates(page = 1, limit = 10): Promise<Template[]> {
     try {
-      const queryParams = new URLSearchParams();
-      if (options?.query) queryParams.append('query', options.query);
-      if (options?.tag) queryParams.append('tag', options.tag);
-      if (options?.topicId) queryParams.append('topicId', options.topicId);
-      if (options?.limit) queryParams.append('limit', options.limit.toString());
-      if (options?.page) queryParams.append('page', options.page.toString());
-      if (options?.sort) queryParams.append('sort', options.sort);
-
-      const queryString = queryParams.toString();
-      const url = queryString ? `/templates/search?${queryString}` : '/templates';
-      
-      const response = await apiClient.get<Template[]>(url);
+      const response = await apiClient.get(`/templates?page=${page}&limit=${limit}`);
       return response.data;
-    } catch (error) {
-      console.error('Error fetching templates:', error);
-      return [];
+    } catch (error: any) {
+      console.error('Failed to fetch templates:', error);
+      throw error;
     }
   },
-  
+
   /**
-   * @param id - Template ID
+   * Get template by ID
    */
   async getTemplateById(id: string): Promise<Template> {
-    const response = await apiClient.get<Template>(`/templates/${id}`);
-    return response.data;
+    try {
+      const response = await apiClient.get(`/templates/${id}`);
+      return response.data;
+    } catch (error: any) {
+      console.error(`Failed to fetch template ${id}:`, error);
+      throw error;
+    }
   },
 
   /**
-   * @param id - Template ID
+   * Create template
    */
-  async getById(id: string): Promise<Template> {
-    return this.getTemplateById(id);
+  async createTemplate(templateData: any): Promise<Template> {
+    try {
+      const response = await apiClient.post('/templates', templateData);
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to create template:', error);
+      throw error;
+    }
   },
-  
+
   /**
-   * @param templateData - Template data
+   * Update template
    */
-  async createTemplate(templateData: TemplateCreateData): Promise<Template> {
-    const response = await apiClient.post<Template>('/templates', templateData);
-    return response.data;
+  async updateTemplate(id: string, templateData: any): Promise<Template> {
+    try {
+      const response = await apiClient.put(`/templates/${id}`, templateData);
+      return response.data.template;
+    } catch (error: any) {
+      console.error(`Failed to update template ${id}:`, error);
+      throw error;
+    }
   },
-  
+
   /**
-   * @param id - Template ID
-   * @param data - Updated template data
-   */
-  async updateTemplate(id: string, data: TemplateUpdateData): Promise<Template> {
-    const response = await apiClient.put<Template>(`/templates/${id}`, data);
-    return response.data;
-  },
-  
-  /**
-   * @param id - Template ID
-   * @param version - Template version for optimistic locking
+   * Delete template
    */
   async deleteTemplate(id: string, version: number): Promise<void> {
-    await apiClient.delete(`/templates/${id}`, {
-      data: { version }
-    });
-  },
-  
-  /**
-   * @param query - Search query
-   * @param options - Additional search options
-   */
-  async searchTemplates(query: string, options?: Omit<TemplateListOptions, 'query'>): Promise<Template[]> {
     try {
-      const queryParams = new URLSearchParams({ query });
-      if (options?.tag) queryParams.append('tag', options.tag);
-      if (options?.topicId) queryParams.append('topicId', options.topicId);
-      if (options?.limit) queryParams.append('limit', options.limit.toString());
-      if (options?.page) queryParams.append('page', options.page.toString());
-      if (options?.sort) queryParams.append('sort', options.sort);
+      await apiClient.delete(`/templates/${id}`, {
+        data: { version }
+      });
+    } catch (error: any) {
+      console.error(`Failed to delete template ${id}:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Search templates
+   */
+  async searchTemplates(searchParams: {
+    query?: string;
+    tag?: string;
+    topicId?: string;
+    limit?: number;
+    page?: number;
+    sort?: 'newest' | 'oldest' | 'popular';
+  }): Promise<Template[]> {
+    try {
+      const params = new URLSearchParams();
       
-      const response = await apiClient.get<Template[]>(`/templates/search?${queryParams}`);
+      if (searchParams.query) params.append('query', searchParams.query);
+      if (searchParams.tag) params.append('tag', searchParams.tag);
+      if (searchParams.topicId) params.append('topicId', searchParams.topicId);
+      if (searchParams.limit) params.append('limit', searchParams.limit.toString());
+      if (searchParams.page) params.append('page', searchParams.page.toString());
+      if (searchParams.sort) params.append('sort', searchParams.sort);
+      
+      const response = await apiClient.get(`/templates/search?${params.toString()}`);
       return response.data;
-    } catch (error) {
-      console.error('Error searching templates:', error);
-      return [];
+    } catch (error: any) {
+      console.error('Failed to search templates:', error);
+      throw error;
     }
   }
 };

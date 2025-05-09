@@ -5,12 +5,23 @@ dotenv.config();
 
 const isCloudEnv = process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_VERSION;
 
+// Get database URL from environment variables
 const DATABASE_URL = process.env.DATABASE_URL;
+
+// Debug database connection info
+console.log('Database connection environment:', {
+  isCloudEnv,
+  hasDbUrl: !!DATABASE_URL,
+  dbUrlFirstChars: DATABASE_URL ? DATABASE_URL.substring(0, 15) + '...' : 'not_provided',
+  nodeEnv: process.env.NODE_ENV
+});
 
 let sequelize: Sequelize;
 
 if (DATABASE_URL) {
   console.log('Using DATABASE_URL for connection');
+  
+  // Configure Sequelize with DATABASE_URL
   sequelize = new Sequelize(DATABASE_URL, {
     dialect: 'postgres',
     dialectOptions: {
@@ -36,7 +47,8 @@ if (DATABASE_URL) {
   });
 } else {
   if (isCloudEnv) {
-    console.warn('Warning: Running in cloud environment without DATABASE_URL. Connection will likely fail.');
+    console.error('ERROR: Running in cloud environment without DATABASE_URL. Connection will fail.');
+    throw new Error('DATABASE_URL environment variable is required in Vercel or other cloud environments');
   }
 
   sequelize = new Sequelize(
