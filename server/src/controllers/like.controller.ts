@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
-import { Like } from '../models/Like';
-import { Template } from '../models/Template';
+import Like from '../models/Like';
+import Template from '../models/Template';
 import catchAsync from '../utils/catchAsync';
 import { validate as isUuid } from 'uuid';
 

@@ -1,30 +1,39 @@
-import { Table, Column, Model, DataType, ForeignKey } from 'sequelize-typescript';
-import { Template } from './Template';
-import { Tag } from './Tag';
+import { Model, DataTypes, Sequelize } from 'sequelize';
 
-@Table({
-  tableName: 'template_tags',
-  timestamps: true
-})
-export class TemplateTag extends Model {
-  @Column({
-    type: DataType.INTEGER,
-    primaryKey: true,
-    autoIncrement: true
-  })
-  id!: number;
+class TemplateTag extends Model {
+  public templateId!: string;
+  public tagId!: string;
+  
+  static initialize(sequelize: Sequelize) {
+    TemplateTag.init({
+      templateId: {
+        type: DataTypes.UUID,
+        allowNull: false,
+        references: {
+          model: 'templates',
+          key: 'id'
+        },
+        primaryKey: true
+      },
+      tagId: {
+        type: DataTypes.UUID,
+        allowNull: false,
+        references: {
+          model: 'tags',
+          key: 'id'
+        },
+        primaryKey: true
+      }
+    }, {
+      sequelize,
+      modelName: 'template_tag',
+      tableName: 'template_tags',
+      timestamps: false
+    });
+  }
 
-  @ForeignKey(() => Template)
-  @Column({
-    type: DataType.UUID,
-    allowNull: false
-  })
-  templateId!: string;
-
-  @ForeignKey(() => Tag)
-  @Column({
-    type: DataType.INTEGER,
-    allowNull: false
-  })
-  tagId!: number;
+  static associate() {
+  }
 }
+
+export default TemplateTag;

@@ -1,182 +1,68 @@
 import { Request, Response } from 'express';
-import { Template, User, FormResponse, Like, Comment, Topic, sequelize } from '../models';
+import { User, Template, FormResponse, sequelize } from '../models';
 import catchAsync from '../utils/catchAsync';
-import { QueryTypes } from 'sequelize';
-
-interface ActiveUserCount {
-  active_users: number;
-}
-
-interface DashboardData {
-  userCount: number;
-  templateCount: number;
-  responseCount: number;
-  activeUsers: number;
-  recentTemplates: any[];
-  recentResponses: any[];
-}
-
-interface StatisticsResult {
-  active_users: number;
-  total_templates: number;
-  total_responses: number;
-  public_templates: number;
-}
-
-interface ActiveUsersResult {
-  active_users: number;
-}
-
-/**
- * @route GET /api/admin/dashboard
- */
-export const getDashboardData = catchAsync(async (req: Request, res: Response) => {
-  try {
-    const userCount = await User.count();
-    const templateCount = await Template.count();
-    const responseCount = await FormResponse.count();
-
-    const recentTemplates = await Template.findAll({
-      order: [['createdAt', 'DESC']],
-      limit: 5,
-      include: [{ model: User, attributes: ['id', 'name', 'email'] }]
-    });
-    
-    const recentResponses = await FormResponse.findAll({
-      order: [['createdAt', 'DESC']],
-      limit: 5,
-      include: [
-        { model: User, attributes: ['id', 'name', 'email'] },
-        { model: Template, attributes: ['id', 'title'] }
-      ]
-    });
-    
-    const [activeUsersResult] = await sequelize.query(
-      `SELECT COUNT(*) as active_users FROM "Users" WHERE "lastLoginAt" > NOW() - INTERVAL '7 days'`,
-      { type: QueryTypes.SELECT }
-    ) as ActiveUserCount[];
-    
-    const dashboardData: DashboardData = {
-      userCount,
-      templateCount,
-      responseCount,
-      activeUsers: activeUsersResult.active_users,
-      recentTemplates,
-      recentResponses
-    };
-    
-    res.json(dashboardData);
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-    console.error('Admin dashboard error:', errorMessage);
-    res.status(500).json({ message: 'Failed to retrieve dashboard data' });
-  }
-});
-
-/**
- * @route GET /api/admin/stats
- */
-export const getAdminStats = catchAsync(async (req: Request, res: Response) => {
-  try {
-    const stats = {
-      totalUsers: await User.count(),
-      newUsersLast30Days: await User.count({
-        where: sequelize.literal("\"createdAt\" > NOW() - INTERVAL '30 days'")
-      }),
-      totalTemplates: await Template.count(),
-      totalResponses: await FormResponse.count(),
-      responseRate: 0 
-    };
-    
-    if (stats.totalTemplates > 0) {
-      stats.responseRate = stats.totalResponses / stats.totalTemplates;
-    }
-    
-    res.json(stats);
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-    console.error('Admin stats error:', errorMessage);
-    res.status(500).json({ message: 'Failed to retrieve admin stats' });
-  }
-});
-
-/**
- * @route GET /api/admin/activity
- */
-export const getSystemActivity = catchAsync(async (req: Request, res: Response) => {
-  try {
-    const userActivity = await User.findAll({
-      attributes: ['id', 'name', 'email', 'createdAt'],
-      order: [['createdAt', 'DESC']],
-      limit: 10
-    });
-    
-    const templateActivity = await Template.findAll({
-      attributes: ['id', 'title', 'createdAt'],
-      include: [{ model: User, attributes: ['name', 'email'] }],
-      order: [['createdAt', 'DESC']],
-      limit: 10
-    });
-    
-    const responseActivity = await FormResponse.findAll({
-      attributes: ['id', 'createdAt'],
-      include: [
-        { model: User, attributes: ['name', 'email'] },
-        { model: Template, attributes: ['title'] }
-      ],
-      order: [['createdAt', 'DESC']],
-      limit: 10
-    });
-    
-    res.json({
-      userActivity,
-      templateActivity,
-      responseActivity
-    });
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-    console.error('System activity error:', errorMessage);
-    res.status(500).json({ message: 'Failed to retrieve system activity' });
-  }
-});
-
-/**
- * @route GET /api/admin/templates
- */
-export const getAllTemplates = catchAsync(async (req: Request, res: Response) => {
-  try {
-    const templates = await Template.findAll({
-      include: [
-        { model: User, attributes: ['id', 'name', 'email'] }
-      ],
-      order: [['createdAt', 'DESC']]
-    });
-    
-    res.json(templates);
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-    console.error('Get all templates error:', errorMessage);
-    res.status(500).json({ message: 'Failed to retrieve templates' });
-  }
-});
+import { validate as isUuid } from 'uuid';
+import { Op } from 'sequelize'; 
 
 /**
  * @route GET /api/admin/users
  */
 export const getAllUsers = catchAsync(async (req: Request, res: Response) => {
   const users = await User.findAll({
-    attributes: ['id', 'name', 'email', 'isAdmin', 'createdAt', 'lastLoginAt']
+    attributes: { exclude: ['password'] }
   });
   
-  res.json(users);
+  res.status(200).json({
+    users,
+    count: users.length
+  });
+});
+
+
+export const getUsers = getAllUsers;
+
+/**
+ * @route GET /api/admin/users-count
+ */
+export const getUsersCount = catchAsync(async (req: Request, res: Response) => {
+  const count = await User.count();
+  res.status(200).json({ count });
 });
 
 /**
- * @route PUT /api/admin/users/:id
+ * @route GET /api/admin/users/:id
  */
-export const updateUser = catchAsync(async (req: Request, res: Response) => {
+export const getUserById = catchAsync(async (req: Request, res: Response) => {
   const { id } = req.params;
-  const { isAdmin } = req.body;
+  
+  if (!isUuid(id)) {
+    return res.status(400).json({ message: 'Invalid user ID format' });
+  }
+  
+  const user = await User.findByPk(id, {
+    attributes: { exclude: ['password'] }
+  });
+  
+  if (!user) {
+    return res.status(404).json({ message: 'User not found' });
+  }
+  
+  res.status(200).json(user);
+});
+
+/**
+ * @route PUT /api/admin/users/:id/block
+ */
+export const toggleUserBlock = catchAsync(async (req: Request, res: Response) => {
+  const { id } = req.params;
+  
+  if (!isUuid(id)) {
+    return res.status(400).json({ message: 'Invalid user ID format' });
+  }
+  
+  if (id === req.user?.id) {
+    return res.status(400).json({ message: 'Cannot block yourself' });
+  }
   
   const user = await User.findByPk(id);
   
@@ -184,16 +70,32 @@ export const updateUser = catchAsync(async (req: Request, res: Response) => {
     return res.status(404).json({ message: 'User not found' });
   }
   
-  await user.update({ isAdmin });
+  await user.update({ blocked: !user.blocked });
   
-  res.json({ message: 'User updated successfully', user });
+  res.status(200).json({
+    message: `User ${user.blocked ? 'blocked' : 'unblocked'} successfully`,
+    user: {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      blocked: user.blocked
+    }
+  });
 });
 
 /**
- * @route DELETE /api/admin/users/:id
+ * @route PUT /api/admin/users/:id/admin
  */
-export const deleteUser = catchAsync(async (req: Request, res: Response) => {
+export const toggleUserAdmin = catchAsync(async (req: Request, res: Response) => {
   const { id } = req.params;
+  
+  if (!isUuid(id)) {
+    return res.status(400).json({ message: 'Invalid user ID format' });
+  }
+  
+  if (id === req.user?.id) {
+    return res.status(400).json({ message: 'Cannot change your own admin status' });
+  }
   
   const user = await User.findByPk(id);
   
@@ -201,7 +103,175 @@ export const deleteUser = catchAsync(async (req: Request, res: Response) => {
     return res.status(404).json({ message: 'User not found' });
   }
   
-  await user.destroy();
+  await user.update({ isAdmin: !user.isAdmin });
   
-  res.json({ message: 'User deleted successfully' });
+  res.status(200).json({
+    message: `User ${user.isAdmin ? 'promoted to admin' : 'demoted from admin'} successfully`,
+    user: {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      isAdmin: user.isAdmin
+    }
+  });
+});
+
+/**
+ * @route GET /api/admin/dashboard-stats
+ */
+export const getDashboardStats = catchAsync(async (req: Request, res: Response) => {
+  const usersCount = await User.count();
+  const templatesCount = await Template.count();
+  const responsesCount = await FormResponse.count();
+  
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  
+  const activeUsers = await User.count({
+    where: {
+      lastLoginAt: {
+        [Op.gte]: thirtyDaysAgo
+      }
+    }
+  });
+  
+  const adminCount = await User.count({
+    where: { isAdmin: true }
+  });
+  
+  res.status(200).json({
+    users: usersCount,
+    templates: templatesCount,
+    responses: responsesCount,
+    activeUsers: activeUsers,
+    adminCount: adminCount
+  });
+});
+
+/**
+ * @route GET /api/admin/templates
+ */
+export const getAllTemplates = catchAsync(async (req: Request, res: Response) => {
+  const templates = await Template.findAll({
+    include: [
+      { model: User, attributes: ['id', 'name', 'email'] }
+    ]
+  });
+  
+  res.status(200).json(templates);
+});
+
+
+export const getTemplates = getAllTemplates;
+
+/**
+ * @route GET /api/admin/templates/:id
+ */
+export const getTemplateById = catchAsync(async (req: Request, res: Response) => {
+  const { id } = req.params;
+  
+  if (!isUuid(id)) {
+    return res.status(400).json({ message: 'Invalid template ID format' });
+  }
+  
+  const template = await Template.findByPk(id, {
+    include: [
+      { model: User, attributes: ['id', 'name', 'email'] }
+    ]
+  });
+  
+  if (!template) {
+    return res.status(404).json({ message: 'Template not found' });
+  }
+  
+  res.status(200).json(template);
+});
+
+/**
+ * @route GET /api/admin/responses
+ */
+export const getAllResponses = catchAsync(async (req: Request, res: Response) => {
+  const responses = await FormResponse.findAll({
+    include: [
+      { model: User, attributes: ['id', 'name', 'email'] },
+      { model: Template, attributes: ['id', 'title'] }
+    ]
+  });
+  
+  res.status(200).json(responses);
+});
+
+export const getResponses = getAllResponses;
+
+/**
+ * @route GET /api/admin/responses/:id
+ */
+export const getResponseById = catchAsync(async (req: Request, res: Response) => {
+  const { id } = req.params;
+  
+  if (!isUuid(id)) {
+    return res.status(400).json({ message: 'Invalid response ID format' });
+  }
+  
+  const response = await FormResponse.findByPk(id, {
+    include: [
+      { model: User, attributes: ['id', 'name', 'email'] },
+      { model: Template, attributes: ['id', 'title'] }
+    ]
+  });
+  
+  if (!response) {
+    return res.status(404).json({ message: 'Response not found' });
+  }
+  
+  res.status(200).json(response);
+});
+
+/**
+ * @route GET /api/admin/system-activity/:count?
+ */
+export const getSystemActivity = catchAsync(async (req: Request, res: Response) => {
+  const count = req.params.count ? parseInt(req.params.count) : 10;
+  
+  const mockActivity = [
+    {
+      id: '1',
+      type: 'user',
+      action: 'created',
+      user: 'John Doe',
+      timestamp: new Date(Date.now() - 15 * 60000).toISOString()
+    },
+    {
+      id: '2',
+      type: 'template',
+      action: 'updated',
+      user: 'Admin User',
+      title: 'Customer Survey',
+      timestamp: new Date(Date.now() - 2 * 60 * 60000).toISOString()
+    },
+    {
+      id: '3',
+      type: 'response',
+      action: 'submitted',
+      user: 'Alice Smith',
+      timestamp: new Date(Date.now() - 3 * 60 * 60000).toISOString()
+    },
+    {
+      id: '4',
+      type: 'user',
+      action: 'blocked',
+      user: 'Admin User',
+      timestamp: new Date(Date.now() - 5 * 60 * 60000).toISOString()
+    },
+    {
+      id: '5',
+      type: 'template',
+      action: 'created',
+      user: 'Bob Johnson',
+      title: 'Feedback Form',
+      timestamp: new Date(Date.now() - 12 * 60 * 60000).toISOString()
+    }
+  ];
+  
+  res.status(200).json(mockActivity.slice(0, count));
 });

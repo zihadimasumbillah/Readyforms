@@ -1,50 +1,46 @@
-import { Sequelize } from 'sequelize-typescript';
+import { Sequelize } from 'sequelize';
+import sequelize from '../config/database';
 import User from './User';
-import { Topic } from './Topic';
-import { Template } from './Template';
-import { FormResponse } from './FormResponse';
-import { Comment } from './Comment';
-import { Like } from './Like';
-import { Tag } from './Tag';
-import { TemplateTag } from './TemplateTag';
-import config from '../config/db.config';
-import 'pg';
+import Template from './Template';
+import FormResponse from './FormResponse';
+import Comment from './Comment';
+import Like from './Like';
+import Topic from './Topic';
+import Tag from './Tag';
+import TemplateTag from './TemplateTag';
 
-const sequelize = new Sequelize({
-  ...config,
-  models: [User, Topic, Template, FormResponse, Comment, Like, Tag, TemplateTag]
-});
-
-export const testConnection = async () => {
-  try {
-    await sequelize.authenticate();
-    console.log('Database connection established successfully.');
-    return true;
-  } catch (error) {
-    console.error('Unable to connect to the database:', error);
-    return false;
-  }
-};
-
-export const syncDatabase = async (force: boolean = false) => {
-  try {
-    await sequelize.sync({ force });
-    console.log('Database synced successfully');
-    return true;
-  } catch (error) {
-    console.error('Failed to sync database:', error);
-    return false;
-  }
-};
-
-export {
-  sequelize,
+const models = {
   User,
-  Topic,
   Template,
   FormResponse,
   Comment,
   Like,
+  Topic,
+  Tag,
+  TemplateTag
+};
+
+Object.values(models).forEach((model: any) => {
+  if (model.initialize) {
+    model.initialize(sequelize);
+  }
+});
+
+
+Object.values(models).forEach((model: any) => {
+  if (model.associate) {
+    model.associate(models);
+  }
+});
+
+export { 
+  sequelize,
+  User,
+  Template,
+  FormResponse,
+  Comment,
+  Like,
+  Topic, 
   Tag,
   TemplateTag
 };

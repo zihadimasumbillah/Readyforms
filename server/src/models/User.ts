@@ -1,74 +1,94 @@
-import { Table, Column, Model, DataType, Default, Unique, IsEmail, BeforeCreate, BeforeUpdate } from 'sequelize-typescript';
-import bcrypt from 'bcryptjs';
+import { Model, DataTypes, Sequelize } from 'sequelize';
+import Template from './Template';
 
-@Table({
-  tableName: 'users',
-  timestamps: true
-})
-class User extends Model {
-  @Default(DataType.UUIDV4)
-  @Column({
-    type: DataType.UUID,
-    primaryKey: true
-  })
-  id!: string;
-
-  @Column({
-    type: DataType.STRING,
-    allowNull: false
-  })
-  name!: string;
-
-  @Unique
-  @IsEmail
-  @Column({
-    type: DataType.STRING,
-    allowNull: false
-  })
-  email!: string;
-
-  @Column({
-    type: DataType.STRING,
-    allowNull: false
-  })
-  password!: string;
-
-  @Default(false)
-  @Column(DataType.BOOLEAN)
-  isAdmin!: boolean;
-
-  @Default(false)
-  @Column(DataType.BOOLEAN)
-  blocked!: boolean;
-
-  @Column(DataType.STRING)
-  language?: string;
-
-  @Column(DataType.STRING)
-  theme?: string;
-
-  @Column(DataType.DATE)
+interface UserAttributes {
+  id?: string; // Make id optional for creation
+  name: string;
+  email: string;
+  password: string;
+  isAdmin: boolean;
+  blocked?: boolean; // Make blocked optional with default value
+  language: string;
+  theme: string;
   lastLoginAt?: Date;
-  async validatePassword(password: string): Promise<boolean> {
-    try {
-      return await bcrypt.compare(password, this.password);
-    } catch (error) {
-      console.error('Password validation error:', error);
-      return false;
-    }
-  }
-  @BeforeCreate
-  static async hashPasswordBeforeCreate(instance: User) {
-    if (instance.password) {
-      instance.password = await bcrypt.hash(instance.password, 10);
-    }
+  version?: number;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+class User extends Model<UserAttributes> implements UserAttributes {
+  public id!: string;
+  public name!: string;
+  public email!: string;
+  public password!: string;
+  public isAdmin!: boolean;
+  public blocked!: boolean;
+  public language!: string;
+  public theme!: string;
+  public lastLoginAt!: Date;
+  public version!: number;
+  public readonly createdAt!: Date;
+  public readonly updatedAt!: Date;
+
+  // Static methods
+  static initialize(sequelize: Sequelize) {
+    User.init({
+      id: {
+        type: DataTypes.UUID,
+        defaultValue: DataTypes.UUIDV4,
+        allowNull: false,
+        primaryKey: true
+      },
+      name: {
+        type: DataTypes.STRING,
+        allowNull: false
+      },
+      email: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        unique: true
+      },
+      password: {
+        type: DataTypes.STRING,
+        allowNull: false
+      },
+      isAdmin: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false
+      },
+      blocked: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false
+      },
+      language: {
+        type: DataTypes.STRING,
+        defaultValue: 'en'
+      },
+      theme: {
+        type: DataTypes.STRING,
+        defaultValue: 'light'
+      },
+      lastLoginAt: {
+        type: DataTypes.DATE,
+        allowNull: true
+      },
+      version: {
+        type: DataTypes.INTEGER,
+        defaultValue: 0
+      }
+    }, {
+      sequelize,
+      modelName: 'user',
+      tableName: 'users',
+      timestamps: true
+    });
   }
 
-  @BeforeUpdate
-  static async hashPasswordBeforeUpdate(instance: User) {
-    if (instance.changed('password')) {
-      instance.password = await bcrypt.hash(instance.password, 10);
-    }
+  static associate(models: any) {
+    User.hasMany(models.Template, { foreignKey: 'userId' });
+    User.hasMany(models.FormResponse, { foreignKey: 'userId' });
+    User.hasMany(models.Comment, { foreignKey: 'userId' });
+    User.hasMany(models.Like, { foreignKey: 'userId' });
   }
 }
 

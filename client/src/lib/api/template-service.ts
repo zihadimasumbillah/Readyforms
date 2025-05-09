@@ -1,6 +1,27 @@
 import apiClient from './api-client';
 import { Template } from '@/types';
 
+export interface TemplateCreateData {
+  title: string;
+  topicId: string;
+  description?: string;
+  isPublic?: boolean;
+  tags?: string[];
+  isQuiz?: boolean;
+  showScoreImmediately?: boolean;
+  scoringCriteria?: string;
+  questionOrder?: string;
+  [key: string]: any; 
+}
+
+export interface TemplateUpdateData extends Partial<Omit<Template, 'tags'>> {
+  title: string;
+  topicId: string;
+  version: number; 
+  tags?: string[]; 
+  [key: string]: any; 
+}
+
 export interface TemplateListOptions {
   query?: string;
   tag?: string;
@@ -51,25 +72,17 @@ export const templateService = {
   /**
    * @param templateData - Template data
    */
-  async createTemplate(templateData: Partial<Template> & { title: string; topicId: string }): Promise<Template> {
+  async createTemplate(templateData: TemplateCreateData): Promise<Template> {
     const response = await apiClient.post<Template>('/templates', templateData);
     return response.data;
   },
   
   /**
    * @param id - Template ID
-   * @param templateData - Updated template data
-   * @param version - Template version for optimistic locking
+   * @param data - Updated template data
    */
-  async updateTemplate(
-    id: string, 
-    templateData: Partial<Template> & { title: string; topicId: string },
-    version: number
-  ): Promise<Template> {
-    const response = await apiClient.put<Template>(`/templates/${id}`, {
-      ...templateData,
-      version
-    });
+  async updateTemplate(id: string, data: TemplateUpdateData): Promise<Template> {
+    const response = await apiClient.put<Template>(`/templates/${id}`, data);
     return response.data;
   },
   

@@ -1,28 +1,25 @@
-import { Router, Request, Response } from 'express';
+import { Router } from 'express';
+import { healthController } from '../controllers/health.controller';
 
 const router = Router();
 
 /**
- * Basic health check endpoint
- * @route GET /api/health
+ * @route GET /api/health/ping
+ * @access Public
  */
-router.get('/', (_req: Request, res: Response) => {
-  res.json({ status: 'OK', message: 'API is healthy', timestamp: new Date().toISOString() });
-});
+router.get('/ping', healthController.ping);
 
 /**
- * Detailed health check endpoint
- * @route GET /api/health/details
+ * @route GET /api/health/status
+ * @access Public
  */
-router.get('/details', (_req: Request, res: Response) => {
-  res.json({
-    status: 'OK',
-    message: 'API is healthy',
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-    memory: process.memoryUsage(),
-    environment: process.env.NODE_ENV || 'development'
-  });
-});
+router.get('/status', healthController.status);
+
+/**
+
+ * @route GET /api/health/cors
+ * @access Public
+ */
+router.get('/cors', healthController.corsCheck);
 
 export default router;

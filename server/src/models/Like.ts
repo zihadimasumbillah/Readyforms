@@ -1,43 +1,44 @@
-import { Table, Column, Model, DataType, ForeignKey, BelongsTo, Default, Index } from 'sequelize-typescript';
+import { Model, DataTypes, Sequelize } from 'sequelize';
 import User from './User';
-import { Template } from './Template';
+import Template from './Template';
 
-@Table({
-  tableName: 'likes',
-  timestamps: true,
-  version: true, 
-  indexes: [
-    {
-      unique: true,
-      fields: ['userId', 'templateId']
-    }
-  ]
-})
-export class Like extends Model {
-  @Default(DataType.UUIDV4)
-  @Column({
-    type: DataType.UUID,
-    primaryKey: true
-  })
-  id!: string;
+class Like extends Model {
+  static initialize(sequelize: Sequelize) {
+    Like.init(
+      {
+        id: {
+          type: DataTypes.UUID,
+          defaultValue: DataTypes.UUIDV4,
+          primaryKey: true,
+        },
+        userId: {
+          type: DataTypes.UUID,
+          allowNull: false,
+        },
+        templateId: {
+          type: DataTypes.UUID,
+          allowNull: false,
+        },
+      },
+      {
+        sequelize,
+        tableName: 'likes',
+        timestamps: true,
+        version: true,
+        indexes: [
+          {
+            unique: true,
+            fields: ['userId', 'templateId'],
+          },
+        ],
+      }
+    );
+  }
 
-  @ForeignKey(() => User)
-  @Column({
-    type: DataType.UUID,
-    allowNull: false
-  })
-  userId!: string;
-
-  @BelongsTo(() => User)
-  user!: User;
-
-  @ForeignKey(() => Template)
-  @Column({
-    type: DataType.UUID,
-    allowNull: false
-  })
-  templateId!: string;
-
-  @BelongsTo(() => Template)
-  template!: Template;
+  static associate(models: any) {
+    Like.belongsTo(models.User, { foreignKey: 'userId', as: 'user' });
+    Like.belongsTo(models.Template, { foreignKey: 'templateId', as: 'template' });
+  }
 }
+
+export default Like;

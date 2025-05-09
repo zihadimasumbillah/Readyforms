@@ -1,96 +1,82 @@
 import { Request, Response } from 'express';
-import { FormResponse, Template, User, sequelize } from '../models';
+import { FormResponse, Template, User } from '../models';
 import catchAsync from '../utils/catchAsync';
-import { QueryTypes } from 'sequelize';
 import { validate as isUuid } from 'uuid';
 
-
+/**
+ * @route POST /api/responses
+ */
 export const createFormResponse = catchAsync(async (req: Request, res: Response) => {
-  const { templateId, answers } = req.body;
-  
-  if (!templateId || !answers) {
-    return res.status(400).json({ message: 'Template ID and answers are required' });
+  if (!req.user) {
+    return res.status(401).json({ message: 'Authentication required' });
   }
-  
+
+  const {
+    templateId,
+    customString1Answer,
+    customString2Answer,
+    customString3Answer,
+    customString4Answer,
+    customText1Answer,
+    customText2Answer,
+    customText3Answer,
+    customText4Answer,
+    customInt1Answer,
+    customInt2Answer,
+    customInt3Answer,
+    customInt4Answer,
+    customCheckbox1Answer,
+    customCheckbox2Answer,
+    customCheckbox3Answer,
+    customCheckbox4Answer
+  } = req.body;
+
+
+  if (!templateId) {
+    return res.status(400).json({ message: 'Template ID is required' });
+  }
+
   const template = await Template.findByPk(templateId);
   if (!template) {
     return res.status(404).json({ message: 'Template not found' });
   }
-  
-  if (!req.user) {
-    return res.status(401).json({ 
-      message: 'Authentication required to submit form responses',
-      requiresAuth: true
-    });
-  }
 
-  let score = 0;
-  let totalPossiblePoints = 0;
-
-  if (template.scoringCriteria) {
-    try {
-      const scoringCriteria = JSON.parse(template.scoringCriteria || '{}');
-      Object.keys(answers).forEach(key => {
-        if (scoringCriteria[key]) {
-          totalPossiblePoints += scoringCriteria[key].points || 0;
-          if (answers[key] === scoringCriteria[key].answer) {
-            score += scoringCriteria[key].points || 0;
-          }
-        }
-      });
-    } catch (error) {
-      console.error('Error parsing scoring criteria:', error);
-    }
-  }
-  
- 
-  const formResponse = await FormResponse.create({
+  const response = await FormResponse.create({
     templateId,
     userId: req.user.id,
-    score: score,
-    totalPossiblePoints: totalPossiblePoints,
-    ...(typeof answers === 'object' ? answers : {})
+    customString1Answer,
+    customString2Answer,
+    customString3Answer,
+    customString4Answer,
+    customText1Answer,
+    customText2Answer,
+    customText3Answer,
+    customText4Answer,
+    customInt1Answer,
+    customInt2Answer,
+    customInt3Answer,
+    customInt4Answer,
+    customCheckbox1Answer,
+    customCheckbox2Answer,
+    customCheckbox3Answer,
+    customCheckbox4Answer
   });
-  
-  res.status(201).json({
-    ...formResponse.toJSON(),
-    score,
-    totalPossiblePoints,
-    percentScore: totalPossiblePoints > 0 ? Math.round((score / totalPossiblePoints) * 100) : null
-  });
+
+  return res.status(201).json(response);
 });
 
-export const getFormResponsesByUser = catchAsync(async (req: Request, res: Response) => {
+/**
+ * @route GET /api/responses/template/:templateId
+ */
+export const getFormResponsesByTemplate = catchAsync(async (req: Request, res: Response) => {
   if (!req.user) {
     return res.status(401).json({ message: 'Authentication required' });
   }
-  
-  const userId = req.params.userId || req.user.id;
-  
-  const responses = await FormResponse.findAll({
-    where: { userId },
-    include: [
-      {
-        model: Template,
-        attributes: ['id', 'title']
-      }
-    ]
-  });
-  
-  res.status(200).json(responses);
-});
 
-export const getFormResponsesByTemplate = catchAsync(async (req: Request, res: Response) => {
   const { templateId } = req.params;
 
-  if (!req.user) {
-    return res.status(401).json({ message: 'Authentication required' });
-  }
-
-  if (!isUuid(templateId)) {
-    return res.status(400).json({ 
-      message: 'Invalid template ID format. Please provide a valid UUID.' 
-    });
+  if (!templateId || !isUuid(templateId)) {
+    return res.status(400).json({ message: 'Valid template ID is required' });
   }
 
   const template = await Template.findByPk(templateId);
@@ -98,146 +84,120 @@ export const getFormResponsesByTemplate = catchAsync(async (req: Request, res: R
     return res.status(404).json({ message: 'Template not found' });
   }
 
-  const isTemplateOwner = req.user.id === template.userId;
-  const isAdmin = req.user.isAdmin === true;
-  if (!isTemplateOwner && !isAdmin) {
-    return res.status(403).json({ 
-      message: 'You do not have permission to view all responses for this template' 
-    });
+  if (template.userId !== req.user.id && !req.user.isAdmin) {
+    return res.status(403).json({ message: 'Not authorized to view these responses' });
   }
 
   const responses = await FormResponse.findAll({
     where: { templateId },
-    include: [
-      {
-        model: Template,
-        attributes: ['id', 'title']
-      },
-      {
-        model: User,
-        attributes: ['id', 'name', 'email']
-      }
-    ]
+    include: [{ model: User, attributes: ['id', 'name', 'email'] }]
   });
-  
-  res.status(200).json(responses);
+
+  return res.status(200).json(responses);
 });
 
+/**
+ * @route GET /api/responses/:id
+ */
 export const getFormResponseById = catchAsync(async (req: Request, res: Response) => {
-  const { id } = req.params;
-
   if (!req.user) {
     return res.status(401).json({ message: 'Authentication required' });
   }
 
-  if (!isUuid(id)) {
-    return res.status(400).json({ 
-      message: 'Invalid response ID format. Please provide a valid UUID.' 
-    });
+  const { id } = req.params;
+
+  if (!id || !isUuid(id)) {
+    return res.status(400).json({ message: 'Valid response ID is required' });
   }
-  
+
   const response = await FormResponse.findByPk(id, {
     include: [
-      {
-        model: Template,
-        attributes: ['id', 'title']
-      },
-      {
-        model: User,
-        attributes: ['id', 'name', 'email']
-      }
+      { model: Template },
+      { model: User, attributes: ['id', 'name'] }
     ]
   });
-  
+
   if (!response) {
     return res.status(404).json({ message: 'Form response not found' });
   }
 
-  const isResponseOwner = req.user.id === response.userId;
-  const isTemplateOwner = req.user.id === response.template.userId;
-  const isAdmin = req.user.isAdmin === true;
-  
-  if (!isResponseOwner && !isTemplateOwner && !isAdmin) {
-    return res.status(403).json({ message: 'You do not have permission to view this response' });
+  if (response.userId !== req.user.id && response.template?.userId !== req.user.id && !req.user.isAdmin) {
+    return res.status(403).json({ message: 'Not authorized to view this response' });
   }
-  
-  res.status(200).json(response);
+
+  return res.status(200).json(response);
 });
 
+/**
+ * @route GET /api/responses/user
+ * @route GET /api/responses/user/:userId
+ */
+export const getFormResponsesByUser = catchAsync(async (req: Request, res: Response) => {
+  if (!req.user) {
+    return res.status(401).json({ message: 'Authentication required' });
+  }
+
+  const { userId } = req.params;
+  const targetUserId = userId || req.user.id;
+
+  if (targetUserId !== req.user.id && !req.user.isAdmin) {
+    return res.status(403).json({ message: 'Not authorized to view these responses' });
+  }
+
+  const responses = await FormResponse.findAll({
+    where: { userId: targetUserId },
+    include: [{ model: Template, attributes: ['id', 'title', 'description'] }]
+  });
+
+  return res.status(200).json(responses);
+});
+
+/**
+ * @route GET /api/responses/aggregate/:templateId
+ */
 export const getAggregateData = catchAsync(async (req: Request, res: Response) => {
-  try {
-    const { templateId } = req.params;
+  const { templateId } = req.params;
 
-    if (!isUuid(templateId)) {
-      return res.status(400).json({ 
-        message: 'Invalid template ID format. Please provide a valid UUID.' 
-      });
-    }
-
-    const template = await Template.findByPk(templateId);
-    if (!template) {
-      return res.status(404).json({ message: 'Template not found' });
-    }
-
-    const aggregateData = await sequelize.query(`
-      SELECT 
-        AVG(NULLIF("customInt1Answer", 0)) as avg_custom_int1,
-        AVG(NULLIF("customInt2Answer", 0)) as avg_custom_int2,
-        AVG(NULLIF("customInt3Answer", 0)) as avg_custom_int3,
-        AVG(NULLIF("customInt4Answer", 0)) as avg_custom_int4,
-        COUNT(*) as total_responses,
-        COUNT(NULLIF("customString1Answer", '')) as string1_count,
-        COUNT(NULLIF("customString2Answer", '')) as string2_count,
-        COUNT(NULLIF("customString3Answer", '')) as string3_count,
-        COUNT(NULLIF("customString4Answer", '')) as string4_count,
-        COUNT(NULLIF("customText1Answer", '')) as text1_count,
-        COUNT(NULLIF("customText2Answer", '')) as text2_count,
-        COUNT(NULLIF("customText3Answer", '')) as text3_count,
-        COUNT(NULLIF("customText4Answer", '')) as text4_count,
-        SUM(CASE WHEN "customCheckbox1Answer" = true THEN 1 ELSE 0 END) as checkbox1_yes_count,
-        SUM(CASE WHEN "customCheckbox2Answer" = true THEN 1 ELSE 0 END) as checkbox2_yes_count,
-        SUM(CASE WHEN "customCheckbox3Answer" = true THEN 1 ELSE 0 END) as checkbox3_yes_count,
-        SUM(CASE WHEN "customCheckbox4Answer" = true THEN 1 ELSE 0 END) as checkbox4_yes_count,
-        AVG("score") as avg_score,
-        MAX("score") as max_score,
-        MIN("score") as min_score,
-        AVG("totalPossiblePoints") as avg_total_points
-      FROM form_responses
-      WHERE "templateId" = :templateId
-    `, {
-      replacements: { templateId },
-      type: QueryTypes.SELECT
-    });
-    
-    if (!aggregateData || aggregateData.length === 0) {
-      return res.status(200).json({
-        avg_custom_int1: null,
-        avg_custom_int2: null,
-        avg_custom_int3: null,
-        avg_custom_int4: null,
-        string1_count: 0,
-        string2_count: 0,
-        string3_count: 0,
-        string4_count: 0,
-        text1_count: 0,
-        text2_count: 0,
-        text3_count: 0,
-        text4_count: 0,
-        checkbox1_yes_count: 0,
-        checkbox2_yes_count: 0,
-        checkbox3_yes_count: 0,
-        checkbox4_yes_count: 0,
-        total_responses: 0,
-        avg_score: 0,
-        max_score: 0,
-        min_score: 0,
-        avg_total_points: 0
-      });
-    }
-    
-    res.status(200).json(aggregateData[0]);
-  } catch (error) {
-    console.error('Error getting aggregate data:', error);
-    res.status(500).json({ message: 'Server error while getting aggregate data' });
+  if (!templateId || !isUuid(templateId)) {
+    return res.status(400).json({ message: 'Valid template ID is required' });
   }
+
+  const template = await Template.findByPk(templateId);
+  if (!template) {
+    return res.status(404).json({ message: 'Template not found' });
+  }
+
+  const responses = await FormResponse.findAll({
+    where: { templateId },
+    attributes: [
+      'customString1Answer', 'customString2Answer', 'customString3Answer', 'customString4Answer',
+      'customInt1Answer', 'customInt2Answer', 'customInt3Answer', 'customInt4Answer',
+      'customCheckbox1Answer', 'customCheckbox2Answer', 'customCheckbox3Answer', 'customCheckbox4Answer'
+    ]
+  });
+
+  const aggregateData = {
+    total_responses: responses.length,
+    responseCount: responses.length,
+    checkboxStats: {
+      customCheckbox1Answer: responses.filter(r => r.customCheckbox1Answer === true).length,
+      customCheckbox2Answer: responses.filter(r => r.customCheckbox2Answer === true).length,
+      customCheckbox3Answer: responses.filter(r => r.customCheckbox3Answer === true).length,
+      customCheckbox4Answer: responses.filter(r => r.customCheckbox4Answer === true).length
+    },
+    intStats: {
+      customInt1Answer: calculateAverage(responses.map(r => r.customInt1Answer)),
+      customInt2Answer: calculateAverage(responses.map(r => r.customInt2Answer)),
+      customInt3Answer: calculateAverage(responses.map(r => r.customInt3Answer)),
+      customInt4Answer: calculateAverage(responses.map(r => r.customInt4Answer))
+    }
+  };
+
+  return res.status(200).json(aggregateData);
 });
+
+function calculateAverage(values) {
+  const numericValues = values.filter(v => v !== null && v !== undefined);
+  if (numericValues.length === 0) return null;
+  return numericValues.reduce((sum, v) => sum + v, 0) / numericValues.length;
+}

@@ -99,10 +99,19 @@ export const createTemplate = catchAsync(async (req: Request, res: Response) => 
       questionOrder
     } = req.body;
 
+    console.log('Template creation request:', { title, topicId, tags });
+
     if (!title || !topicId) {
       return res.status(400).json({ message: 'Title and topic are required' });
     }
 
+    // Verify that topicId exists
+    const topic = await Topic.findByPk(topicId);
+    if (!topic) {
+      return res.status(404).json({ message: 'Topic not found' });
+    }
+
+    // No need to check for all fields, just make sure at least one is enabled
     if (!customString1State && !customString2State && !customString3State && !customString4State &&
         !customText1State && !customText2State && !customText3State && !customText4State &&
         !customInt1State && !customInt2State && !customInt3State && !customInt4State &&
@@ -113,13 +122,15 @@ export const createTemplate = catchAsync(async (req: Request, res: Response) => 
     if (!req.user) {
       return res.status(401).json({ message: 'Not authenticated' });
     }
-    
-    const template = await Template.create({
+
+    // Create template with default values
+    const templateData = {
       title,
       description: description || '',
       isPublic: isPublic === undefined ? true : isPublic,
       topicId,
       userId: req.user.id,
+      // Default all fields to false unless explicitly set
       customString1State: customString1State || false,
       customString1Question: customString1Question || '',
       customString2State: customString2State || false,
@@ -153,28 +164,44 @@ export const createTemplate = catchAsync(async (req: Request, res: Response) => 
       customCheckbox4State: customCheckbox4State || false,
       customCheckbox4Question: customCheckbox4Question || '',
       questionOrder: questionOrder || '[]'
+    };
+    
+    console.log('Creating template with data:', {
+      title: templateData.title,
+      topicId: templateData.topicId,
+      userId: templateData.userId
     });
 
+    const template = await Template.create(templateData);
+    console.log('Template created:', template.id);
+
+    // Process tags if provided
     if (tags && Array.isArray(tags) && tags.length > 0) {
-      const tagPromises = tags.map(async (tagName) => {
-        const [tag] = await Tag.findOrCreate({
-          where: { name: tagName.trim() },
-          defaults: { name: tagName.trim() }
-        });
-        return tag;
-      });
-      
-      const resolvedTags = await Promise.all(tagPromises);
-      await Promise.all(
-        resolvedTags.map(tag => 
-          TemplateTag.create({
-            tagId: tag.id,
-            templateId: template.id
-          })
-        )
-      );
+      console.log('Processing tags:', tags);
+      for (const tagName of tags) {
+        const trimmedTagName = tagName.trim();
+        if (trimmedTagName) {
+          try {
+            console.log('Finding or creating tag:', trimmedTagName);
+            const [tag] = await Tag.findOrCreate({
+              where: { name: trimmedTagName },
+              defaults: { name: trimmedTagName }
+            });
+            
+            console.log('Creating template tag association:', { tagId: tag.id, templateId: template.id });
+            await TemplateTag.create({
+              tagId: tag.id,
+              templateId: template.id
+            });
+          } catch (tagError) {
+            console.error('Error processing tag:', trimmedTagName, tagError);
+            // Continue with other tags even if one fails
+          }
+        }
+      }
     }
   
+    // Fetch the complete template with associations
     const completeTemplate = await Template.findByPk(template.id, {
       include: [
         { model: User, attributes: ['id', 'name'] },
@@ -186,7 +213,10 @@ export const createTemplate = catchAsync(async (req: Request, res: Response) => 
     res.status(201).json(completeTemplate);
   } catch (error) {
     console.error('Error creating template:', error);
-    res.status(500).json({ message: 'Server error while creating template' });
+    res.status(500).json({ 
+      message: 'Server error while creating template',
+      details: process.env.NODE_ENV === 'development' ? (error as Error).message : undefined
+    });
   }
 });
 
@@ -311,7 +341,7 @@ export const updateTemplate = catchAsync(async (req: Request, res: Response) => 
     };
 
     const updatedTemplate = await optimisticUpdate<Template>(
-      Template,
+      Template as any,
       id,
       version,
       updateData
@@ -416,7 +446,7 @@ export const deleteTemplate = catchAsync(async (req: Request, res: Response) => 
     await Like.destroy({ where: { templateId: id } });
     await FormResponse.destroy({ where: { templateId: id } });
 
-    await optimisticDelete(Template, id, version);
+    await optimisticDelete(Template as any, id, version);
     
     res.status(200).json({ message: 'Template deleted successfully' });
   } catch (error) {
@@ -429,13 +459,15 @@ export const deleteTemplate = catchAsync(async (req: Request, res: Response) => 
 
 export const searchTemplates = catchAsync(async (req: Request, res: Response) => {
   try {
+    console.log('Template search request:', req.query);
     const { query, tag, topicId, limit = 10, page = 1, sort } = req.query;
     
     const whereConditions: any = {
       isPublic: true,
     };
 
-    if (query && typeof query === 'string') {
+    if (query && typeof query === 'string' && query.trim()) {
+      // Fix for PostgreSQL iLike operator
       whereConditions[Op.or] = [
         { title: { [Op.iLike]: `%${query}%` } },
         { description: { [Op.iLike]: `%${query}%` } }
@@ -450,31 +482,51 @@ export const searchTemplates = catchAsync(async (req: Request, res: Response) =>
       }
     }
     
+    // Prepare include conditions for eager loading
     const includeConditions: any[] = [
       { model: User, attributes: ['id', 'name'] },
-      { model: Topic, attributes: ['id', 'name'] },
-      { model: Tag }
+      { model: Topic, attributes: ['id', 'name'] }
     ];
     
-    if (tag && typeof tag === 'string') {
-      includeConditions[2] = {
+    // Handle tag filtering
+    if (tag && typeof tag === 'string' && tag.trim()) {
+      includeConditions.push({
         model: Tag,
+        attributes: ['id', 'name'],
         where: { name: tag },
         required: true
-      };
+      });
+    } else {
+      includeConditions.push({ 
+        model: Tag,
+        attributes: ['id', 'name'] 
+      });
     }
 
+    // Set up sorting
     let order: any[] = [];
     if (sort === 'oldest') {
       order = [['createdAt', 'ASC']];
+    } else if (sort === 'popular') {
+      // Since we don't have a direct "popularity" metric, we'll default to newest
+      order = [['createdAt', 'DESC']];
     } else {
+      // Default to newest
       order = [['createdAt', 'DESC']];
     }
 
+    // Pagination parameters
     const pageNumber = Math.max(1, parseInt(page as string) || 1);
     const limitNumber = Math.max(1, Math.min(50, parseInt(limit as string) || 10));
     const offset = (pageNumber - 1) * limitNumber;
     
+    console.log('Executing template search with:', {
+      where: whereConditions,
+      limit: limitNumber,
+      offset,
+      order
+    });
+
     const templates = await Template.findAll({
       where: whereConditions,
       include: includeConditions,
@@ -483,9 +535,13 @@ export const searchTemplates = catchAsync(async (req: Request, res: Response) =>
       offset: offset
     });
     
+    console.log(`Found ${templates.length} templates`);
     res.status(200).json(templates);
   } catch (error) {
     console.error('Error searching templates:', error);
-    res.status(500).json({ message: 'Server error while searching templates' });
+    res.status(500).json({
+      message: 'Server error while searching templates',
+      details: process.env.NODE_ENV === 'development' ? (error as Error).message : undefined
+    });
   }
 });

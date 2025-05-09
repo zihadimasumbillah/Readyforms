@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import { toast } from '@/components/ui/use-toast';
-import { Navbar } from '@/components/navbar';
+
 
 export default function TemplatesPage() {
   const [templates, setTemplates] = useState<Template[]>([]);
@@ -65,7 +65,6 @@ export default function TemplatesPage() {
 
   return (
     <>
-      <Navbar />
       <div className="container mx-auto py-10">
         <div className="flex items-center justify-between mb-8">
           <div>

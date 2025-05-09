@@ -7,21 +7,19 @@ import catchAsync from '../utils/catchAsync';
 import { Op } from 'sequelize';
 
 /**
- * Register a new user
  * @route POST /api/auth/register
  */
 export const register = catchAsync(async (req: Request, res: Response) => {
   try {
-    const { name, email, password, language = 'en', theme = 'light' } = req.body;
+    const { name, email, password, language = 'en', theme = 'light', isAdmin = false } = req.body;
 
     if (!name || !email || !password) {
       return res.status(400).json({ message: 'Name, email and password are required' });
     }
 
-    // Check if user already exists
     const existingUser = await User.findOne({ 
       where: { 
-        email: { [Op.iLike]: email } 
+        email: { [Op.iLike]: email.toLowerCase().trim() } 
       } 
     });
 
@@ -29,48 +27,50 @@ export const register = catchAsync(async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'User already exists with this email' });
     }
 
+    const normalizedEmail = email.toLowerCase().trim();
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create user with explicit save
+    const adminPrivilege = isAdmin && (
+      req.user?.isAdmin === true || 
+      process.env.NODE_ENV === 'development' || 
+      process.env.ALLOW_ADMIN_CREATION === 'true'
+    );
+
     const user = await User.create({
       name,
-      email,
+      email: normalizedEmail, 
       password: hashedPassword,
       language,
       theme,
-      isAdmin: false, // Explicitly set to false for security
-      blocked: false,
-      lastLoginAt: new Date() // Set initial login time
-    }, { 
-      logging: console.log // Enable logging for debugging
+      isAdmin: adminPrivilege,
+      blocked: false, 
+      lastLoginAt: new Date() 
     });
 
-    // Verify user was created by fetching it again
     const savedUser = await User.findByPk(user.id);
     if (!savedUser) {
       console.error('User created but not found in subsequent query');
       return res.status(500).json({ message: 'User registration failed - database integrity issue' });
     }
 
-    // Generate JWT token
     const token = jwt.sign(
       { 
         id: user.id, 
-        email: user.email, 
+        email: normalizedEmail, 
         isAdmin: user.isAdmin 
       }, 
       jwtConfig.secret, 
       { expiresIn: jwtConfig.expiresIn }
     );
 
-    console.log('User registered successfully:', user.id);
+    console.log('User registered successfully:', user.id, normalizedEmail);
     return res.status(201).json({
       message: 'User registered successfully',
       token,
       user: {
         id: user.id,
         name: user.name,
-        email: user.email,
+        email: normalizedEmail,
         isAdmin: user.isAdmin,
         language: user.language,
         theme: user.theme
@@ -96,6 +96,9 @@ export const login = catchAsync(async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Email and password are required' });
     }
 
+    // Debug log to help with authentication issues
+    console.log(`Login attempt for: ${email}`);
+
     const user = await User.findOne({ 
       where: { 
         email: { [Op.iLike]: email } 
@@ -103,17 +106,26 @@ export const login = catchAsync(async (req: Request, res: Response) => {
     });
 
     if (!user) {
+      console.log(`User not found: ${email}`);
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
     if (user.blocked) {
+      console.log(`Blocked user attempting login: ${email}`);
       return res.status(403).json({ message: 'Your account is blocked. Please contact administrator.' });
     }
-
-    const isValidPassword = await user.validatePassword(password);
     
-    if (!isValidPassword) {
-      return res.status(401).json({ message: 'Invalid credentials' });
+    try {
+      console.log(`Validating password for user: ${email}`);
+      const isValidPassword = await bcrypt.compare(password, user.password);
+      
+      if (!isValidPassword) {
+        console.log(`Invalid password for user: ${email}`);
+        return res.status(401).json({ message: 'Invalid credentials' });
+      }
+    } catch (error) {
+      console.error(`Password validation error for ${email}:`, error);
+      return res.status(500).json({ message: 'Error validating credentials' });
     }
 
     await User.update({ lastLoginAt: new Date() }, { where: { id: user.id } });

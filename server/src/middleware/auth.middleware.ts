@@ -2,154 +2,47 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { User } from '../models';
 import jwtConfig from '../config/jwt.config';
-import { RequestHandler } from 'express-serve-static-core';
-import { validate as isUuid } from 'uuid';
 
 interface DecodedToken {
   id: string;
   email: string;
   isAdmin: boolean;
-  iat?: number;
-  exp?: number;
+  iat: number;
+  exp: number;
 }
 
-declare global {
-  namespace Express {
-    interface Request {
-      user?: any;
-    }
-  }
-}
-
-export const authenticateToken: RequestHandler = async (
-  req: Request, 
-  res: Response, 
-  next: NextFunction
-): Promise<void> => {
+export const authMiddleware = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const authHeader = req.headers.authorization;
-    const token = authHeader && authHeader.split(' ')[1];
-    
-    if (!token) {
-      res.status(401).json({ message: 'Authentication token is missing' });
-      return;
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ message: 'Authentication required' });
     }
 
+    const token = authHeader.split(' ')[1];
+    
     try {
       const decoded = jwt.verify(token, jwtConfig.secret) as DecodedToken;
       
-      if (typeof decoded !== 'object' || !decoded.id) {
-        res.status(401).json({ message: 'Invalid token structure' });
-        return;
-      }
-
-      if (!isUuid(decoded.id)) {
-        res.status(401).json({ message: 'Invalid user ID in token' });
-        return;
-      }
-
-      try {
-        const user = await User.findByPk(decoded.id);
-        
-        if (!user) {
-          console.error(`User with ID ${decoded.id} not found in database`);
-          res.status(401).json({ message: 'User not found or has been deleted' });
-          return;
-        }
-
-        if (user.blocked) {
-          res.status(403).json({ message: 'Your account has been blocked. Please contact admin.' });
-          return;
-        }
-
-        req.user = {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          isAdmin: user.isAdmin,
-          language: user.language,
-          theme: user.theme
-        };
-        
-        next();
-      } catch (dbError) {
-        console.error('Database error in auth middleware:', dbError);
-        res.status(500).json({ message: 'Database error during authentication' });
-        return;
-      }
-    } catch (error) {
-      if (error instanceof jwt.JsonWebTokenError) {
-        res.status(403).json({ message: 'Invalid or expired token' });
-        return;
+      const user = await User.findByPk(decoded.id);
+      
+      if (!user) {
+        return res.status(401).json({ message: 'User not found' });
       }
       
-      console.error('Token verification error:', error);
-      res.status(403).json({ message: 'Authentication failed' });
-      return;
-    }
-  } catch (error) {
-    console.error('Authentication error:', error);
-    res.status(500).json({ message: 'Authentication error' });
-    return;
-  }
-};
-
-export const optionalAuthMiddleware: RequestHandler = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-  try {
-    const authHeader = req.headers.authorization;
-    const token = authHeader && authHeader.split(' ')[1];
-    
-    if (!token) {
+      if (user.blocked) {
+        return res.status(403).json({ message: 'User is blocked' });
+      }
+      
+      req.user = user;
       next();
-      return;
-    }
-
-    try {
-      const decoded = jwt.verify(token, jwtConfig.secret) as DecodedToken;
-      
-      if (typeof decoded !== 'object' || !decoded.id) {
-        next(); 
-        return;
-      }
-
-      if (!isUuid(decoded.id)) {
-        next(); 
-        return;
-      }
-
-      try {
-        const user = await User.findByPk(decoded.id);
-        
-        if (!user || user.blocked) {
-          next(); 
-          return;
-        }
-
-        req.user = {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          isAdmin: user.isAdmin,
-          language: user.language,
-          theme: user.theme
-        };
-        
-        next();
-      } catch (dbError) {
-        console.error('Database error in optional auth middleware:', dbError);
-        next(); // Continue without setting user
-        return;
-      }
     } catch (error) {
-      console.error('Token verification error in optional auth:', error);
-      next(); 
-      return;
+      return res.status(401).json({ message: 'Invalid or expired token' });
     }
   } catch (error) {
-    console.error('Authentication error in optional auth:', error);
-    next(); 
-    return;
+    console.error('Auth middleware error:', error);
+    return res.status(500).json({ message: 'Server error during authentication' });
   }
 };
 
-export const authMiddleware = authenticateToken;
+export default authMiddleware; 

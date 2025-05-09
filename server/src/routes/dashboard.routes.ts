@@ -1,15 +1,14 @@
 import { Router } from 'express';
-import { getUserStats, getUserTemplates, getUserResponses, getRecentActivity } from '../controllers/dashboard.controller';
-import { authMiddleware } from '../middleware/auth.middleware';
-import catchAsync from '../utils/catchAsync';
+import * as dashboardController from '../controllers/dashboard.controller';
+import authMiddleware from '../middleware/auth.middleware';
 
 const router = Router();
 
-router.use(catchAsync(authMiddleware));
+router.use(authMiddleware as any);
 
-router.get('/stats', catchAsync(getUserStats));
-router.get('/templates', catchAsync(getUserTemplates));
-router.get('/responses', catchAsync(getUserResponses));
-router.get('/activity', catchAsync(getRecentActivity));
+router.get('/stats', dashboardController.getDashboardStats);
+router.get('/recent', dashboardController.getRecentActivity);
+router.get('/templates', dashboardController.getUserTemplates);
+router.get('/responses', dashboardController.getUserResponses);
 
 export default router;

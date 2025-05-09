@@ -1,81 +1,72 @@
 import { Request, Response } from 'express';
-import { testConnection } from '../models';
-import catchAsync from '../utils/catchAsync';
+import { sequelize } from '../models';
 import os from 'os';
 
-/**
- * Basic health check endpoint
- * @route GET /api/health
- */
-export const healthCheck = catchAsync(async (_req: Request, res: Response) => {
-  res.status(200).json({
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    message: 'API is running'
-  });
-});
+export const healthController = {
 
-/**
- * Detailed system health information
- * @route GET /api/health/system
- */
-export const systemHealth = catchAsync(async (_req: Request, res: Response) => {
-  try {
-    const dbConnection = await testConnection();
+  ping: (req: Request, res: Response) => {
+    const origin = req.headers.origin || 'unknown';
     
-    const healthData = {
-      status: dbConnection ? 'ok' : 'degraded',
+    console.log(`Ping received from origin: ${origin}`);
+    
+    res.status(200).json({ 
+      status: 'ok',
+      message: 'API is running',
       timestamp: new Date().toISOString(),
-      uptime: process.uptime(),
-      database: {
-        connected: dbConnection,
-        message: dbConnection ? 'Database connection successful' : 'Database connection failed'
-      },
-      system: {
-        version: process.version,
-        platform: process.platform,
-        arch: process.arch,
-        memory: {
-          total: os.totalmem(),
-          free: os.freemem(),
-          used: os.totalmem() - os.freemem(),
-          usage: (1 - os.freemem() / os.totalmem()) * 100
+      origin: origin
+    });
+  },
+
+  status: async (req: Request, res: Response) => {
+    try {
+      await sequelize.authenticate();
+      const dbStatus = 'connected';
+      
+      res.status(200).json({
+        status: 'ok',
+        database: dbStatus,
+        environment: process.env.NODE_ENV || 'development',
+        server: {
+          uptime: process.uptime(),
+          memory: process.memoryUsage(),
+          nodeVersion: process.version,
+          platform: process.platform,
+          hostname: os.hostname()
         },
-        cpus: os.cpus().length
-      }
-    };
-    
-    res.status(200).json(healthData);
-  } catch (error) {
-    console.error('Health check error:', error);
-    res.status(500).json({
-      status: 'error',
-      timestamp: new Date().toISOString(),
-      message: 'Failed to retrieve health information'
-    });
-  }
-});
-
-/**
- * Authentication health check (requires auth)
- * @route GET /api/health/auth
- */
-export const authHealthCheck = catchAsync(async (req: Request, res: Response) => {
-  if (!req.user) {
-    return res.status(401).json({
-      status: 'error',
-      authenticated: false,
-      message: 'Not authenticated'
-    });
-  }
-  
-  res.status(200).json({
-    status: 'ok',
-    authenticated: true,
-    user: {
-      id: req.user.id,
-      email: req.user.email,
-      isAdmin: req.user.isAdmin
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Database connection error:', error);
+      res.status(500).json({
+        status: 'error',
+        message: 'Database connection failed',
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString()
+      });
     }
-  });
-});
+  },
+
+
+  corsCheck: (req: Request, res: Response) => {
+    const origin = req.headers.origin || 'unknown';
+    const referer = req.headers.referer || 'unknown';
+    
+    res.status(200).json({
+      corsStatus: 'enabled',
+      message: 'CORS check successful',
+      receivedHeaders: {
+        origin,
+        referer,
+        host: req.headers.host,
+        userAgent: req.headers['user-agent']
+      },
+      sentHeaders: {
+        'Access-Control-Allow-Origin': res.getHeader('Access-Control-Allow-Origin') || 'not set',
+        'Access-Control-Allow-Methods': res.getHeader('Access-Control-Allow-Methods') || 'not set',
+        'Access-Control-Allow-Headers': res.getHeader('Access-Control-Allow-Headers') || 'not set',
+        'Access-Control-Allow-Credentials': res.getHeader('Access-Control-Allow-Credentials') || 'not set'
+      },
+      timestamp: new Date().toISOString()
+    });
+  }
+};

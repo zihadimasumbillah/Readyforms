@@ -1,104 +1,79 @@
-import { Model, ModelStatic, ValidationError } from 'sequelize';
+import { Model, ModelStatic } from 'sequelize';
 import { Response } from 'express';
 
-export class OptimisticLockError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'OptimisticLockError';
-  }
-}
-
 /**
- * @param model 
- * @param id 
- * @param version
- * @param data 
- * @returns 
- * @throws 
+ * Performs optimistic update of a record
+ * @param model The Sequelize model class
+ * @param id The id of the record to update
+ * @param version The expected version of the record
+ * @param updateData The data to update
  */
 export async function optimisticUpdate<T extends Model>(
-  model: ModelStatic<T>,
-  id: string,
-  version: number | string,
-  data: any
+  model: ModelStatic<any>,
+  id: string | number,
+  version: number,
+  updateData: any
 ): Promise<T> {
-
-  const versionNum = typeof version === 'string' ? parseInt(version, 10) : version;
-  
-  if (isNaN(versionNum)) {
-    throw new Error('Invalid version number');
-  }
-
-  const record = await model.findByPk(id);
+  const record = await (model as any).findByPk(id);
   
   if (!record) {
     throw new Error('Record not found');
   }
   
-  if (record.getDataValue('version') !== versionNum) {
-    throw new OptimisticLockError('Record has been modified by another user');
+  if (record.version !== version) {
+    const error = new Error('Record has been modified by another user');
+    (error as any).isOptimisticLockError = true;
+    (error as any).currentVersion = record.version;
+    throw error;
   }
   
-  await record.update(data);
+  // Update the record with the new data
+  Object.assign(record, updateData);
+  await record.save();
   
-  return record;
+  return record as T;
 }
 
 /**
- * @param model
- * @param id 
- * @param version 
- * @throws 
+ * Performs optimistic delete of a record
+ * @param model The Sequelize model class
+ * @param id The id of the record to delete
+ * @param version The expected version of the record
  */
-export async function optimisticDelete<T extends Model>(
-  model: ModelStatic<T>,
-  id: string,
-  version: number | string
+export async function optimisticDelete(
+  model: ModelStatic<any>,
+  id: string | number,
+  version: number
 ): Promise<void> {
-  const versionNum = typeof version === 'string' ? parseInt(version, 10) : version;
-  
-  if (isNaN(versionNum)) {
-    throw new Error('Invalid version number');
-  }
-
-  const record = await model.findByPk(id);
+  const record = await (model as any).findByPk(id);
   
   if (!record) {
     throw new Error('Record not found');
   }
-
-  if (record.getDataValue('version') !== versionNum) {
-    throw new OptimisticLockError('Record has been modified by another user');
+  
+  if (record.version !== version) {
+    const error = new Error('Record has been modified by another user');
+    (error as any).isOptimisticLockError = true;
+    (error as any).currentVersion = record.version;
+    throw error;
   }
-
+  
   await record.destroy();
 }
 
 /**
- * @param error 
- * @param res 
- * @returns 
+ * Handles optimistic lock errors, sending appropriate response
+ * @param error The error to handle
+ * @param res Express response object
+ * @returns true if error was handled, false otherwise
  */
-export function handleOptimisticLockError(error: unknown, res: Response): boolean {
-  if (error instanceof OptimisticLockError) {
+export function handleOptimisticLockError(error: any, res: Response): boolean {
+  if (error.isOptimisticLockError) {
     res.status(409).json({
-      message: 'Conflict: The record has been modified by another user. Please reload and try again.',
-      error: 'OptimisticLockError'
+      message: 'Record has been modified by another user. Please refresh and try again.',
+      currentVersion: error.currentVersion
     });
     return true;
   }
-  
-  if (error instanceof ValidationError) {
-    res.status(400).json({
-      message: 'Validation error',
-      errors: error.errors.map(e => ({
-        message: e.message,
-        path: e.path,
-        type: e.type
-      }))
-    });
-    return true;
-  }
-  
   return false;
 }

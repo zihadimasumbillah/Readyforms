@@ -4,7 +4,6 @@ import catchAsync from '../utils/catchAsync';
 import { optimisticUpdate, optimisticDelete, handleOptimisticLockError } from '../utils/optimistic-locking';
 
 /**
- * Get all topics
  * @route GET /api/topics
  */
 export const getAllTopics = catchAsync(async (_req: Request, res: Response) => {
@@ -15,23 +14,17 @@ export const getAllTopics = catchAsync(async (_req: Request, res: Response) => {
 /**
  * @route GET /api/topics/:id
  */
-export const getTopicById = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { id } = req.params;
-    
-    const topic = await Topic.findByPk(id);
-    
-    if (!topic) {
-      res.status(404).json({ message: 'Topic not found' });
-      return;
-    }
-    
-    res.status(200).json(topic);
-  } catch (error) {
-    console.error('Get topic error:', error);
-    res.status(500).json({ message: 'Server error' });
+export const getTopicById = catchAsync(async (req: Request, res: Response) => {
+  const { id } = req.params;
+  
+  const topic = await Topic.findByPk(id);
+  
+  if (!topic) {
+    return res.status(404).json({ message: 'Topic not found' });
   }
-};
+  
+  return res.status(200).json(topic);
+});
 
 /**
  * @route POST /api/topics
@@ -89,13 +82,13 @@ export const updateTopic = async (req: Request, res: Response): Promise<void> =>
       attributes: ['id']
     });
     
-    if (existingTopic && existingTopic.id.toString() !== id) {
+    if (existingTopic && (existingTopic as any).id.toString() !== id) {
       res.status(400).json({ message: 'Topic with this name already exists' });
       return;
     }
     
     const updatedTopic = await optimisticUpdate<Topic>(
-      Topic,
+      Topic as any,
       id,
       version,
       { name, description }
@@ -139,7 +132,7 @@ export const deleteTopic = async (req: Request, res: Response): Promise<void> =>
       });
       return;
     }
-    await optimisticDelete(Topic, id, version);
+    await optimisticDelete(Topic as any, id, version);
     
     res.status(200).json({
       message: 'Topic deleted successfully'

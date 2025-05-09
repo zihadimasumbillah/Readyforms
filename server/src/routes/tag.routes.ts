@@ -1,34 +1,51 @@
 import { Router } from 'express';
-import { 
-  getTags, 
-  getPopularTags, 
-  getFamousTags, 
-  getRecentTags, 
-  getTemplatesByTag,
-  createTag, 
-  addTagToTemplate, 
-  removeTagFromTemplate,
-  deleteTag 
-} from '../controllers/tag.controller';
-import { authMiddleware } from '../middleware/auth.middleware';
-import { adminMiddleware } from '../middleware/admin.middleware';
-import catchAsync from '../utils/catchAsync';
+import * as tagController from '../controllers/tag.controller';
+import authMiddleware from '../middleware/auth.middleware';
+import adminMiddleware from '../middleware/admin.middleware';
 
 const router = Router();
 
-// Public routes
-router.get('/', catchAsync(getTags));
-router.get('/popular', catchAsync(getPopularTags));
-router.get('/famous', catchAsync(getFamousTags));
-router.get('/recent', catchAsync(getRecentTags));
-router.get('/:id/templates', catchAsync(getTemplatesByTag));
+/**
+ * @route GET /api/tags
+ * @desc 
+ * @access 
+ */
+router.get('/', tagController.getAllTags);
 
-// Auth required routes
-router.post('/', catchAsync(authMiddleware), catchAsync(createTag));
-router.post('/template', catchAsync(authMiddleware), catchAsync(addTagToTemplate));
-router.delete('/template', catchAsync(authMiddleware), catchAsync(removeTagFromTemplate));
+/**
+ * @route POST /api/tags
+ * @desc 
+ * @access 
+ */
+router.post(
+  '/',
+  authMiddleware as any,
+  adminMiddleware as any,
+  tagController.createTag
+);
 
-// Admin required routes
-router.delete('/:id', catchAsync(authMiddleware), catchAsync(adminMiddleware), catchAsync(deleteTag));
+/**
+ * @route PUT /api/tags/:id
+ * @desc 
+ * @access 
+ */
+router.put(
+  '/:id',
+  authMiddleware as any,
+  adminMiddleware as any,
+  tagController.updateTag
+);
+
+/**
+ * @route DELETE /api/tags/:id
+ * @desc 
+ * @access 
+ */
+router.delete(
+  '/:id',
+  authMiddleware as any,
+  adminMiddleware as any,
+  tagController.deleteTopic
+);
 
 export default router;

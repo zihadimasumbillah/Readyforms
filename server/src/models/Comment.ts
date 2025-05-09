@@ -1,43 +1,75 @@
-import { Table, Column, Model, DataType, ForeignKey, BelongsTo, Default } from 'sequelize-typescript';
+import { Model, DataTypes, Sequelize } from 'sequelize';
 import User from './User';
-import { Template } from './Template';
+import Template from './Template';
 
-@Table({
-  tableName: 'comments',
-  timestamps: true,
-  version: true 
-})
-export class Comment extends Model {
-  @Default(DataType.UUIDV4)
-  @Column({
-    type: DataType.UUID,
-    primaryKey: true
-  })
-  id!: string;
-
-  @ForeignKey(() => User)
-  @Column({
-    type: DataType.UUID,
-    allowNull: false
-  })
-  userId!: string;
-
-  @BelongsTo(() => User)
-  user!: User;
-
-  @ForeignKey(() => Template)
-  @Column({
-    type: DataType.UUID,
-    allowNull: false
-  })
-  templateId!: string;
-
-  @BelongsTo(() => Template)
-  template!: Template;
-
-  @Column({
-    type: DataType.TEXT,
-    allowNull: false
-  })
-  content!: string;
+interface CommentAttributes {
+  id?: string; 
+  templateId: string;
+  userId: string;
+  content: string;
+  version?: number;
+  createdAt?: Date;
+  updatedAt?: Date;
+  template?: any;
+  user?: any;
 }
+
+class Comment extends Model<CommentAttributes> implements CommentAttributes {
+  public id!: string;
+  public templateId!: string;
+  public userId!: string;
+  public content!: string;
+  public version!: number;
+  public readonly createdAt!: Date;
+  public readonly updatedAt!: Date;
+  
+  public template?: Template;
+  public user?: User;
+
+  static initialize(sequelize: Sequelize) {
+    Comment.init({
+      id: {
+        type: DataTypes.UUID,
+        defaultValue: DataTypes.UUIDV4,
+        allowNull: false,
+        primaryKey: true
+      },
+      templateId: {
+        type: DataTypes.UUID,
+        allowNull: false,
+        references: {
+          model: 'templates',
+          key: 'id'
+        }
+      },
+      userId: {
+        type: DataTypes.UUID,
+        allowNull: false,
+        references: {
+          model: 'users',
+          key: 'id'
+        }
+      },
+      content: {
+        type: DataTypes.TEXT,
+        allowNull: false
+      },
+      version: {
+        type: DataTypes.INTEGER,
+        defaultValue: 0
+      }
+    }, {
+      sequelize,
+      modelName: 'comment',
+      tableName: 'comments',
+      timestamps: true
+    });
+  }
+
+  static associate(models: any) {
+    Comment.belongsTo(models.User, { foreignKey: 'userId' });
+    Comment.belongsTo(models.Template, { foreignKey: 'templateId' });
+  }
+}
+
+export default Comment;

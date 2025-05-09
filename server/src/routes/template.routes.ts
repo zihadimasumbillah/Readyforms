@@ -1,8 +1,8 @@
 import { Router } from 'express';
 import { 
-  createTemplate,
   getAllTemplates,
   getTemplateById,
+  createTemplate,
   updateTemplate,
   deleteTemplate,
   searchTemplates
@@ -12,12 +12,28 @@ import { isAdmin } from '../middleware/admin.middleware';
 
 const router = Router();
 
-router.get('/', getAllTemplates); 
+
+router.get('/', getAllTemplates);
 router.get('/search', searchTemplates);
-router.get('/admin/all', authMiddleware, isAdmin, getAllTemplates);
 router.get('/:id', getTemplateById);
-router.post('/', authMiddleware, createTemplate);
-router.put('/:id', authMiddleware, updateTemplate);
-router.delete('/:id', authMiddleware, deleteTemplate);
+
+
+router.get('/admin/all', (req, res, next) => {
+  authMiddleware(req, res, () => {
+    isAdmin(req, res, next);
+  });
+}, getAllTemplates);
+
+router.post('/', (req, res, next) => {
+  authMiddleware(req, res, next);
+}, createTemplate);
+
+router.put('/:id', (req, res, next) => {
+  authMiddleware(req, res, next);
+}, updateTemplate);
+
+router.delete('/:id', (req, res, next) => {
+  authMiddleware(req, res, next);
+}, deleteTemplate);
 
 export default router;

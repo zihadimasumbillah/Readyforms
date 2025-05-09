@@ -1,7 +1,8 @@
 import { Request, Response } from 'express';
-import { Comment, Template } from '../models';
-import catchAsync from '../utils/catchAsync';
+import Comment from '../models/Comment';
+import Template from '../models/Template';
 import User from '../models/User';
+import catchAsync from '../utils/catchAsync';
 import { optimisticDelete, handleOptimisticLockError } from '../utils/optimistic-locking';
 
 /**
@@ -46,7 +47,7 @@ export const createComment = catchAsync(async (req: Request, res: Response) => {
   if (!req.user) {
     return res.status(401).json({ message: 'Not authenticated' });
   }
-  
+
   const comment = await Comment.create({
     templateId,
     userId: req.user.id,
@@ -72,14 +73,17 @@ export const deleteComment = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'version field is required for optimistic locking' });
     }
     const comment = await Comment.findByPk(id, {
-      include: [Template]
+      include: [{ model: Template }]
     });
     
     if (!comment) {
       return res.status(404).json({ message: 'Comment not found' });
     }
-    const isCommentAuthor = req.user.id === comment.userId;
-    const isTemplateOwner = req.user.id === comment.template.userId;
+
+    const typedComment = comment as Comment & { template?: Template };
+    
+    const isCommentAuthor = req.user.id === typedComment.userId;
+    const isTemplateOwner = typedComment.template && req.user.id === typedComment.template.userId;
     const isAdmin = req.user.isAdmin;
     
     if (!isCommentAuthor && !isTemplateOwner && !isAdmin) {
@@ -87,7 +91,7 @@ export const deleteComment = async (req: Request, res: Response) => {
         message: 'You do not have permission to delete this comment' 
       });
     }
-    await optimisticDelete(Comment, id, version);
+    await optimisticDelete(Comment as any, id, version);
     
     return res.status(200).json({
       message: 'Comment deleted successfully'

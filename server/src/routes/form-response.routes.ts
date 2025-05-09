@@ -6,14 +6,12 @@ import catchAsync from '../utils/catchAsync';
 
 const router = Router();
 
-// Define the routes without middleware first
+
 router.get('/aggregate/:templateId', catchAsync(getAggregateData));
 router.get('/template/:templateId/aggregate', catchAsync(getAggregateData));
 
-// Apply middleware to all routes
 router.use(catchAsync(authMiddleware));
 
-// Define protected routes
 router.post('/', catchAsync(createFormResponse));
 router.get('/user', catchAsync(getFormResponsesByUser));  
 router.get('/user/:userId', catchAsync(getFormResponsesByUser));  

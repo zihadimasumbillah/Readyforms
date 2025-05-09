@@ -1,26 +1,49 @@
-import { Table, Column, Model, DataType, HasMany, BelongsToMany } from 'sequelize-typescript';
-import { Template } from './Template';
-import { TemplateTag } from './TemplateTag';
+import { Model, DataTypes, Sequelize } from 'sequelize';
 
-@Table({
-  tableName: 'tags',
-  timestamps: true
-})
-export class Tag extends Model {
-  @Column({
-    type: DataType.INTEGER,
-    primaryKey: true,
-    autoIncrement: true
-  })
-  id!: number;
+class Tag extends Model {
+  public id!: string;
+  public name!: string;
+  public readonly createdAt!: Date;
+  public readonly updatedAt!: Date;
+  public version!: number;
+  
+  static initialize(sequelize: Sequelize) {
+    Tag.init({
+      id: {
+        type: DataTypes.UUID,
+        defaultValue: DataTypes.UUIDV4,
+        allowNull: false,
+        primaryKey: true
+      },
+      name: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        unique: true
+      },
+      version: {
+        type: DataTypes.INTEGER,
+        defaultValue: 0
+      }
+    }, {
+      sequelize,
+      modelName: 'tag',
+      tableName: 'tags',
+      timestamps: true
+    });
+  }
 
-  @Column({
-    type: DataType.STRING,
-    allowNull: false,
-    unique: true
-  })
-  name!: string;
-
-  @BelongsToMany(() => Template, () => TemplateTag)
-  templates!: Template[];
+  static associate(models: any) {
+    if (!models.Template || !models.TemplateTag) {
+      console.error('Missing required models for Tag associations');
+      return;
+    }
+    
+    Tag.belongsToMany(models.Template, {
+      through: models.TemplateTag,
+      foreignKey: 'tagId',
+      otherKey: 'templateId'
+    });
+  }
 }
+
+export default Tag;

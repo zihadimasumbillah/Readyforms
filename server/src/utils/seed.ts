@@ -28,6 +28,9 @@ const seedDatabase = async () => {
       { name: 'Event Planning', description: 'RSVPs and event feedback forms' },
     ]);
 
+    // Cast the topics array to access the id property
+    const topicsWithIds = topics as any[];
+
     // Create Users with various roles
     const users = await User.bulkCreate([
       { 
@@ -35,6 +38,7 @@ const seedDatabase = async () => {
         email: 'admin@example.com', 
         password: adminPassword, 
         isAdmin: true,
+        blocked: false,
         language: 'en',
         theme: 'light',
         lastLoginAt: new Date()
@@ -44,6 +48,7 @@ const seedDatabase = async () => {
         email: 'user@example.com', 
         password: userPassword, 
         isAdmin: false,
+        blocked: false,
         language: 'en',
         theme: 'dark',
         lastLoginAt: new Date()
@@ -53,6 +58,7 @@ const seedDatabase = async () => {
         email: 'moderator@example.com',
         password: moderatorPassword,
         isAdmin: false,
+        blocked: false,
         language: 'en',
         theme: 'system',
         lastLoginAt: new Date(Date.now() - 86400000) // 1 day ago
@@ -62,6 +68,7 @@ const seedDatabase = async () => {
         email: 'inactive@example.com',
         password: await bcrypt.hash('inactive123', 10),
         isAdmin: false,
+        blocked: false,
         language: 'fr',
         theme: 'dark',
         lastLoginAt: new Date(Date.now() - 30 * 86400000) // 30 days ago
@@ -71,6 +78,7 @@ const seedDatabase = async () => {
         email: 'test@example.com',
         password: await bcrypt.hash('test123', 10),
         isAdmin: false,
+        blocked: false,
         language: 'es',
         theme: 'light',
         lastLoginAt: new Date(Date.now() - 2 * 86400000) // 2 days ago
@@ -101,7 +109,7 @@ const seedDatabase = async () => {
         title: 'Basic Quiz',
         description: 'A sample quiz with automatic scoring',
         isPublic: true,
-        topicId: topics[3].id,
+        topicId: topicsWithIds[3].id, // Use the cast array
         userId: users[0].id,
         isQuiz: true,
         showScoreImmediately: true,
@@ -130,7 +138,7 @@ const seedDatabase = async () => {
         title: 'Customer Feedback Form',
         description: 'A simple feedback form for gathering customer opinions',
         isPublic: true,
-        topicId: topics[1].id,
+        topicId: topicsWithIds[1].id, // Use the cast array
         userId: users[1].id,
         isQuiz: false,
         customText1State: true,
@@ -149,7 +157,7 @@ const seedDatabase = async () => {
         title: 'Programming Language Quiz',
         description: 'Test your knowledge of programming languages',
         isPublic: true,
-        topicId: topics[0].id,
+        topicId: topicsWithIds[0].id, // Use the cast array
         userId: users[0].id,
         isQuiz: true,
         showScoreImmediately: true,
@@ -178,7 +186,7 @@ const seedDatabase = async () => {
         title: 'Private Survey',
         description: 'A private survey only visible to selected users',
         isPublic: false,
-        topicId: topics[0].id,
+        topicId: topicsWithIds[0].id, // Use the cast array
         userId: users[0].id,
         isQuiz: false,
         allowedUsers: JSON.stringify([users[1].id, users[2].id]), // Only specific users can see this
@@ -195,7 +203,7 @@ const seedDatabase = async () => {
         title: 'Science Knowledge Test',
         description: 'Test your understanding of basic scientific concepts',
         isPublic: true,
-        topicId: topics[3].id,
+        topicId: topicsWithIds[3].id, // Use the cast array
         userId: users[2].id,
         isQuiz: true,
         showScoreImmediately: false,
@@ -224,7 +232,7 @@ const seedDatabase = async () => {
         title: 'Event Registration Form',
         description: 'Register for our upcoming tech conference',
         isPublic: true,
-        topicId: topics[6].id,
+        topicId: topicsWithIds[6].id, // Use the cast array
         userId: users[1].id,
         isQuiz: false,
         customString1State: true,
@@ -252,7 +260,7 @@ const seedDatabase = async () => {
         title: 'Health Assessment',
         description: 'Basic health questionnaire for new patients',
         isPublic: true,
-        topicId: topics[5].id,
+        topicId: topicsWithIds[5].id, // Use the cast array
         userId: users[0].id,
         isQuiz: false,
         customInt1State: true,
