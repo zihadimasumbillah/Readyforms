@@ -83,6 +83,37 @@ export const apiDebug = {
   },
   
   /**
+   * Test authentication functionality
+   */
+  async testAuth() {
+    try {
+      const response = await apiClient.get('/auth/check', {
+        withCredentials: true
+      });
+      
+      return {
+        success: true,
+        message: 'Authentication check successful',
+        isAuthenticated: response.data?.authenticated || false,
+        user: response.data?.user || null,
+        timestamp: new Date()
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Authentication check failed',
+        error: {
+          status: error.response?.status,
+          data: error.response?.data,
+          message: error.message
+        },
+        isAuthenticated: false,
+        timestamp: new Date()
+      };
+    }
+  },
+  
+  /**
    * Get client configuration information
    */
   getClientInfo() {
