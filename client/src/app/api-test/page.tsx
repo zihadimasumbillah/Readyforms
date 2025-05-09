@@ -5,9 +5,11 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle, CheckCircle2, Server } from "lucide-react";
+import { AlertCircle, CheckCircle2, Server, RefreshCcw, Database, Fingerprint } from "lucide-react";
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
+import apiClient from '@/lib/api/api-client';
+import { useAuth } from '@/contexts/auth-context';
 
 interface EndpointTestResult {
   endpoint: string;
@@ -24,7 +26,10 @@ export default function ApiTestPage() {
   const [loading, setLoading] = useState(false);
   const [selectedTab, setSelectedTab] = useState("overview");
   const [recommendedEndpoint, setRecommendedEndpoint] = useState("");
+  const [backendFeatureTests, setBackendFeatureTests] = useState<any>({});
+  const [featureTestsLoading, setFeatureTestsLoading] = useState(false);
   const router = useRouter();
+  const { user } = useAuth();
 
   useEffect(() => {
     runTests();
@@ -39,6 +44,8 @@ export default function ApiTestPage() {
       development: 'http://localhost:3001/api/ping',
       healthProduction: 'https://readyforms-api.vercel.app/health',
       healthDevelopment: 'http://localhost:3001/health',
+      statusProduction: 'https://readyforms-api.vercel.app/api/status',
+      statusDevelopment: 'http://localhost:3001/api/status',
       debug: 'http://localhost:3001/debug-cors'
     };
 
@@ -62,10 +69,9 @@ export default function ApiTestPage() {
         });
         
         // Save first successful endpoint as recommended
-        if (!recommendedEndpoint && name.includes('development')) {
-          setRecommendedEndpoint(url.replace('/ping', '').replace('/health', ''));
+        if (!recommendedEndpoint && (name === 'development' || name === 'production')) {
+          setRecommendedEndpoint(url.replace('/ping', ''));
         }
-        
       } catch (error: any) {
         testResults.push({
           endpoint: name,
@@ -79,6 +85,96 @@ export default function ApiTestPage() {
     
     setResults(testResults);
     setLoading(false);
+  };
+
+  // Function to test all backend features
+  const runFeatureTests = async () => {
+    if (!user) {
+      return;
+    }
+
+    setFeatureTestsLoading(true);
+    const tests = {
+      templates: { success: false, data: null, error: null },
+      topics: { success: false, data: null, error: null },
+      users: { success: false, data: null, error: null },
+      auth: { success: false, data: null, error: null }
+    };
+
+    try {
+      // Test templates endpoint
+      const templatesResponse = await apiClient.get('/templates?page=1&limit=5');
+      tests.templates = { 
+        success: true, 
+        data: templatesResponse.data, 
+        error: null,
+        count: templatesResponse.data.length
+      };
+    } catch (error: any) {
+      tests.templates = { 
+        success: false, 
+        data: null, 
+        error: error.message,
+        errorDetails: error.response?.data
+      };
+    }
+
+    try {
+      // Test topics endpoint
+      const topicsResponse = await apiClient.get('/topics');
+      tests.topics = { 
+        success: true, 
+        data: topicsResponse.data, 
+        error: null,
+        count: topicsResponse.data.length
+      };
+    } catch (error: any) {
+      tests.topics = { 
+        success: false, 
+        data: null, 
+        error: error.message,
+        errorDetails: error.response?.data
+      };
+    }
+
+    if (user.isAdmin) {
+      try {
+        // Test users endpoint (admin only)
+        const usersResponse = await apiClient.get('/admin/users');
+        tests.users = { 
+          success: true, 
+          data: usersResponse.data, 
+          error: null 
+        };
+      } catch (error: any) {
+        tests.users = { 
+          success: false, 
+          data: null, 
+          error: error.message,
+          errorDetails: error.response?.data
+        };
+      }
+    }
+
+    try {
+      // Test auth endpoint (current user)
+      const authResponse = await apiClient.get('/auth/me');
+      tests.auth = { 
+        success: true, 
+        data: authResponse.data, 
+        error: null 
+      };
+    } catch (error: any) {
+      tests.auth = { 
+        success: false, 
+        data: null, 
+        error: error.message,
+        errorDetails: error.response?.data
+      };
+    }
+
+    setBackendFeatureTests(tests);
+    setFeatureTestsLoading(false);
   };
 
   return (
@@ -120,6 +216,7 @@ export default function ApiTestPage() {
               <TabsList className="mb-4">
                 <TabsTrigger value="overview">Overview</TabsTrigger>
                 <TabsTrigger value="details">Detailed Results</TabsTrigger>
+                <TabsTrigger value="features">Feature Tests</TabsTrigger>
                 <TabsTrigger value="help">Troubleshooting</TabsTrigger>
               </TabsList>
               
@@ -252,6 +349,175 @@ export default function ApiTestPage() {
                     </Card>
                   ))}
                 </div>
+              </TabsContent>
+
+              <TabsContent value="features">
+                <div className="mb-4">
+                  <Button 
+                    onClick={runFeatureTests} 
+                    disabled={featureTestsLoading || !user}
+                    className="flex items-center gap-2"
+                  >
+                    {featureTestsLoading ? (
+                      <>
+                        <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full"></div>
+                        Testing Features...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCcw className="h-4 w-4" />
+                        {Object.keys(backendFeatureTests).length > 0 ? "Re-run Feature Tests" : "Run Feature Tests"}
+                      </>
+                    )}
+                  </Button>
+                  {!user && (
+                    <div className="mt-2 text-amber-600 text-sm">
+                      Login required to run feature tests
+                    </div>
+                  )}
+                </div>
+
+                {Object.keys(backendFeatureTests).length > 0 ? (
+                  <div className="space-y-4">
+                    <Card className={`${backendFeatureTests.templates.success ? 'border-green-300 dark:border-green-800' : 'border-red-300 dark:border-red-800'}`}>
+                      <CardHeader>
+                        <CardTitle className="flex items-center text-base">
+                          <Database className="h-5 w-5 mr-2" />
+                          Templates API
+                          <Badge variant={backendFeatureTests.templates.success ? "default" : "destructive"} className="ml-auto">
+                            {backendFeatureTests.templates.success ? "Success" : "Failed"}
+                          </Badge>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        {backendFeatureTests.templates.success ? (
+                          <div>
+                            <p className="mb-2">
+                              <span className="font-medium">Count:</span> {backendFeatureTests.templates.count} templates found
+                            </p>
+                            <pre className="bg-muted p-3 rounded-md overflow-auto max-h-40 text-xs">
+                              {JSON.stringify(backendFeatureTests.templates.data.slice(0, 1), null, 2)}
+                            </pre>
+                          </div>
+                        ) : (
+                          <div className="text-red-600">
+                            <p>Error: {backendFeatureTests.templates.error}</p>
+                            {backendFeatureTests.templates.errorDetails && (
+                              <pre className="bg-red-50 dark:bg-red-900/20 p-3 rounded-md overflow-auto max-h-40 text-xs mt-2">
+                                {JSON.stringify(backendFeatureTests.templates.errorDetails, null, 2)}
+                              </pre>
+                            )}
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+
+                    <Card className={`${backendFeatureTests.topics.success ? 'border-green-300 dark:border-green-800' : 'border-red-300 dark:border-red-800'}`}>
+                      <CardHeader>
+                        <CardTitle className="flex items-center text-base">
+                          <Database className="h-5 w-5 mr-2" />
+                          Topics API
+                          <Badge variant={backendFeatureTests.topics.success ? "default" : "destructive"} className="ml-auto">
+                            {backendFeatureTests.topics.success ? "Success" : "Failed"}
+                          </Badge>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        {backendFeatureTests.topics.success ? (
+                          <div>
+                            <p className="mb-2">
+                              <span className="font-medium">Count:</span> {backendFeatureTests.topics.count} topics found
+                            </p>
+                            <pre className="bg-muted p-3 rounded-md overflow-auto max-h-40 text-xs">
+                              {JSON.stringify(backendFeatureTests.topics.data, null, 2)}
+                            </pre>
+                          </div>
+                        ) : (
+                          <div className="text-red-600">
+                            <p>Error: {backendFeatureTests.topics.error}</p>
+                            {backendFeatureTests.topics.errorDetails && (
+                              <pre className="bg-red-50 dark:bg-red-900/20 p-3 rounded-md overflow-auto max-h-40 text-xs mt-2">
+                                {JSON.stringify(backendFeatureTests.topics.errorDetails, null, 2)}
+                              </pre>
+                            )}
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+
+                    <Card className={`${backendFeatureTests.auth.success ? 'border-green-300 dark:border-green-800' : 'border-red-300 dark:border-red-800'}`}>
+                      <CardHeader>
+                        <CardTitle className="flex items-center text-base">
+                          <Fingerprint className="h-5 w-5 mr-2" />
+                          Authentication API
+                          <Badge variant={backendFeatureTests.auth.success ? "default" : "destructive"} className="ml-auto">
+                            {backendFeatureTests.auth.success ? "Success" : "Failed"}
+                          </Badge>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        {backendFeatureTests.auth.success ? (
+                          <div>
+                            <p className="mb-2">
+                              <span className="font-medium">User:</span> {backendFeatureTests.auth.data.name} ({backendFeatureTests.auth.data.email})
+                            </p>
+                            <pre className="bg-muted p-3 rounded-md overflow-auto max-h-40 text-xs">
+                              {JSON.stringify(backendFeatureTests.auth.data, null, 2)}
+                            </pre>
+                          </div>
+                        ) : (
+                          <div className="text-red-600">
+                            <p>Error: {backendFeatureTests.auth.error}</p>
+                            {backendFeatureTests.auth.errorDetails && (
+                              <pre className="bg-red-50 dark:bg-red-900/20 p-3 rounded-md overflow-auto max-h-40 text-xs mt-2">
+                                {JSON.stringify(backendFeatureTests.auth.errorDetails, null, 2)}
+                              </pre>
+                            )}
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+
+                    {user?.isAdmin && (
+                      <Card className={`${backendFeatureTests.users?.success ? 'border-green-300 dark:border-green-800' : 'border-red-300 dark:border-red-800'}`}>
+                        <CardHeader>
+                          <CardTitle className="flex items-center text-base">
+                            <Database className="h-5 w-5 mr-2" />
+                            Users API (Admin)
+                            <Badge variant={backendFeatureTests.users?.success ? "default" : "destructive"} className="ml-auto">
+                              {backendFeatureTests.users?.success ? "Success" : "Failed"}
+                            </Badge>
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          {backendFeatureTests.users?.success ? (
+                            <div>
+                              <p className="mb-2">
+                                <span className="font-medium">Users count:</span> {backendFeatureTests.users.data.users?.length || 0}
+                              </p>
+                              <pre className="bg-muted p-3 rounded-md overflow-auto max-h-40 text-xs">
+                                {JSON.stringify(backendFeatureTests.users.data.users?.slice(0, 2), null, 2)}
+                              </pre>
+                            </div>
+                          ) : (
+                            <div className="text-red-600">
+                              <p>Error: {backendFeatureTests.users?.error}</p>
+                              {backendFeatureTests.users?.errorDetails && (
+                                <pre className="bg-red-50 dark:bg-red-900/20 p-3 rounded-md overflow-auto max-h-40 text-xs mt-2">
+                                  {JSON.stringify(backendFeatureTests.users.errorDetails, null, 2)}
+                                </pre>
+                              )}
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    )}
+                  </div>
+                ) : (
+                  <div className="p-8 text-center border rounded-md bg-muted/30">
+                    <p className="text-muted-foreground">Click the button above to run feature tests</p>
+                  </div>
+                )}
               </TabsContent>
               
               <TabsContent value="help">

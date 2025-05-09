@@ -1,7 +1,7 @@
 import axios, { AxiosError, AxiosInstance } from 'axios';
 
 /**
- * Determine the API URL based on the environment
+ * Determine the correct API base URL based on the environment
  */
 const getBaseUrl = () => {
   // Check for environment variable first

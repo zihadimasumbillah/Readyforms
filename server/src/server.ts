@@ -91,4 +91,9 @@ const startServer = async () => {
 
 startServer();
 
+// If this is running in a serverless environment, export the app for Vercel
+if (process.env.VERCEL) {
+  module.exports = app;
+}
+
 export default app;

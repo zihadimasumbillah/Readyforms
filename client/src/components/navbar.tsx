@@ -25,6 +25,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import ApiHealthIndicator from '@/components/api-health-indicator';
 
 export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -109,6 +110,8 @@ export function Navbar() {
           <Link href="/api-test" className="text-sm font-medium transition-colors hover:text-primary">
             API Status
           </Link>
+
+          <ApiHealthIndicator />
 
           <ThemeToggle />
 

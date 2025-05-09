@@ -17,22 +17,53 @@ export default function HomePage() {
   const [popularTemplates, setPopularTemplates] = useState<Template[]>([]);
   const [topics, setTopics] = useState<Topic[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [recentData, popularData, topicsData] = await Promise.all([
+        setError(null);
+        
+        // Add timeouts to prevent hanging requests
+        const recentPromise = Promise.race([
           templateService.getAllTemplates(1, 6),
-          templateService.getAllTemplates(1, 5),
-          topicService.getAllTopics()
+          new Promise<Template[]>((_, reject) => setTimeout(() => reject(new Error('Request timeout')), 10000))
         ]);
         
-        setRecentTemplates(recentData);
-        setPopularTemplates(popularData);
-        setTopics(topicsData);
+        const popularPromise = Promise.race([
+          templateService.getAllTemplates(1, 5),
+          new Promise<Template[]>((_, reject) => setTimeout(() => reject(new Error('Request timeout')), 10000))
+        ]);
+        
+        const topicsPromise = Promise.race([
+          topicService.getAllTopics(),
+          new Promise<Topic[]>((_, reject) => setTimeout(() => reject(new Error('Request timeout')), 10000))
+        ]);
+
+        // Fetch data in parallel but handle individual failures
+        const results = await Promise.allSettled([recentPromise, popularPromise, topicsPromise]);
+        
+        if (results[0].status === 'fulfilled') {
+          setRecentTemplates(results[0].value);
+        }
+        
+        if (results[1].status === 'fulfilled') {
+          setPopularTemplates(results[1].value);
+        }
+        
+        if (results[2].status === 'fulfilled') {
+          setTopics(results[2].value);
+        }
+        
+        // Check if any requests failed
+        const failures = results.filter(result => result.status === 'rejected');
+        if (failures.length > 0) {
+          console.warn(`${failures.length} API requests failed:`, failures);
+        }
       } catch (error) {
         console.error('Error fetching homepage data:', error);
+        setError('Failed to load data. Please try refreshing the page.');
       } finally {
         setLoading(false);
       }
@@ -104,6 +135,8 @@ export default function HomePage() {
                 </div>
               ))}
             </div>
+          ) : error ? (
+            <p className="text-red-500">{error}</p>
           ) : (
             <TemplateGallery templates={recentTemplates} topics={topics} />
           )}
@@ -140,6 +173,8 @@ export default function HomePage() {
                 </div>
               ))}
             </div>
+          ) : error ? (
+            <p className="text-red-500">{error}</p>
           ) : (
             <TemplateGallery templates={popularTemplates} topics={topics} />
           )}

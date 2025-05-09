@@ -18,9 +18,12 @@ if (process.env.NODE_ENV === 'development') {
 
 // Simple CORS configuration that works reliably in all environments
 app.use(cors({
-  origin: '*',  // Allow all origins - this is necessary for Vercel deployments
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Version', 'X-Requested-With']
+  origin: function(origin, callback) {
+    callback(null, true); // Allow all origins
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Version', 'X-Requested-With', 'Accept'],
+  credentials: false
 }));
 
 // Explicitly handle OPTIONS requests for CORS preflight
@@ -38,10 +41,10 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Additional simple health ping endpoint for diagnostics
+// Special ping endpoint for connectivity testing
 app.get('/api/ping', (req, res) => {
   res.status(200).json({ 
-    message: 'pong',
+    message: 'pong', 
     server: 'ReadyForms API',
     env: process.env.NODE_ENV,
     origin: req.headers.origin || 'No origin',
@@ -59,7 +62,8 @@ app.get('/api/status', (req, res) => {
     cors: {
       enabled: true,
       origin: req.headers.origin || 'No origin'
-    }
+    },
+    version: process.env.npm_package_version || '1.0.0'
   });
 });
 
