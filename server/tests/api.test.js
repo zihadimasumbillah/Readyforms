@@ -183,9 +183,6 @@ describe('Topics API', () => {
     expect(res.status).toBe(201);
     expect(res.body).toHaveProperty('topic');
     expect(res.body.topic).toHaveProperty('name', 'New API Topic');
-    
-    // Save the new topic ID for the next test to use
-    topicId = res.body.topic.id;
   });
   
   test('Get topic by ID should succeed', async () => {
@@ -195,7 +192,7 @@ describe('Topics API', () => {
     
     expect(res.status).toBe(200);
     expect(res.body).toHaveProperty('id', topicId);
-    expect(res.body).toHaveProperty('name', 'New API Topic');
+    expect(res.body).toHaveProperty('name', 'Test Topic');
   });
   
   test('Create topic as non-admin should fail', async () => {
@@ -380,7 +377,7 @@ describe('Form Response API', () => {
       .set('Authorization', `Bearer ${userToken}`);
     
     expect(res.status).toBe(200);
-    expect(res.body).toHaveProperty('responseCount'); // Changed from 'total_responses' to 'responseCount'
+    expect(res.body).toHaveProperty('total_responses');
   });
 });
 

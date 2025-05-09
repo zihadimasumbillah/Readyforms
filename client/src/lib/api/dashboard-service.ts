@@ -1,80 +1,79 @@
 import apiClient from './api-client';
+import { Template, FormResponse } from '@/types';
 
-export interface UserStats {
+interface UserStats {
   templates: number;
   responses: number;
   likes: number;
   comments: number;
 }
 
-const dashboardService = {
-  getUserStats: async (): Promise<UserStats> => {
+export const dashboardService = {
+  /**
+   * Get user statistics
+   */
+  async getUserStats(): Promise<UserStats> {
     try {
-      const response = await apiClient.get<UserStats>('/dashboard/stats');
+      const response = await apiClient.get('/dashboard/stats');
       return response.data;
-    } catch (error) {
-      console.error('Get user stats error:', error);
-      return {
-        templates: 0,
-        responses: 0,
-        likes: 0,
-        comments: 0
-      };
-    }
-  },
-
-  getUserTemplates: async (): Promise<any[]> => {
-    try {
-      const response = await apiClient.get<any[]>('/dashboard/templates');
-      if (!response || !Array.isArray(response)) {
-        console.warn('API returned invalid data for templates:', response);
-        return [];
-      }
-      return response;
-    } catch (error) {
-      console.error('Get user templates error:', error);
-      return [];
-    }
-  },
-
-  getUserResponses: async (): Promise<any[]> => {
-    try {
-      const response = await apiClient.get<any[]>('/dashboard/responses');
-      if (!response || !Array.isArray(response)) {
-        console.warn('API returned invalid data for responses:', response);
-        return [];
-      }
-      return response;
-    } catch (error) {
-      console.error('Get user responses error:', error);
-      return [];
-    }
-  },
-
-  getRecentActivity: async (limit: number = 5): Promise<any[]> => {
-    try {
-      const response = await apiClient.get<any[]>(`/dashboard/activity?limit=${limit}`);
-      if (!response || !Array.isArray(response)) {
-        console.warn('API returned invalid data for activity:', response);
-        return [];
-      }
-      return response;
-    } catch (error) {
-      console.error('Get recent activity error:', error);
-      return [];
-    }
-  },
-
-  deleteTemplate: async (id: string, version: number): Promise<void> => {
-    try {
-      const data = { version };
-      await apiClient.delete(`/templates/${id}`, { data });
-    } catch (error) {
-      console.error(`Delete template ${id} error:`, error);
+    } catch (error: any) {
+      console.error('Failed to fetch user stats:', error);
       throw error;
     }
   },
+
+  /**
+   * Get recent activity
+   */
+  async getRecentActivity(limit = 5): Promise<any[]> {
+    try {
+      const response = await apiClient.get(`/dashboard/recent?limit=${limit}`);
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to fetch recent activity:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get user templates
+   */
+  async getUserTemplates(): Promise<Template[]> {
+    try {
+      const response = await apiClient.get('/dashboard/templates');
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to fetch user templates:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get user responses
+   */
+  async getUserResponses(): Promise<FormResponse[]> {
+    try {
+      const response = await apiClient.get('/dashboard/responses');
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to fetch user responses:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Delete template
+   */
+  async deleteTemplate(templateId: string, version: number): Promise<void> {
+    try {
+      await apiClient.delete(`/templates/${templateId}`, {
+        data: { version }
+      });
+    } catch (error: any) {
+      console.error(`Failed to delete template ${templateId}:`, error);
+      throw error;
+    }
+  }
 };
 
-export { dashboardService };
 export default dashboardService;

@@ -29,17 +29,12 @@ export const authService = {
    */
   async login(email: string, password: string): Promise<LoginResponse> {
     try {
-      console.log('Logging in with:', { email });
       const response = await apiClient.post('/auth/login', { email, password });
       
       if (response.data && response.data.token) {
-        // Store token in localStorage
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('token', response.data.token);
-        }
+        localStorage.setItem('token', response.data.token);
         apiClient.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
       } else {
-        console.error('Login response missing token:', response.data);
         throw new Error('Invalid response format - missing token');
       }
 
@@ -61,11 +56,6 @@ export const authService = {
     theme: string = 'light'
   ): Promise<RegisterResponse> {
     try {
-      console.log('Registering user:', { name, email });
-      
-      // Make sure we don't have Authorization header for registration
-      delete apiClient.defaults.headers.common['Authorization'];
-      
       const response = await apiClient.post('/auth/register', {
         name,
         email,
@@ -74,16 +64,10 @@ export const authService = {
         theme
       });
 
-      console.log('Registration response:', response.data);
-
       if (response.data && response.data.token) {
-        // Store token in localStorage
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('token', response.data.token);
-        }
+        localStorage.setItem('token', response.data.token);
         apiClient.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
       } else {
-        console.error('Registration response missing token:', response.data);
         throw new Error('Invalid response format - missing token');
       }
       
@@ -99,14 +83,10 @@ export const authService = {
    */
   async getCurrentUser(): Promise<User> {
     try {
-      // Try to get the token from localStorage
-      const token = this.getToken();
-      
       // Set the auth header if we have a token
+      const token = this.getToken();
       if (token) {
         apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      } else {
-        throw new Error('No authentication token found');
       }
       
       const response = await apiClient.get('/auth/me');
@@ -134,12 +114,10 @@ export const authService = {
   },
 
   /**
-   * Logout user by clearing token
+   * Logout user
    */
   logout(): void {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('token');
-    }
+    localStorage.removeItem('token');
     delete apiClient.defaults.headers.common['Authorization'];
   },
 
@@ -150,3 +128,5 @@ export const authService = {
     return !!this.getToken();
   }
 };
+
+export default authService;

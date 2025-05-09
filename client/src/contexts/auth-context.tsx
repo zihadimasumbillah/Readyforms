@@ -20,19 +20,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
-  // Function to set user after login
   const login = (token: string, userData: User) => {
     localStorage.setItem('token', token);
     setUser(userData);
   };
 
-  // Function to log out
   const logout = () => {
     authService.logout();
     setUser(null);
   };
 
-  // Function to refresh user data
   const refreshUser = async (): Promise<User | null> => {
     try {
       const userData = await authService.getCurrentUser();
@@ -44,7 +41,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Check for existing token on mount and try to get the user
   useEffect(() => {
     const loadUser = async () => {
       setIsLoading(true);
@@ -55,7 +51,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       } catch (error) {
         console.error('Failed to load user:', error);
-        // Clear invalid token
         authService.logout();
       } finally {
         setIsLoading(false);

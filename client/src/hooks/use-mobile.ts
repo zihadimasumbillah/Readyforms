@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 
 /**
- * @param breakpoint The width threshold in pixels to consider as mobile (default: 768)
+ * @param breakpoint 
  * @returns Boolean indicating if the device is considered mobile
  */
 export const useIsMobile = (breakpoint: number = 768) => {
