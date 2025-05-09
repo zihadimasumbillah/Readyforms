@@ -1,16 +1,17 @@
 import { Request, Response, NextFunction } from 'express';
 
-export const errorHandler = (err: any, req: Request, res: Response, next: NextFunction) => {
+export const errorHandler = (err: any, req: Request, res: Response, next: NextFunction): void => {
   console.error('Error caught by global error handler:', err);
   
   // Handle CORS error
   if (err.message && err.message.includes('not allowed by CORS')) {
-    return res.status(403).json({
+    res.status(403).json({
       message: 'CORS Error',
       error: err.message,
       origin: req.headers.origin,
       timestamp: new Date().toISOString()
     });
+    return;
   }
   
   // Check if this is a database connection error
@@ -20,11 +21,12 @@ export const errorHandler = (err: any, req: Request, res: Response, next: NextFu
   
   if (isDbConnectionError) {
     console.error('Database connection error detected in error handler');
-    return res.status(500).json({ 
+    res.status(500).json({ 
       message: 'Database connection error',
       error: 'Unable to connect to the database. Please try again later.',
       timestamp: new Date().toISOString()
     });
+    return;
   }
   
   // Handle other types of errors

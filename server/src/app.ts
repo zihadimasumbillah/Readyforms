@@ -67,7 +67,7 @@ app.use('*', (req, res) => {
   });
 });
 
-// Error handler
+// Error handler - Note the 4 parameters are required
 app.use(errorHandler);
 
 export default app;
