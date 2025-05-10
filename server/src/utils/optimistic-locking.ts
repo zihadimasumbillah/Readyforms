@@ -2,7 +2,6 @@ import { Model, ModelStatic } from 'sequelize';
 import { Response } from 'express';
 
 /**
- * Performs optimistic update of a record
  * @param model The Sequelize model class
  * @param id The id of the record to update
  * @param version The expected version of the record
@@ -27,7 +26,6 @@ export async function optimisticUpdate<T extends Model>(
     throw error;
   }
   
-  // Update the record with the new data
   Object.assign(record, updateData);
   await record.save();
   
@@ -35,7 +33,6 @@ export async function optimisticUpdate<T extends Model>(
 }
 
 /**
- * Performs optimistic delete of a record
  * @param model The Sequelize model class
  * @param id The id of the record to delete
  * @param version The expected version of the record
@@ -62,7 +59,6 @@ export async function optimisticDelete(
 }
 
 /**
- * Handles optimistic lock errors, sending appropriate response
  * @param error The error to handle
  * @param res Express response object
  * @returns true if error was handled, false otherwise

@@ -2,15 +2,12 @@ import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { FormField } from "@/types";
 
-/**
- * Combines class names using clsx and tailwind-merge
- */
+
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
 /**
- * Format a date string to a more readable format
  * @param dateString - The date string to format
  * @returns Formatted date string (Month Day, Year, Hour:Minute AM/PM)
  */
@@ -19,10 +16,8 @@ export function formatDate(dateString: string, options?: Intl.DateTimeFormatOpti
   
   const date = new Date(dateString);
   
-  // Handle invalid dates
   if (isNaN(date.getTime())) return '';
-  
-  // Default options for formatting
+
   const defaultOptions: Intl.DateTimeFormatOptions = options || {
     year: 'numeric',
     month: 'short',
@@ -35,7 +30,6 @@ export function formatDate(dateString: string, options?: Intl.DateTimeFormatOpti
 }
 
 /**
- * Format a date string to a short format (MM/DD/YYYY)
  * @param dateString - The date string to format
  * @returns Formatted short date string
  */
@@ -43,8 +37,7 @@ export function formatShortDate(dateString: string): string {
   if (!dateString) return '';
   
   const date = new Date(dateString);
-  
-  // Handle invalid dates
+
   if (isNaN(date.getTime())) return '';
   
   return new Intl.DateTimeFormat('en-US', {
@@ -64,7 +57,6 @@ export function formatTime(dateString: string): string {
   
   const date = new Date(dateString);
   
-  // Handle invalid dates
   if (isNaN(date.getTime())) return '';
   
   return new Intl.DateTimeFormat('en-US', {
@@ -83,7 +75,6 @@ export function formatRelativeTime(dateString: string): string {
   
   const date = new Date(dateString);
   
-  // Handle invalid dates
   if (isNaN(date.getTime())) return '';
   
   const now = new Date();

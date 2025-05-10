@@ -10,7 +10,7 @@ import { toast } from '@/components/ui/use-toast';
 import { Loader } from 'lucide-react';
 import { Template } from '@/types';
 
-// Define an interface for the form data structure
+
 interface TemplateFormData {
   title: string;
   description: string;
@@ -21,11 +21,13 @@ interface TemplateFormData {
   showScoreImmediately?: boolean;
   scoringCriteria?: string;
   questionOrder?: string;
-  [key: string]: any; // For dynamic field properties
+  [key: string]: any; 
 }
 
 export default function EditTemplatePage() {
-  const { id } = useParams();
+  const params = useParams();
+  const id = params ? params.id as string : '';
+  
   const router = useRouter();
   const { user } = useAuth() || {};
   const [template, setTemplate] = useState<Template | null>(null);
@@ -38,7 +40,6 @@ export default function EditTemplatePage() {
     isPublic: true,
     topicId: '',
     tags: [],
-    // other form fields
   });
 
   useEffect(() => {
@@ -49,21 +50,29 @@ export default function EditTemplatePage() {
         setLoading(true);
         const templateData = await templateService.getTemplateById(id as string);
         setTemplate(templateData);
-        setVersion(templateData.version || 0);
         
-        // Initialize form data from template
-        setFormData({
-          title: templateData.title,
-          description: templateData.description || '',
-          isPublic: templateData.isPublic,
-          topicId: templateData.topicId,
-          tags: templateData.tags ? templateData.tags.map((tag: any) => tag.name) : [],
-          isQuiz: templateData.isQuiz,
-          showScoreImmediately: templateData.showScoreImmediately,
-          scoringCriteria: templateData.scoringCriteria,
-          questionOrder: templateData.questionOrder,
-          // Initialize other form fields
-        });
+        if (templateData) {
+          setVersion(templateData.version || 0);
+          setFormData({
+            title: templateData.title || '',
+            description: templateData.description || '',
+            isPublic: templateData.isPublic,
+            topicId: templateData.topicId || '',
+            tags: templateData.tags ? templateData.tags.map((tag: any) => tag.name) : [],
+            isQuiz: templateData.isQuiz,
+            showScoreImmediately: templateData.showScoreImmediately,
+            scoringCriteria: templateData.scoringCriteria,
+            questionOrder: templateData.questionOrder,
+          });
+        } else {
+          toast({
+            title: "Error",
+            description: "Template not found or you don't have permission to edit it.",
+            variant: "destructive",
+          });
+          router.push('/templates');
+          return;
+        }
       } catch (error) {
         console.error('Failed to fetch template:', error);
         toast({
@@ -218,8 +227,6 @@ export default function EditTemplatePage() {
               rows={3}
             />
           </div>
-          
-          {/* Add other form fields here */}
         </div>
         
         <div className="flex gap-4 justify-end">

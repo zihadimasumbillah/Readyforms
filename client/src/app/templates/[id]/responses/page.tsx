@@ -53,7 +53,7 @@ export default function TemplateResponsesPage({ params }: ResponsesPageProps) {
         const templateData = await templateService.getTemplateById(templateId);
         setTemplate(templateData);
   
-        if (templateData.userId !== user?.id && !user?.isAdmin) {
+        if (templateData && templateData.userId !== user?.id && !user?.isAdmin) {
           toast({
             title: "Access denied",
             description: "You don't have permission to view responses for this template.",
@@ -63,11 +63,19 @@ export default function TemplateResponsesPage({ params }: ResponsesPageProps) {
           return;
         }
 
-        const responsesData = await formResponseService.getResponsesByTemplate(templateId);
-        setResponses(responsesData);
-  
-        const aggregateStats = await formResponseService.getAggregateData(templateId);
-        setAggregateData(aggregateStats);
+        if (templateData) {
+          const responsesData = await formResponseService.getResponsesByTemplateId(templateId);
+          setResponses(responsesData);
+    
+          const aggregateStats = await formResponseService.getAggregateData(templateId);
+          setAggregateData(aggregateStats);
+        } else {
+          toast({
+            title: "Template not found",
+            description: "The requested template could not be found.",
+            variant: "destructive"
+          });
+        }
       } catch (error) {
         console.error("Error fetching data:", error);
         toast({

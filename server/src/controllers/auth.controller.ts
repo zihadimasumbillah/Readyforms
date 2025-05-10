@@ -227,3 +227,29 @@ export const updatePreferences = catchAsync(async (req: Request, res: Response) 
     });
   }
 });
+
+/**
+ * Handle forgot password request
+ */
+export const forgotPassword = async (req: Request, res: Response) => {
+  const { email } = req.body;
+
+  // Check if email exists in the database
+  // TODO: Implement actual email validation and password reset token generation
+
+  res.status(200).json({
+    success: true,
+    message: 'If an account with that email exists, a password reset link has been sent.'
+  });
+};
+
+/**
+ * Check authentication status
+ */
+export const checkAuth = async (req: Request, res: Response) => {
+  // Simple endpoint to check if API auth routes are working
+  res.status(200).json({
+    success: true,
+    message: 'Auth check endpoint is working'
+  });
+};

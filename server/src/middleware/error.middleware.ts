@@ -1,6 +1,9 @@
-import { Request, Response, NextFunction } from 'express';
+import { Request, Response, NextFunction, ErrorRequestHandler } from 'express';
 
-export const errorHandler = (err: any, req: Request, res: Response, next: NextFunction): void => {
+/**
+ * Global error handling middleware for Express
+ */
+export const errorMiddleware: ErrorRequestHandler = (err: any, req: Request, res: Response, next: NextFunction): void => {
   console.error('Error caught by global error handler:', err);
   
   // Handle CORS error
@@ -17,7 +20,8 @@ export const errorHandler = (err: any, req: Request, res: Response, next: NextFu
   // Check if this is a database connection error
   const isDbConnectionError = err.name === 'SequelizeConnectionError' || 
                              err.name === 'SequelizeConnectionRefusedError' ||
-                             (err.original && err.original.code === 'ECONNREFUSED');
+                             (err.original && err.original.code === 'ECONNREFUSED') ||
+                             (err.message && err.message.includes('pg package'));
   
   if (isDbConnectionError) {
     console.error('Database connection error detected in error handler');
@@ -36,3 +40,6 @@ export const errorHandler = (err: any, req: Request, res: Response, next: NextFu
     timestamp: new Date().toISOString() 
   });
 };
+
+// Default export for backwards compatibility
+export default errorMiddleware;

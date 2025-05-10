@@ -1,105 +1,67 @@
-import axios, { AxiosError, AxiosInstance } from 'axios';
+import axios from 'axios';
+import { getApiConfig, getBaseUrl } from './api-config';
 
-/**
- * Determine the correct API base URL based on the environment
- */
-const getBaseUrl = () => {
-  // Check for environment variable first
-  if (process.env.NEXT_PUBLIC_API_URL) {
-    console.log('Using API URL from environment:', process.env.NEXT_PUBLIC_API_URL);
-    return process.env.NEXT_PUBLIC_API_URL;
-  }
-  
-  // For client-side rendering, check the hostname
-  if (typeof window !== 'undefined') {
-    const hostname = window.location.hostname;
-    
-    // Local development
-    if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      console.log('Detected localhost, using development API URL');
-      return 'http://localhost:3001/api';
-    }
-    
-    // Production deployment
-    console.log('Using production API URL');
-    return 'https://readyforms-api.vercel.app/api';
-  }
-  
-  // Server-side rendering fallback
-  return 'https://readyforms-api.vercel.app/api';
-};
+const apiConfig = getApiConfig();
 
-// Create API client with determined base URL
-const apiClient: AxiosInstance = axios.create({
+// Create axios instance with configuration
+const apiClient = axios.create({
   baseURL: getBaseUrl(),
+  timeout: apiConfig.defaultTimeout,
   headers: {
     'Content-Type': 'application/json',
+    'Accept': 'application/json',
   },
-  withCredentials: false
+  // Important for CORS - use only when needed with credentials
+  withCredentials: apiConfig.useCredentials,
 });
 
-console.log('API client initialized with base URL:', apiClient.defaults.baseURL);
-
-// Add request interceptor for auth token
+// Add a request interceptor to include auth token on each request if available
 apiClient.interceptors.request.use(
   (config) => {
-    // Only in browser context
-    if (typeof window !== 'undefined') {
-      const token = localStorage.getItem('token');
-      
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-      }
-    }
+    // Get token from localStorage or other state management
+    const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
     
-    // Log requests in development
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`🌐 API Request: ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`, 
-        config.params ? `Params: ${JSON.stringify(config.params)}` : '');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
     
     return config;
   },
   (error) => {
+    // Do something with request error
+    console.error('API Request Error:', error);
     return Promise.reject(error);
   }
 );
 
-// Add response interceptor for error handling
+// Add a response interceptor to handle errors
 apiClient.interceptors.response.use(
   (response) => {
-    // Log successful responses in development
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`✅ API Response: ${response.config.method?.toUpperCase()} ${response.config.url}`, 
-        response.status);
-    }
-    
+    // Any status code within the range of 2xx triggers this function
     return response;
   },
-  (error: AxiosError) => {
-    // Detailed error logging
-    console.error('API Error:', {
-      url: error.config?.url,
-      method: error.config?.method,
-      status: error.response?.status,
-      data: error.response?.data,
-      message: error.message,
-      baseURL: error.config?.baseURL
-    });
-    
-    if (!error.response) {
-      console.error('Network or CORS error detected. Check server CORS configuration and network connectivity.');
-    }
-    
-    // Handle 401 Unauthorized
-    if (error.response?.status === 401) {
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('token');
-        
-        if (!window.location.pathname.includes('/auth/login')) {
-          window.location.href = '/auth/login';
+  (error) => {
+    // Any status codes outside the range of 2xx trigger this function
+    if (error.response) {
+      // The request was made and the server responded with a status code
+      // that falls out of the range of 2xx
+      console.error('API Response Error:', error.response.status, error.response.data);
+      
+      // Handle unauthorized errors (401)
+      if (error.response.status === 401) {
+        // Handle authentication error - maybe redirect to login
+        if (typeof window !== 'undefined') {
+          console.warn('Authentication required. Redirecting to login...');
+          // Optional: Redirect to login page
+          // window.location.href = '/auth/login';
         }
       }
+    } else if (error.request) {
+      // The request was made but no response was received
+      console.error('API Request Error (No Response):', error.request);
+    } else {
+      // Something happened in setting up the request that triggered an Error
+      console.error('API Request Setup Error:', error.message);
     }
     
     return Promise.reject(error);

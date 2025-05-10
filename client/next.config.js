@@ -8,7 +8,7 @@ const nextConfig = {
   },
   images: {
     domains: ['localhost', 'picsum.photos', 'res.cloudinary.com'],
-    unoptimized: true, 
+    unoptimized: process.env.NODE_ENV === 'development',
   },
   trailingSlash: true,
   // Enable static export for better Vercel compatibility
@@ -16,7 +16,7 @@ const nextConfig = {
   // output: 'export',
   // Fix for potential hydration issues
   experimental: {
-    optimizeCss: true,
+    optimizeCss: process.env.NODE_ENV === 'production',
     esmExternals: 'loose',
   },
   // Handle any redirects or rewrites
@@ -33,7 +33,11 @@ const nextConfig = {
     return [
       {
         source: '/api/:path*',
-        destination: '/api/:path*',
+        destination: process.env.NEXT_PUBLIC_API_URL || 'https://readyforms-api.vercel.app/api/:path*',
+      },
+      {
+        source: '/health',
+        destination: 'https://readyforms-api.vercel.app/health',
       },
     ];
   },

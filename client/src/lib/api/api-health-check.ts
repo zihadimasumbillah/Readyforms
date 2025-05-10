@@ -1,142 +1,108 @@
-import axios from 'axios';
+import apiClient from './api-client';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
-
-export interface HealthCheckResult {
-  status: 'healthy' | 'unhealthy';
-  details: {
-    auth: boolean;
-    templates: boolean;
-    responses: boolean;
-    users: boolean;
-    tags: boolean;
-  };
-  message: string;
-  timestamp: string;
-}
-
-export const checkApiHealth = async (): Promise<HealthCheckResult> => {
+/**
+ * Check the health of the API
+ * @returns Promise with health check result
+ */
+export const checkApiHealth = async () => {
   try {
-    console.log('Starting API health check...');
-    const healthResult: HealthCheckResult = {
-      status: 'healthy',
-      details: {
-        auth: false,
-        templates: false,
-        responses: false,
-        users: false,
-        tags: false
-      },
-      message: '',
-      timestamp: new Date().toISOString()
-    };
-
-    try {
-      const baseResponse = await axios.get(`${API_URL}/health`);
-      console.log('Base health check response:', baseResponse.status);
-    } catch (error) {
-      console.error('API base health check failed:', error);
-      healthResult.status = 'unhealthy';
-      healthResult.message = 'API server unreachable';
-      return healthResult;
-    }
-
-    try {
-   
-      await axios.post(`${API_URL}/auth/login`, {
-        email: 'test@example.com',
-        password: 'wrongpassword'
-      });
-      healthResult.details.auth = true;
-      console.log('Auth endpoint check: OK');
-    } catch (error) {
-      if (axios.isAxiosError(error) && error.response && error.response.status < 500) {
-        healthResult.details.auth = true;
-        console.log('Auth endpoint check: OK (expected auth failure)');
-      } else {
-        console.error('Auth endpoint check failed:', error);
-      }
-    }
-    try {
-      await axios.get(`${API_URL}/templates`);
-      healthResult.details.templates = true;
-      console.log('Templates endpoint check: OK');
-    } catch (error) {
-      console.error('Templates endpoint check failed:', error);
-    }
-    try {
-      await axios.get(`${API_URL}/tags`);
-      healthResult.details.tags = true;
-      console.log('Tags endpoint check: OK');
-    } catch (error) {
-      console.error('Tags endpoint check failed:', error);
-    }
-    try {
-      await axios.get(`${API_URL}/users`);
-      healthResult.details.users = true;
-      console.log('Users endpoint check: OK');
-    } catch (error) {
-      if (axios.isAxiosError(error) && error.response && error.response.status === 401) {
-        healthResult.details.users = true;
-        console.log('Users endpoint check: OK (expected auth required)');
-      } else {
-        console.error('Users endpoint check failed:', error);
-      }
-    }
-    try {
-      await axios.get(`${API_URL}/form-responses/user`);
-      healthResult.details.responses = true;
-      console.log('Responses endpoint check: OK');
-    } catch (error) {
-      if (axios.isAxiosError(error) && error.response && error.response.status === 401) {
-        healthResult.details.responses = true;
-        console.log('Responses endpoint check: OK (expected auth required)');
-      } else {
-        console.error('Responses endpoint check failed:', error);
-      }
-    }
-
-    const failedServices = Object.entries(healthResult.details)
-      .filter(([_, isHealthy]) => !isHealthy)
-      .map(([service]) => service);
-
-    if (failedServices.length > 0) {
-      healthResult.status = 'unhealthy';
-      healthResult.message = `These services are unhealthy: ${failedServices.join(', ')}`;
-    } else {
-      healthResult.message = 'All services are healthy';
-    }
-
-    console.log('API health check completed:', healthResult);
-    return healthResult;
-  } catch (error) {
-    console.error('API health check failed with unexpected error:', error);
+    const response = await apiClient.get('/health/ping');
     return {
-      status: 'unhealthy',
-      details: {
-        auth: false,
-        templates: false,
-        responses: false,
-        users: false,
-        tags: false
-      },
-      message: 'API health check failed with an unexpected error',
-      timestamp: new Date().toISOString()
+      status: 'ok',
+      message: 'API server is responding',
+      data: response.data,
+      timestamp: new Date()
+    };
+  } catch (error: any) {
+    return {
+      status: 'error',
+      message: 'API server is not responding',
+      error: error.message,
+      timestamp: new Date()
     };
   }
 };
 
-export const isApiReachable = async (): Promise<boolean> => {
-  try {
-    await axios.get(`${API_URL}/health`);
-    return true;
-  } catch (error) {
-    console.error('API reachability check failed:', error);
-    return false;
+/**
+ * API health check utilities for monitoring API connection status
+ */
+export const apiHealthCheck = {
+  /**
+   * Check if the API server is responding
+   * @returns Promise with health check result
+   */
+  async checkHealth() {
+    return checkApiHealth();
+  },
+
+  /**
+   * Check database health status
+   * @returns Promise with health check result
+   */
+  async checkDatabase() {
+    try {
+      const response = await apiClient.get('/health/database');
+      return {
+        status: 'ok',
+        message: 'Database is connected',
+        data: response.data,
+        timestamp: new Date()
+      };
+    } catch (error: any) {
+      return {
+        status: 'error',
+        message: 'Database health check failed',
+        error: error.message,
+        timestamp: new Date()
+      };
+    }
+  },
+
+  /**
+   * Check if auth system is working
+   * @returns Promise with health check result
+   */
+  async checkAuth() {
+    try {
+      const response = await apiClient.get('/auth/check');
+      return {
+        status: 'ok',
+        message: 'Auth system is working',
+        data: response.data,
+        timestamp: new Date()
+      };
+    } catch (error: any) {
+      return {
+        status: 'error',
+        message: 'Auth system check failed',
+        error: error.message,
+        timestamp: new Date()
+      };
+    }
+  },
+
+  /**
+   * Run a comprehensive health check of all API systems
+   * @returns Promise with comprehensive health check results
+   */
+  async checkAll() {
+    const results = {
+      api: await this.checkHealth(),
+      database: await this.checkDatabase(),
+      auth: await this.checkAuth(),
+      timestamp: new Date()
+    };
+
+    const overallStatus = Object.values(results).some(
+      (result: any) => result.status === 'error'
+    ) ? 'error' : 'ok';
+
+    return {
+      status: overallStatus,
+      results,
+      timestamp: new Date()
+    };
   }
 };
 
-export default {
-  checkApiHealth,
-  isApiReachable
-};
+export default apiHealthCheck;

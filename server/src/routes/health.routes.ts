@@ -1,31 +1,24 @@
 import { Router } from 'express';
-import { healthCheck, pingApi, corsTest } from '../controllers/health.controller';
+import { healthCheck, ping, corsTest } from '../controllers/health.controller';
 
 const router = Router();
 
-// Health check endpoints
-router.get('/', (req, res) => {
-  res.status(200).json({
-    status: 'ok',
-    message: 'API health check passed',
-    timestamp: new Date().toISOString()
-  });
+// Basic health check endpoint
+router.get('/', healthCheck);
+
+// Specific ping endpoint for easy testing
+router.get('/ping', ping);
+
+// Special endpoint for testing CORS configuration
+router.get('/cors', corsTest);
+
+// Simple handler for OPTIONS requests
+router.options('*', (req, res) => {
+  // Add permissive CORS headers for health endpoints
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.status(204).end();
 });
 
-router.get('/ping', (req, res) => {
-  res.status(200).json({
-    message: 'pong',
-    timestamp: new Date().toISOString()
-  });
-});
-
-router.get('/cors', (req, res) => {
-  res.status(200).json({
-    message: 'CORS test successful',
-    origin: req.headers.origin || 'No origin header',
-    timestamp: new Date().toISOString()
-  });
-});
-
-// Export the router - make sure there's only one default export
 export default router;

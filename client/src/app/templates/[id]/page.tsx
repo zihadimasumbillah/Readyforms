@@ -124,7 +124,6 @@ export default function TemplateDetailsPage({ params }: TemplateDetailsProps) {
 
     setSubmittingComment(true);
     try {
-      // Instead of passing an object, pass the content as a string directly
       const newComment = await commentService.createComment(commentContent, id);
 
       setComments([...comments, newComment]);

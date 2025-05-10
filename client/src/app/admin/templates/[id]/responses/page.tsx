@@ -31,7 +31,9 @@ interface FormResponse {
 }
 
 export default function TemplateResponsesPage() {
-  const { id } = useParams();
+  const params = useParams();
+  const id = params ? params.id as string : '';
+  
   const router = useRouter();
   const auth = useAuth();
   const user = auth?.user;
@@ -56,15 +58,16 @@ export default function TemplateResponsesPage() {
       return;
     }
 
+    if (!id) return;
+
     const fetchTemplateAndResponses = async () => {
       try {
         setLoading(true);
-        const templateId = Array.isArray(id) ? id[0] : id;
 
-        const templateData = await adminService.getTemplateById(templateId);
+        const templateData = await adminService.getTemplateById(id);
         setTemplate(templateData);
 
-        const responsesData = await adminService.getFormResponsesByTemplate(templateId);
+        const responsesData = await adminService.getFormResponsesByTemplate(id);
         setResponses(responsesData);
 
         if (responsesData && responsesData.length > 0) {

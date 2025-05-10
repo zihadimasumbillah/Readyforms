@@ -2,136 +2,106 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import routes from './routes';
-import dotenv from 'dotenv';
+import { errorMiddleware } from './middleware/error.middleware';
 
-// Load environment variables
-dotenv.config();
-
-// Create the Express app
 const app = express();
 
-// Apply security middleware
+// Parse incoming requests with JSON payloads
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Security middlewares
 app.use(helmet({
-  contentSecurityPolicy: false,
-  crossOriginEmbedderPolicy: false,
+  // Disable content security policy in development
+  contentSecurityPolicy: process.env.NODE_ENV === 'production',
 }));
 
-// Configure CORS
-const corsOptions = {
-  origin: function(origin: any, callback: any) {
-    // Allow requests with no origin (like mobile apps, curl, Postman)
-    if (!origin) return callback(null, true);
-
-    if (process.env.ALLOW_ALL_ORIGINS === 'true') {
-      // Allow all origins in development or testing environments
-      return callback(null, true);
-    }
-
-    const allowedOrigins = (process.env.CLIENT_URL || '').split(',');
-    if (allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      console.log(`Origin ${origin} not allowed by CORS policy`);
-      // Allow all origins temporarily while debugging CORS issues
-      callback(null, true);
-    }
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Version', 'X-Requested-With']
+// Get allowed origins from environment variable
+const getAllowedOrigins = (): string[] => {
+  const clientUrl = process.env.CLIENT_URL || 'http://localhost:3000';
+  const allowedOrigins = clientUrl.split(',').map(url => url.trim());
+  
+  // Always include localhost origins for development
+  if (!allowedOrigins.includes('http://localhost:3000')) {
+    allowedOrigins.push('http://localhost:3000');
+  }
+  if (!allowedOrigins.includes('https://localhost:3000')) {
+    allowedOrigins.push('https://localhost:3000');
+  }
+  
+  // Include Vercel preview URLs
+  if (process.env.NODE_ENV === 'production') {
+    allowedOrigins.push('https://readyforms.vercel.app');
+    allowedOrigins.push('https://readyformss.vercel.app');
+    // Vercel preview deployments pattern
+    allowedOrigins.push('https://*.vercel.app');
+  }
+  
+  console.log('Allowed origins for CORS:', allowedOrigins);
+  return allowedOrigins;
 };
 
-app.use(cors(corsOptions));
-app.use(express.json());
+// CORS configuration
+const allowAllOrigins = process.env.ALLOW_ALL_ORIGINS === 'true';
+app.use(cors({
+  origin: allowAllOrigins ? true : (origin, callback) => {
+    const allowedOrigins = getAllowedOrigins();
+    
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    // Check if the origin is in our allowed list
+    const isAllowed = allowedOrigins.some(allowedOrigin => {
+      if (allowedOrigin === '*') return true;
+      if (allowedOrigin.includes('*')) {
+        const pattern = new RegExp('^' + allowedOrigin.replace(/\*/g, '.*') + '$');
+        return pattern.test(origin);
+      }
+      return allowedOrigin === origin;
+    });
 
-// Health check endpoint
+    if (isAllowed) {
+      return callback(null, true);
+    } else {
+      console.warn(`Origin ${origin} not allowed by CORS policy`);
+      return callback(new Error(`Origin ${origin} not allowed by CORS policy`), false);
+    }
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  credentials: true,
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Version', 'X-Requested-With'],
+  preflightContinue: false,
+  optionsSuccessStatus: 204
+}));
+
+// Special endpoint that doesn't need API prefix - useful for quick health checks
 app.get('/health', (req, res) => {
+  // Override CORS headers directly on this specific route
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  
   res.status(200).json({ 
     status: 'ok',
-    message: 'Server is running',
+    message: 'API server is running',
     timestamp: new Date().toISOString(),
-    env: process.env.NODE_ENV
+    environment: process.env.NODE_ENV || 'development'
   });
 });
 
-// API health check endpoint
-app.get('/api/health', (req, res) => {
-  res.status(200).json({ 
-    status: 'ok',
-    message: 'API is operational',
-    timestamp: new Date().toISOString(),
-    env: process.env.NODE_ENV
-  });
-});
-
-// API ping endpoint
-app.get('/api/ping', (req, res) => {
-  res.status(200).json({ 
-    message: 'pong', 
-    server: 'ReadyForms API',
-    timestamp: new Date().toISOString() 
-  });
-});
-
-// Mount API routes
+// Main API routes
 app.use('/api', routes);
 
-// Root path handler for serverless environments
-app.get('/', (req, res) => {
-  res.status(200).json({ 
-    message: 'ReadyForms API Server',
-    status: 'Running',
-    timestamp: new Date().toISOString()
-  });
-});
-
-// Catch-all route
-app.use('*', (req, res) => {
+// Catch-all route for API routes that don't match
+app.all('/api/*', (req, res) => {
   res.status(404).json({
     message: 'API endpoint not found',
-    path: req.originalUrl,
-    method: req.method
+    path: req.path
   });
 });
 
-// Error handler middleware
-app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction): void => {
-  console.error('Error caught by global error handler:', err);
-  
-  // Handle CORS error
-  if (err.message && err.message.includes('not allowed by CORS')) {
-    res.status(403).json({
-      message: 'CORS Error',
-      error: err.message,
-      origin: req.headers.origin,
-      timestamp: new Date().toISOString()
-    });
-    return;
-  }
-  
-  // Check if this is a database connection error
-  const isDbConnectionError = err.name === 'SequelizeConnectionError' || 
-                             err.name === 'SequelizeConnectionRefusedError' ||
-                             (err.original && err.original.code === 'ECONNREFUSED');
-  
-  if (isDbConnectionError) {
-    console.error('Database connection error detected in error handler');
-    res.status(500).json({ 
-      message: 'Database connection error',
-      error: 'Unable to connect to the database. Please try again later.',
-      timestamp: new Date().toISOString()
-    });
-    return;
-  }
-  
-  // Handle other types of errors
-  res.status(500).json({ 
-    message: 'Something went wrong!', 
-    error: process.env.NODE_ENV === 'production' ? 'Server error' : err.message,
-    timestamp: new Date().toISOString() 
-  });
-});
+// Global error handler middleware - make sure it's the last middleware added
+// This is a special middleware with 4 parameters
+app.use(errorMiddleware);
 
-// Export as module.exports for CommonJS compatibility (needed for supertest)
 export default app;
-module.exports = app;

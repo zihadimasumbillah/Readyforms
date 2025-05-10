@@ -47,7 +47,6 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-// Define types for our form data
 interface Topic {
   id: string;
   name: string;
@@ -59,11 +58,10 @@ interface QuestionField {
   index: number;
   question: string;
   isActive: boolean;
-  answer?: string | number | boolean; // For quiz mode
-  points?: number; // For quiz mode
+  answer?: string | number | boolean;
+  points?: number; 
 }
 
-// Component for a sortable question field
 function SortableQuestionField({ field, onUpdateField, onRemoveField, isQuizMode }: { 
   field: QuestionField; 
   onUpdateField: (field: QuestionField) => void;
@@ -83,7 +81,6 @@ function SortableQuestionField({ field, onUpdateField, onRemoveField, isQuizMode
     transition,
   };
 
-  // Capitalize the first letter of the field type
   const typeCapitalized = field.type.charAt(0).toUpperCase() + field.type.slice(1);
 
   return (
@@ -198,7 +195,6 @@ export default function CreateTemplatePage() {
   const [loading, setLoading] = useState(false);
   const [topicsLoading, setTopicsLoading] = useState(true);
 
-  // Set up sensors for drag and drop
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
@@ -206,14 +202,12 @@ export default function CreateTemplatePage() {
     })
   );
 
-  // Fetch topics on component mount
   useEffect(() => {
     const fetchTopics = async () => {
       try {
         setTopicsLoading(true);
         const topicsData = await topicService.getAllTopics();
         setTopics(topicsData);
-        // Set default topic if available
         if (topicsData.length > 0) {
           setTopicId(topicsData[0].id);
         }
@@ -232,17 +226,14 @@ export default function CreateTemplatePage() {
     fetchTopics();
   }, []);
 
-  // Redirect to login if not authenticated
   useEffect(() => {
     if (!user) {
       router.push('/auth/login?redirect=/templates/create');
     }
   }, [user, router]);
 
-  // Generate a unique ID for question fields
   const generateId = () => `field_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-  // Add a new question field
   const addQuestionField = (type: 'String' | 'Text' | 'Int' | 'Checkbox') => {
     const existingFields = questionFields.filter(f => f.type === type);
     const index = existingFields.length + 1;
@@ -260,7 +251,6 @@ export default function CreateTemplatePage() {
     setQuestionFields([...questionFields, newField]);
   };
 
-  // Update a question field
   const updateQuestionField = (updatedField: QuestionField) => {
     setQuestionFields(
       questionFields.map(field => 
@@ -269,12 +259,10 @@ export default function CreateTemplatePage() {
     );
   };
 
-  // Remove a question field
   const removeQuestionField = (id: string) => {
     setQuestionFields(questionFields.filter(field => field.id !== id));
   };
 
-  // Handle drag end event for reordering questions
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     
@@ -288,7 +276,6 @@ export default function CreateTemplatePage() {
     }
   };
 
-  // Add a tag
   const addTag = () => {
     if (tagInput.trim() && !tags.includes(tagInput.trim())) {
       setTags([...tags, tagInput.trim()]);
@@ -296,12 +283,10 @@ export default function CreateTemplatePage() {
     }
   };
 
-  // Remove a tag
   const removeTag = (tag: string) => {
     setTags(tags.filter(t => t !== tag));
   };
 
-  // Handle tag input key press
   const handleTagKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ',') {
       e.preventDefault();
@@ -309,13 +294,11 @@ export default function CreateTemplatePage() {
     }
   };
 
-  // Build template object for submission
   const buildTemplateData = (): TemplateCreateData => {
     const questionOrder: string[] = questionFields
       .filter(field => field.isActive)
       .map(field => `custom${field.type}${field.index}`);
 
-    // Prepare scoring criteria for quiz mode
     const scoringCriteria: Record<string, { answer: any; points: number }> = {};
     
     if (isQuizMode) {
@@ -328,7 +311,6 @@ export default function CreateTemplatePage() {
       });
     }
 
-    // Build the template data object
     const templateData: TemplateCreateData = {
       title,
       description,
@@ -341,7 +323,6 @@ export default function CreateTemplatePage() {
       questionOrder: JSON.stringify(questionOrder),
     };
 
-    // Add question fields to template data
     questionFields.forEach(field => {
       const stateKey = `custom${field.type}${field.index}State`;
       const questionKey = `custom${field.type}${field.index}Question`;
@@ -353,7 +334,6 @@ export default function CreateTemplatePage() {
     return templateData;
   };
 
-  // Submit the template
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -384,8 +364,7 @@ export default function CreateTemplatePage() {
       });
       return;
     }
-    
-    // Validate that all active fields have questions
+
     const emptyQuestions = activeFields.filter(field => !field.question.trim());
     if (emptyQuestions.length > 0) {
       toast({
@@ -396,7 +375,6 @@ export default function CreateTemplatePage() {
       return;
     }
     
-    // Validate that all quiz questions have answers and points if in quiz mode
     if (isQuizMode) {
       const invalidQuizQuestions = activeFields.filter(field => {
         if (field.type === 'String' || field.type === 'Text') {
@@ -428,7 +406,16 @@ export default function CreateTemplatePage() {
         description: "Template created successfully",
       });
       
-      router.push(`/templates/${response.id}`);
+      if (response) {
+        router.push(`/templates/${response.id}`);
+      } else {
+        toast({
+          title: "Warning",
+          description: "Template was created but we couldn't get the template details.",
+          variant: "default",
+        });
+        router.push('/templates');
+      }
     } catch (error: any) {
       console.error('Failed to create template:', error);
       toast({
@@ -441,9 +428,7 @@ export default function CreateTemplatePage() {
     }
   };
 
-  // Preview the template
   const handlePreview = () => {
-    // Store the current state in localStorage for preview
     const previewData = {
       title,
       description,
@@ -459,17 +444,13 @@ export default function CreateTemplatePage() {
     window.open('/templates/preview', '_blank');
   };
 
-  // Sort fields by type and index for display
   const sortedFields = [...questionFields].sort((a, b) => {
-    // First by type
     if (a.type !== b.type) {
       return a.type.localeCompare(b.type);
     }
-    // Then by index
     return a.index - b.index;
   });
 
-  // Group fields by type
   const fieldsByType = {
     String: sortedFields.filter(field => field.type === 'String'),
     Text: sortedFields.filter(field => field.type === 'Text'),

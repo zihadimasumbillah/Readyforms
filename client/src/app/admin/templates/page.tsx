@@ -1,15 +1,15 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
-import { DashboardLayout } from "@/components/layouts/dashboard-layout";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { adminService } from "@/lib/api/admin-service";
-import { Template, Topic } from "@/types";
-import { useAuth } from "@/contexts/auth-context";
-import { useRouter } from "next/navigation";
-import { toast } from '@/components/ui/use-toast';
+import React, { useState, useEffect } from 'react';
+import { templateService } from '@/lib/api/template-service';
+import { Template } from '@/types';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -28,127 +28,86 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Search, 
-  ChevronLeft, 
-  Eye, 
-  Edit, 
-  Trash, 
-  RefreshCw,
-  Filter,
-  PlusCircle
-} from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Eye, Edit, Trash2, Search, Filter, Plus, MoreHorizontal, Users } from "lucide-react";
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { useAuth } from "@/contexts/auth-context";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Skeleton } from "@/components/ui/skeleton";
-import { templateService } from "@/lib/api/template-service";
-import Link from 'next/link';
+import { toast } from "@/components/ui/use-toast";
 
 export default function AdminTemplatesPage() {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [filteredTemplates, setFilteredTemplates] = useState<Template[]>([]);
-  const [topics, setTopics] = useState<Topic[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterTopic, setFilterTopic] = useState<string>('all');
-  const [filterVisibility, setFilterVisibility] = useState<string>('all');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [templateToDelete, setTemplateToDelete] = useState<Template | null>(null);
   const [processingId, setProcessingId] = useState<string | null>(null);
-  
-  const auth = useAuth();
-  const user = auth?.user;
-  const logout = auth?.logout;
   const router = useRouter();
-
-  const handleLogout = () => {
-    if (logout) {
-      logout();
-      router.push('/auth/login');
-    }
-  };
-
-  const fetchTemplates = async () => {
-    try {
-      setLoading(true);
-      const templatesData = await adminService.getAllTemplates();
-      const topicsData = await adminService.getAllTopics();
-      
-      setTemplates(templatesData);
-      setTopics(topicsData);
-      applyFilters(templatesData, searchQuery, filterTopic, filterVisibility);
-    } catch (error) {
-      console.error("Error fetching templates:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load templates. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  const auth = useAuth();
+  
   useEffect(() => {
-    if (user) {
-      if (!user.isAdmin) {
+    if (!auth?.user?.isAdmin) {
+      router.push("/auth/login");
+      return;
+    }
+    
+    const fetchTemplates = async () => {
+      try {
+        setLoading(true);
+        // Fetch all templates for admin view
+        const allTemplates = await templateService.getTemplates({ limit: 100 });
+        setTemplates(allTemplates);
+        setFilteredTemplates(allTemplates);
+      } catch (error) {
+        console.error("Error fetching templates:", error);
         toast({
-          title: "Access denied",
-          description: "You don't have permission to access this page",
-          variant: "destructive"
+          title: "Error",
+          description: "Failed to load templates. Please try again.",
+          variant: "destructive",
         });
-        router.push('/dashboard');
-        return;
+      } finally {
+        setLoading(false);
       }
-      
-      fetchTemplates();
-    } else {
-      router.push('/auth/login');
-    }
-  }, [user, router]);
-
-  const applyFilters = (templateList: Template[], query: string, topic: string, visibility: string) => {
-    let filtered = [...templateList];
+    };
     
-    if (query.trim() !== '') {
-      const lowercaseQuery = query.toLowerCase();
-      filtered = filtered.filter(template => 
-        template.title.toLowerCase().includes(lowercaseQuery) || 
-        (template.description && template.description.toLowerCase().includes(lowercaseQuery))
-      );
-    }
-
-    if (topic !== 'all') {
-      filtered = filtered.filter(template => template.topic?.id === topic);
-    }
-
-    if (visibility === 'public') {
-      filtered = filtered.filter(template => template.isPublic);
-    } else if (visibility === 'restricted') {
-      filtered = filtered.filter(template => !template.isPublic);
-    }
-    
-    setFilteredTemplates(filtered);
-  };
-
+    fetchTemplates();
+  }, [router, auth]);
+  
   useEffect(() => {
-    applyFilters(templates, searchQuery, filterTopic, filterVisibility);
-  }, [searchQuery, filterTopic, filterVisibility, templates]);
-
-  const handleDeleteTemplate = async () => {
+    if (searchTerm.trim() === "") {
+      setFilteredTemplates(templates);
+    } else {
+      const filtered = templates.filter(
+        template =>
+          template.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (template.description?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+          (template.user?.name?.toLowerCase() || "").includes(searchTerm.toLowerCase())
+      );
+      setFilteredTemplates(filtered);
+    }
+  }, [searchTerm, templates]);
+  
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+  };
+  
+  const confirmDelete = (template: Template) => {
+    setTemplateToDelete(template);
+    setShowDeleteDialog(true);
+  };
+  
+  const handleDelete = async () => {
     if (!templateToDelete) return;
     
     try {
@@ -156,279 +115,180 @@ export default function AdminTemplatesPage() {
       await templateService.deleteTemplate(templateToDelete.id, templateToDelete.version);
       
       setTemplates(templates.filter(t => t.id !== templateToDelete.id));
+      setFilteredTemplates(filteredTemplates.filter(t => t.id !== templateToDelete.id));
       
       toast({
         title: "Success",
         description: "Template deleted successfully",
-        variant: "default"
       });
-      
-      setTemplateToDelete(null);
     } catch (error) {
       console.error("Error deleting template:", error);
       toast({
         title: "Error",
         description: "Failed to delete template. Please try again.",
-        variant: "destructive"
+        variant: "destructive",
       });
     } finally {
       setProcessingId(null);
+      setShowDeleteDialog(false);
+      setTemplateToDelete(null);
     }
   };
-
+  
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return new Intl.DateTimeFormat('en-US', {
+    return new Date(dateString).toLocaleDateString(undefined, {
+      year: 'numeric',
       month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    }).format(date);
+      day: 'numeric'
+    });
   };
-
-  if (!user) {
-    return <div className="flex items-center justify-center min-h-screen">
-      <div className="text-center space-y-4">
-        <h2 className="text-2xl font-bold">Loading templates</h2>
-        <div className="flex justify-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-        </div>
-      </div>
-    </div>;
-  }
-
+  
   return (
-    <DashboardLayout
-      user={{
-        name: user.name || 'Admin User',
-        email: user.email || 'admin@example.com',
-        isAdmin: true
-      }}
-      onLogout={handleLogout}
-    >
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center space-x-2">
-          <Button variant="outline" size="icon" asChild>
-            <Link href="/admin">
-              <ChevronLeft className="h-4 w-4" />
-            </Link>
-          </Button>
-          <h1 className="text-2xl font-bold">Template Management</h1>
-        </div>
-        <div className="flex gap-2">
-          <Button onClick={fetchTemplates} variant="outline" className="gap-2">
-            <RefreshCw className="h-4 w-4" />
-            Refresh
-          </Button>
-          <Button onClick={() => router.push("/templates/create")} className="gap-2">
-            <PlusCircle className="h-4 w-4" />
-            Create Template
-          </Button>
-        </div>
+    <div className="container mx-auto py-10">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold">Templates Management</h1>
+        
+        <Button onClick={() => router.push('/templates/create')}>
+          <Plus className="h-4 w-4 mr-2" /> Create Template
+        </Button>
       </div>
-
-      <Card className="mb-8">
-        <CardHeader>
+      
+      <Card className="mb-6">
+        <CardHeader className="pb-3">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
-              <CardTitle>All Templates</CardTitle>
-              <CardDescription>Manage templates across the platform</CardDescription>
-            </div>
-            
-            <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
-              <div className="relative">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="search"
-                  placeholder="Search templates..."
-                  className="pl-8 w-full sm:w-[200px] md:w-[260px]"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
-              
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-2">
-                  <Filter className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-medium text-muted-foreground hidden sm:inline">Filter:</span>
-                </div>
-                
-                <div className="flex flex-wrap gap-2">
-                  <Select value={filterTopic} onValueChange={setFilterTopic}>
-                    <SelectTrigger className="w-[130px]">
-                      <SelectValue placeholder="Topic" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Topics</SelectItem>
-                      {topics.map(topic => (
-                        <SelectItem key={topic.id} value={topic.id}>
-                          {topic.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  
-                  <Select value={filterVisibility} onValueChange={setFilterVisibility}>
-                    <SelectTrigger className="w-[130px]">
-                      <SelectValue placeholder="Visibility" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All</SelectItem>
-                      <SelectItem value="public">Public</SelectItem>
-                      <SelectItem value="restricted">Restricted</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+            <CardTitle>All Templates</CardTitle>
+            <div className="relative w-full md:w-80">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="search"
+                placeholder="Search by title or creator..."
+                className="pl-8 w-full"
+                value={searchTerm}
+                onChange={handleSearchChange}
+              />
             </div>
           </div>
         </CardHeader>
-        
         <CardContent>
           {loading ? (
             <div className="space-y-3">
-              {[...Array(5)].map((_, i) => (
+              {Array(5).fill(null).map((_, i) => (
                 <Skeleton key={i} className="h-12 w-full" />
               ))}
             </div>
-          ) : filteredTemplates.length > 0 ? (
+          ) : (
             <div className="rounded-md border">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Template</TableHead>
-                    <TableHead className="hidden md:table-cell">Created by</TableHead>
-                    <TableHead className="hidden lg:table-cell">Topic</TableHead>
+                    <TableHead>Title</TableHead>
+                    <TableHead className="hidden md:table-cell">Creator</TableHead>
+                    <TableHead className="hidden md:table-cell">Created</TableHead>
                     <TableHead className="hidden md:table-cell">Status</TableHead>
-                    <TableHead className="hidden lg:table-cell">Created</TableHead>
                     <TableHead className="hidden lg:table-cell">Responses</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredTemplates.map((template) => (
-                    <TableRow key={template.id}>
-                      <TableCell>
-                        <div className="flex flex-col">
-                          <span className="font-medium">{template.title}</span>
-                          {template.description && (
-                            <span className="text-xs text-muted-foreground line-clamp-1">
-                              {template.description}
-                            </span>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        {template.user?.name || 'Unknown'}
-                      </TableCell>
-                      <TableCell className="hidden lg:table-cell">
-                        {template.topic?.name || 'Uncategorized'}
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        {template.isPublic ? (
-                          <Badge>Public</Badge>
-                        ) : (
-                          <Badge variant="outline">Restricted</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="hidden lg:table-cell">
-                        {formatDate(template.createdAt)}
-                      </TableCell>
-                      <TableCell className="hidden lg:table-cell">
-                        {template.responsesCount || 0}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              disabled={processingId === template.id}
-                              className={processingId === template.id ? "opacity-50 cursor-wait" : ""}
-                            >
-                              {processingId === template.id ? (
-                                <span className="flex items-center">
-                                  <RefreshCw className="h-4 w-4 animate-spin mr-1" />
-                                  Processing
-                                </span>
-                              ) : (
-                                <span>Actions</span>
-                              )}
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Template Actions</DropdownMenuLabel>
-                            <DropdownMenuItem 
-                              onClick={() => router.push(`/templates/${template.id}`)}
-                            >
-                              <Eye className="h-4 w-4 mr-2" />
-                              View Template
-                            </DropdownMenuItem>
-                            
-                            <DropdownMenuItem 
-                              onClick={() => router.push(`/admin/templates/${template.id}/edit`)}
-                            >
-                              <Edit className="h-4 w-4 mr-2" />
-                              Edit Template
-                            </DropdownMenuItem>
-                            
-                            <DropdownMenuItem 
-                              onClick={() => router.push(`/admin/templates/${template.id}/responses`)}
-                            >
-                              <Eye className="h-4 w-4 mr-2" />
-                              View Responses
-                            </DropdownMenuItem>
-                            
-                            <DropdownMenuSeparator />
-                            
-                            <DropdownMenuItem
-                              onClick={() => setTemplateToDelete(template)}
-                              className="text-red-600"
-                            >
-                              <Trash className="h-4 w-4 mr-2" />
-                              Delete Template
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                  {filteredTemplates.length > 0 ? (
+                    filteredTemplates.map((template) => (
+                      <TableRow key={template.id}>
+                        <TableCell className="font-medium">
+                          <div className="max-w-[200px] truncate" title={template.title}>
+                            {template.title}
+                          </div>
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          {template.user?.name || 'Unknown'}
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          {formatDate(template.createdAt)}
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          <Badge variant={template.isPublic ? "default" : "outline"}>
+                            {template.isPublic ? "Public" : "Private"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="hidden lg:table-cell">
+                          {template.responsesCount || 0}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm">
+                                <MoreHorizontal className="h-4 w-4" />
+                                <span className="sr-only">Open menu</span>
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem>
+                                <Link href={`/templates/${template.id}`} className="flex items-center w-full">
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  <span>View</span>
+                                </Link>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem>
+                                <Link href={`/admin/templates/${template.id}/edit`} className="flex items-center w-full">
+                                  <Edit className="mr-2 h-4 w-4" />
+                                  <span>Edit</span>
+                                </Link>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem>
+                                <Link href={`/admin/templates/${template.id}/responses`} className="flex items-center w-full">
+                                  <Users className="mr-2 h-4 w-4" />
+                                  <span>Responses</span>
+                                </Link>
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem 
+                                className="text-red-600 focus:text-red-600"
+                                onClick={() => confirmDelete(template)}
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                <span>Delete</span>
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={6} className="h-24 text-center">
+                        No templates found.
                       </TableCell>
                     </TableRow>
-                  ))}
+                  )}
                 </TableBody>
               </Table>
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <div className="rounded-full bg-muted p-3 mb-3">
-                <Search className="h-6 w-6 text-muted-foreground" />
-              </div>
-              <h3 className="text-lg font-medium">No templates found</h3>
-              <p className="text-sm text-muted-foreground mt-1 mb-4">
-                Try adjusting your search or filter criteria.
-              </p>
             </div>
           )}
         </CardContent>
       </Card>
-
-      {/* Delete Template Confirmation */}
-      <AlertDialog open={!!templateToDelete} onOpenChange={(open) => !open && setTemplateToDelete(null)}>
+      
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Template</AlertDialogTitle>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete &quot;{templateToDelete?.title}&quot;? This action will remove all associated responses, comments, and likes. This cannot be undone.
+              This action will permanently delete the template
+              {templateToDelete && <strong> "{templateToDelete.title}"</strong>} and all associated
+              responses. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction 
-              onClick={handleDeleteTemplate} 
+              onClick={handleDelete} 
               className="bg-red-600 hover:bg-red-700"
+              disabled={!!processingId}
             >
-              Delete
+              {processingId === templateToDelete?.id ? "Deleting..." : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </DashboardLayout>
+    </div>
   );
 }

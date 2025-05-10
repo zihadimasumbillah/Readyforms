@@ -1,16 +1,15 @@
 import apiClient from './api-client';
 import { Template } from '@/types';
 
-// Add the TemplateCreateData interface
+/**
+ * Type for template create data
+ */
 export interface TemplateCreateData {
   title: string;
   description: string;
   isPublic: boolean;
   topicId: string;
-  tags: string[];
-  isQuiz?: boolean;
-  showScoreImmediately?: boolean;
-  scoringCriteria?: string;
+  tags?: string[];
   customString1State?: boolean;
   customString1Question?: string;
   customString2State?: boolean;
@@ -44,147 +43,157 @@ export interface TemplateCreateData {
   customCheckbox4State?: boolean;
   customCheckbox4Question?: string;
   questionOrder?: string;
-  [key: string]: string | boolean | string[] | undefined;
+  isQuiz?: boolean;
+  showScoreImmediately?: boolean;
+  scoringCriteria?: any;
+  // Add index signature to allow dynamic property access with string keys
+  [key: string]: string | boolean | string[] | number | any | undefined;
 }
 
-export interface TemplateUpdateData {
-  title: string;
-  description: string;
-  isPublic: boolean;
-  topicId: string;
-  tags: string[];
+/**
+ * Type for template update data
+ */
+export interface TemplateUpdateData extends TemplateCreateData {
   version: number;
-  isQuiz?: boolean;
-  showScoreImmediately?: boolean;
-  scoringCriteria?: string;
-  customString1State?: boolean;
-  customString1Question?: string;
-  customString2State?: boolean;
-  customString2Question?: string;
-  customString3State?: boolean;
-  customString3Question?: string;
-  customString4State?: boolean;
-  customString4Question?: string;
-  customText1State?: boolean;
-  customText1Question?: string;
-  customText2State?: boolean;
-  customText2Question?: string;
-  customText3State?: boolean;
-  customText3Question?: string;
-  customText4State?: boolean;
-  customText4Question?: string;
-  customInt1State?: boolean;
-  customInt1Question?: string;
-  customInt2State?: boolean;
-  customInt2Question?: string;
-  customInt3State?: boolean;
-  customInt3Question?: string;
-  customInt4State?: boolean;
-  customInt4Question?: string;
-  customCheckbox1State?: boolean;
-  customCheckbox1Question?: string;
-  customCheckbox2State?: boolean;
-  customCheckbox2Question?: string;
-  customCheckbox3State?: boolean;
-  customCheckbox3Question?: string;
-  customCheckbox4State?: boolean;
-  customCheckbox4Question?: string;
-  questionOrder?: string;
-  [key: string]: string | boolean | string[] | number | undefined;
 }
 
 export const templateService = {
   /**
-   * Get all templates
+   * Get all public templates
    */
-  async getAllTemplates(page = 1, limit = 10): Promise<Template[]> {
+  async getTemplates(params?: { 
+    limit?: number; 
+    page?: number;
+    query?: string;
+    topicId?: string;
+    tag?: string;
+    sort?: 'newest' | 'oldest' | 'popular';
+  }): Promise<Template[]> {
     try {
-      const response = await apiClient.get(`/templates?page=${page}&limit=${limit}`);
+      const response = await apiClient.get('/templates', { params });
       return response.data;
-    } catch (error: any) {
-      console.error('Failed to fetch templates:', error);
-      throw error;
+    } catch (error) {
+      console.error('Error fetching templates:', error);
+      return [];
     }
   },
-
+  
   /**
-   * Get template by ID
+   * Get a specific template by ID
    */
-  async getTemplateById(id: string): Promise<Template> {
+  async getTemplateById(id: string): Promise<Template | null> {
     try {
       const response = await apiClient.get(`/templates/${id}`);
       return response.data;
-    } catch (error: any) {
-      console.error(`Failed to fetch template ${id}:`, error);
-      throw error;
+    } catch (error) {
+      console.error(`Error fetching template ${id}:`, error);
+      return null;
     }
   },
-
+  
   /**
-   * Create template
+   * Search templates
    */
-  async createTemplate(templateData: any): Promise<Template> {
+  async searchTemplates(query: string, options?: {
+    limit?: number;
+    page?: number;
+    topicId?: string;
+    tag?: string;
+    sort?: 'newest' | 'oldest' | 'popular';
+  }): Promise<Template[]> {
     try {
-      const response = await apiClient.post('/templates', templateData);
+      const params = { 
+        query, 
+        limit: options?.limit || 10,
+        page: options?.page || 1,
+        topicId: options?.topicId,
+        tag: options?.tag,
+        sort: options?.sort || 'newest'
+      };
+      
+      const response = await apiClient.get('/templates/search', { params });
       return response.data;
-    } catch (error: any) {
-      console.error('Failed to create template:', error);
-      throw error;
+    } catch (error) {
+      console.error('Error searching templates:', error);
+      return [];
     }
   },
-
+  
   /**
-   * Update template
+   * Get featured/recommended templates for homepage
    */
-  async updateTemplate(id: string, templateData: any): Promise<Template> {
+  async getFeaturedTemplates(limit = 6): Promise<Template[]> {
     try {
-      const response = await apiClient.put(`/templates/${id}`, templateData);
-      return response.data.template;
-    } catch (error: any) {
-      console.error(`Failed to update template ${id}:`, error);
-      throw error;
+      // For now, just return the latest templates as featured
+      const response = await apiClient.get('/templates', { 
+        params: { limit, page: 1 } 
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching featured templates:', error);
+      return [];
+    }
+  },
+  
+  /**
+   * Get templates by topic
+   */
+  async getTemplatesByTopic(topicId: string, params?: {
+    limit?: number;
+    page?: number;
+  }): Promise<Template[]> {
+    try {
+      const response = await apiClient.get('/templates/search', { 
+        params: { 
+          topicId,
+          limit: params?.limit || 10,
+          page: params?.page || 1
+        } 
+      });
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching templates for topic ${topicId}:`, error);
+      return [];
     }
   },
 
   /**
-   * Delete template
+   * Delete a template
    */
-  async deleteTemplate(id: string, version: number): Promise<void> {
+  async deleteTemplate(id: string, version: number): Promise<boolean> {
     try {
       await apiClient.delete(`/templates/${id}`, {
         data: { version }
       });
-    } catch (error: any) {
-      console.error(`Failed to delete template ${id}:`, error);
+      return true;
+    } catch (error) {
+      console.error(`Error deleting template ${id}:`, error);
       throw error;
     }
   },
 
   /**
-   * Search templates
+   * Create a new template
    */
-  async searchTemplates(searchParams: {
-    query?: string;
-    tag?: string;
-    topicId?: string;
-    limit?: number;
-    page?: number;
-    sort?: 'newest' | 'oldest' | 'popular';
-  }): Promise<Template[]> {
+  async createTemplate(templateData: TemplateCreateData): Promise<Template | null> {
     try {
-      const params = new URLSearchParams();
-      
-      if (searchParams.query) params.append('query', searchParams.query);
-      if (searchParams.tag) params.append('tag', searchParams.tag);
-      if (searchParams.topicId) params.append('topicId', searchParams.topicId);
-      if (searchParams.limit) params.append('limit', searchParams.limit.toString());
-      if (searchParams.page) params.append('page', searchParams.page.toString());
-      if (searchParams.sort) params.append('sort', searchParams.sort);
-      
-      const response = await apiClient.get(`/templates/search?${params.toString()}`);
+      const response = await apiClient.post('/templates', templateData);
       return response.data;
-    } catch (error: any) {
-      console.error('Failed to search templates:', error);
+    } catch (error) {
+      console.error('Error creating template:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Update a template
+   */
+  async updateTemplate(id: string, templateData: TemplateUpdateData): Promise<Template | null> {
+    try {
+      const response = await apiClient.put(`/templates/${id}`, templateData);
+      return response.data.template;
+    } catch (error) {
+      console.error(`Error updating template ${id}:`, error);
       throw error;
     }
   }

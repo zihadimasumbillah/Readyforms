@@ -1,10 +1,11 @@
 import apiClient from './api-client';
 
-// Add the FormResponseData interface
 export interface FormResponseData {
   id: string;
-  templateId: string;
   userId: string;
+  templateId: string;
+  createdAt: string;
+  updatedAt: string;
   customString1Answer?: string;
   customString2Answer?: string;
   customString3Answer?: string;
@@ -23,9 +24,43 @@ export interface FormResponseData {
   customCheckbox4Answer?: boolean;
   score?: number;
   totalPossiblePoints?: number;
-  scoreViewed?: boolean;
-  createdAt: string;
-  updatedAt: string;
+  template?: {
+    id: string;
+    title: string;
+    questionOrder: string;
+    customString1Question?: string;
+    customString2Question?: string;
+    customString3Question?: string;
+    customString4Question?: string;
+    customText1Question?: string;
+    customText2Question?: string;
+    customText3Question?: string;
+    customText4Question?: string;
+    customInt1Question?: number;
+    customInt2Question?: number;
+    customInt3Question?: number;
+    customInt4Question?: number;
+    customCheckbox1Question?: string;
+    customCheckbox2Question?: string;
+    customCheckbox3Question?: string;
+    customCheckbox4Question?: string;
+    customString1State?: boolean;
+    customString2State?: boolean;
+    customString3State?: boolean;
+    customString4State?: boolean;
+    customText1State?: boolean;
+    customText2State?: boolean;
+    customText3State?: boolean;
+    customText4State?: boolean;
+    customInt1State?: boolean;
+    customInt2State?: boolean;
+    customInt3State?: boolean;
+    customInt4State?: boolean;
+    customCheckbox1State?: boolean;
+    customCheckbox2State?: boolean;
+    customCheckbox3State?: boolean;
+    customCheckbox4State?: boolean;
+  };
   user?: {
     id: string;
     name: string;
@@ -33,75 +68,39 @@ export interface FormResponseData {
   };
 }
 
-// Create and export the form response service
 export const formResponseService = {
-  /**
-   * Get all responses for a template
-   */
-  async getResponsesByTemplate(templateId: string): Promise<FormResponseData[]> {
-    try {
-      const response = await apiClient.get(`/responses/template/${templateId}`);
-      return response.data;
-    } catch (error: any) {
-      console.error('Failed to fetch responses:', error);
-      throw error;
-    }
+  // Get all responses for a template
+  async getResponsesByTemplateId(templateId: string): Promise<FormResponseData[]> {
+    const response = await apiClient.get(`/responses/template/${templateId}`);
+    return response.data;
   },
-
-  /**
-   * Get response by ID
-   */
+  
+  // Get a specific response by ID
   async getResponseById(id: string): Promise<FormResponseData> {
-    try {
-      const response = await apiClient.get(`/responses/${id}`);
-      return response.data;
-    } catch (error: any) {
-      console.error(`Failed to fetch response ${id}:`, error);
-      throw error;
-    }
+    const response = await apiClient.get(`/responses/${id}`);
+    return response.data;
   },
-
-  /**
-   * Create new form response
-   */
-  async createResponse(responseData: any, templateId: string): Promise<FormResponseData> {
-    try {
-      const response = await apiClient.post('/responses', {
-        ...responseData,
-        templateId
-      });
-      return response.data;
-    } catch (error: any) {
-      console.error('Failed to create response:', error);
-      throw error;
-    }
-  },
-
-  /**
-   * Get aggregate data for a template
-   */
-  async getAggregateData(templateId: string): Promise<any> {
-    try {
-      const response = await apiClient.get(`/responses/aggregate/${templateId}`);
-      return response.data;
-    } catch (error: any) {
-      console.error('Failed to fetch aggregate data:', error);
-      throw error;
-    }
-  },
-
-  /**
-   * Get responses for current user
-   */
+  
+  // Get current user's responses
   async getUserResponses(): Promise<FormResponseData[]> {
-    try {
-      const response = await apiClient.get('/responses/user');
-      return response.data;
-    } catch (error: any) {
-      console.error('Failed to fetch user responses:', error);
-      throw error;
-    }
+    const response = await apiClient.get('/responses/user');
+    return response.data;
+  },
+  
+  // Submit a form response
+  async submitResponse(data: Partial<FormResponseData>): Promise<FormResponseData> {
+    const response = await apiClient.post('/responses', data);
+    return response.data;
+  },
+  
+  // Get aggregate data for a template
+  async getAggregateData(templateId: string): Promise<any> {
+    const response = await apiClient.get(`/responses/aggregate/${templateId}`);
+    return response.data;
+  },
+  
+  // Delete a response
+  async deleteResponse(id: string): Promise<void> {
+    await apiClient.delete(`/responses/${id}`);
   }
 };
-
-export default formResponseService;

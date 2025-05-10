@@ -1,39 +1,34 @@
-// Serverless API entry point for Vercel deployment
-require('dotenv').config();
+// Serverless entry point for Vercel
+const app = require('../dist/src/app').default;
 
-// Add error handling for module loading
-let app;
-try {
-  app = require('../dist/src/app');
-} catch (error) {
-  console.error('Failed to load app module:', error);
-  // Create a minimal express-like handler for errors
-  app = (req, res) => {
-    res.statusCode = 500;
-    res.setHeader('Content-Type', 'application/json');
-    res.end(JSON.stringify({
-      error: 'Server initialization failed',
-      message: 'The server encountered an error during initialization',
-      status: 'error',
-      timestamp: new Date().toISOString()
-    }));
-  };
-}
-
-// Export a serverless function handler for Vercel
-module.exports = async (req, res) => {
-  // Simple health check that will work even if the app fails to load
-  if (req.url === '/health' || req.url === '/api/health') {
-    res.statusCode = 200;
-    res.setHeader('Content-Type', 'application/json');
-    res.end(JSON.stringify({
-      status: 'up',
-      message: 'Server is responding',
-      timestamp: new Date().toISOString()
-    }));
-    return;
+// Add a custom CORS handler for serverless environment
+app.use((req, res, next) => {
+  // For API health checks and ping endpoints, allow all origins
+  if (req.path === '/api/health' || req.path === '/api/health/ping' || req.path === '/health') {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    
+    if (req.method === 'OPTIONS') {
+      return res.status(204).end();
+    }
   }
+  next();
+});
+
+// Special permissive CORS direct endpoint (not through API routes)
+app.get('/cors-test', (req, res) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   
-  // Forward the request to our Express app
-  return app(req, res);
-};
+  res.status(200).json({
+    message: 'CORS test is working',
+    origin: req.headers.origin || 'No origin',
+    environment: process.env.NODE_ENV || 'development',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Export the Express app
+module.exports = app;

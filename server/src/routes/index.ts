@@ -27,7 +27,7 @@ router.get('/ping', (req, res) => {
   });
 });
 
-// API debug endpoint
+// Debug endpoint
 router.get('/debug', (req, res) => {
   res.status(200).json({
     message: 'API debug endpoint',
