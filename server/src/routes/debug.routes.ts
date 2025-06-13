@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { User, Template, Topic, Tag } from '../models';
 import bcrypt from 'bcryptjs';
 
@@ -23,19 +23,10 @@ router.get('/env-check', (req, res) => {
   });
 });
 
-if (process.env.NODE_ENV === 'production') {
-  router.all('*', (req, res) => {
-    // Only block non-test routes in production
-    if (req.path !== '/test' && req.path !== '/env-check') {
-      return res.status(404).json({ 
-        error: 'Debug routes not available in production',
-        availableRoutes: ['/test', '/env-check']
-      });
-    }
-  });
-} else {
+// Allow all debug routes in all environments for now
+// Production restrictions can be added later if needed
 
-  router.post('/ensure-test-users', async (req, res) => {
+router.post('/ensure-test-users', async (req: Request, res: Response) => {
     try {
       console.log('Debug: Ensuring test users exist');
       const results = {
@@ -148,6 +139,5 @@ if (process.env.NODE_ENV === 'production') {
       });
     }
   });
-}
 
 export default router;
