@@ -10,8 +10,9 @@ router.use((req, res, next) => {
 // Add simple direct routes for testing
 router.get('/direct-test', (req, res) => {
   res.status(200).json({
-    message: 'Direct route test working',
-    timestamp: new Date().toISOString()
+    message: 'Direct route test working - updated!',
+    timestamp: new Date().toISOString(),
+    path: req.path
   });
 });
 
