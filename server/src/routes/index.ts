@@ -1,16 +1,17 @@
 import express from 'express';
-import authRoutes from './auth.routes';
-import templateRoutes from './template.routes';
-import commentRoutes from './comment.routes';
-import likeRoutes from './like.routes';
-import topicRoutes from './topic.routes';
-import userRoutes from './user.routes';
-import formResponseRoutes from './form-response.routes';
-import tagRoutes from './tag.routes';
-import dashboardRoutes from './dashboard.routes';
-import adminRoutes from './admin.routes';
-import healthRoutes from './health.routes'; 
-import debugRoutes from './debug.routes';
+// Temporarily comment out problematic imports
+// import authRoutes from './auth.routes';
+// import templateRoutes from './template.routes';
+// import commentRoutes from './comment.routes';
+// import likeRoutes from './like.routes';
+// import topicRoutes from './topic.routes';
+// import userRoutes from './user.routes';
+// import formResponseRoutes from './form-response.routes';
+// import tagRoutes from './tag.routes';
+// import dashboardRoutes from './dashboard.routes';
+// import adminRoutes from './admin.routes';
+// import healthRoutes from './health.routes'; 
+// import debugRoutes from './debug.routes';
 
 const router = express.Router();
 
@@ -19,18 +20,26 @@ router.use((req, res, next) => {
   next();
 });
 
-router.use('/auth', authRoutes);
-router.use('/templates', templateRoutes);
-router.use('/comments', commentRoutes);
-router.use('/likes', likeRoutes);
-router.use('/topics', topicRoutes);
-router.use('/users', userRoutes);
-router.use('/responses', formResponseRoutes);
-router.use('/tags', tagRoutes);
-router.use('/dashboard', dashboardRoutes);
-router.use('/admin', adminRoutes);
-router.use('/health', healthRoutes); 
-router.use('/debug', debugRoutes);
+// Add simple direct routes for testing
+router.get('/direct-test', (req, res) => {
+  res.status(200).json({
+    message: 'Direct route test working',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// router.use('/auth', authRoutes);
+// router.use('/templates', templateRoutes);
+// router.use('/comments', commentRoutes);
+// router.use('/likes', likeRoutes);
+// router.use('/topics', topicRoutes);
+// router.use('/users', userRoutes);
+// router.use('/responses', formResponseRoutes);
+// router.use('/tags', tagRoutes);
+// router.use('/dashboard', dashboardRoutes);
+// router.use('/admin', adminRoutes);
+// router.use('/health', healthRoutes); 
+// router.use('/debug', debugRoutes);
 
 router.get('/ping', (req, res) => {
   res.status(200).json({ 
