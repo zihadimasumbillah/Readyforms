@@ -1,5 +1,8 @@
 import express from 'express';
-// Temporarily comment out problematic imports
+// Gradually restore routes - starting with non-database dependent ones
+import healthRoutes from './health.routes'; 
+import debugRoutes from './debug.routes';
+// Still commenting out database-heavy routes for now
 // import authRoutes from './auth.routes';
 // import templateRoutes from './template.routes';
 // import commentRoutes from './comment.routes';
@@ -10,8 +13,6 @@ import express from 'express';
 // import tagRoutes from './tag.routes';
 // import dashboardRoutes from './dashboard.routes';
 // import adminRoutes from './admin.routes';
-// import healthRoutes from './health.routes'; 
-// import debugRoutes from './debug.routes';
 
 const router = express.Router();
 
@@ -38,8 +39,8 @@ router.get('/direct-test', (req, res) => {
 // router.use('/tags', tagRoutes);
 // router.use('/dashboard', dashboardRoutes);
 // router.use('/admin', adminRoutes);
-// router.use('/health', healthRoutes); 
-// router.use('/debug', debugRoutes);
+router.use('/health', healthRoutes); 
+router.use('/debug', debugRoutes);
 
 router.get('/ping', (req, res) => {
   res.status(200).json({ 
