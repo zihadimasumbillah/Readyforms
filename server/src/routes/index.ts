@@ -11,6 +11,7 @@ import dashboardRoutes from './dashboard.routes';
 import adminRoutes from './admin.routes';
 import healthRoutes from './health.routes'; 
 import debugRoutes from './debug.routes';
+import testRoutes from './test.routes';
 
 const router = express.Router();
 
@@ -31,6 +32,7 @@ router.use('/dashboard', dashboardRoutes);
 router.use('/admin', adminRoutes);
 router.use('/health', healthRoutes); 
 router.use('/debug', debugRoutes);
+router.use('/test', testRoutes);
 
 router.get('/ping', (req, res) => {
   res.status(200).json({ 
