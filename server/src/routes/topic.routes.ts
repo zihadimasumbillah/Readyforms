@@ -1,15 +1,15 @@
-import { Router } from 'express';
+import express from 'express';
 import { getAllTopics, getTopicById, createTopic, updateTopic, deleteTopic } from '../controllers/topic.controller';
-import { authMiddleware } from '../middleware/auth.middleware';
-import { adminMiddleware } from '../middleware/admin.middleware';
-import catchAsync from '../utils/catchAsync';
+import verifyToken from '../middleware/auth.middleware';
+import adminMiddleware from '../middleware/admin.middleware';
 
-const router = Router();
+const router = express.Router();
 
-router.get('/', catchAsync(getAllTopics));
-router.get('/:id', catchAsync(getTopicById));
-router.post('/', catchAsync(authMiddleware), catchAsync(adminMiddleware), catchAsync(createTopic));
-router.put('/:id', catchAsync(authMiddleware), catchAsync(adminMiddleware), catchAsync(updateTopic));
-router.delete('/:id', catchAsync(authMiddleware), catchAsync(adminMiddleware), catchAsync(deleteTopic));
+router.get('/', getAllTopics);
+router.get('/:id', getTopicById);
+
+router.post('/', [verifyToken, adminMiddleware], createTopic);
+router.put('/:id', [verifyToken, adminMiddleware], updateTopic);
+router.delete('/:id', [verifyToken, adminMiddleware], deleteTopic);
 
 export default router;

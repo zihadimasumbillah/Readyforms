@@ -2,7 +2,6 @@ module.exports = {
   testEnvironment: 'node',
   transform: {
     '^.+\\.(ts|tsx)$': ['ts-jest', {
-      // Move ts-jest config here from globals
       isolatedModules: true,
     }]
   },
@@ -12,7 +11,6 @@ module.exports = {
   setupFiles: ['<rootDir>/tests/setup.js'],
   testPathIgnorePatterns: ['/node_modules/'],
   globals: {
-    // Remove ts-jest config from here
   },
   roots: ['<rootDir>/tests/', '<rootDir>/src/'],
 };

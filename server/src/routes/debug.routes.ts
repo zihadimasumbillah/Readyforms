@@ -1,8 +1,8 @@
-import express from 'express';
+import { Router } from 'express';
 import { User, Template, Topic, Tag } from '../models';
 import bcrypt from 'bcryptjs';
 
-const router = express.Router();
+const router = Router();
 
 if (process.env.NODE_ENV === 'production') {
   router.all('*', (_req, res) => {
@@ -79,7 +79,7 @@ if (process.env.NODE_ENV === 'production') {
           await Topic.create({
             name: 'General',
             description: 'General topic for forms'
-          });
+          } as any);
         }
       } catch (error) {
         console.error('Error ensuring topic exists:', error);

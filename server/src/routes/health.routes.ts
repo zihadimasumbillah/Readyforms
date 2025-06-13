@@ -1,24 +1,14 @@
-import { Router } from 'express';
-import { healthCheck, ping, corsTest } from '../controllers/health.controller';
+import express from 'express';
+import { ping, checkDatabase, checkCors, fullCheck, status } from '../controllers/health.controller';
 
-const router = Router();
+const router = express.Router();
 
-// Basic health check endpoint
-router.get('/', healthCheck);
-
-// Specific ping endpoint for easy testing
+// Public health check routes (no authentication required)
 router.get('/ping', ping);
-
-// Special endpoint for testing CORS configuration
-router.get('/cors', corsTest);
-
-// Simple handler for OPTIONS requests
-router.options('*', (req, res) => {
-  // Add permissive CORS headers for health endpoints
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  res.status(204).end();
-});
+router.get('/database', checkDatabase);
+router.get('/cors', checkCors);
+router.get('/full', fullCheck);
+router.get('/status', status);
+router.get('/', ping); // Add default route for /api/health
 
 export default router;

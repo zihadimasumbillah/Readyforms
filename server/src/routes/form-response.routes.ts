@@ -1,21 +1,18 @@
-import { Router } from 'express';
-import { createFormResponse, getFormResponsesByUser, getFormResponseById, 
-         getFormResponsesByTemplate, getAggregateData } from '../controllers/form-response.controller';
-import { authMiddleware } from '../middleware/auth.middleware';
-import catchAsync from '../utils/catchAsync';
+import express from 'express';
+import { createFormResponse, getFormResponsesByTemplate, getFormResponseById, getFormResponsesByUser, getAggregateData } from '../controllers/form-response.controller';
+import verifyToken from '../middleware/auth.middleware';
 
-const router = Router();
+const router = express.Router();
 
+router.post('/', verifyToken, createFormResponse);
 
-router.get('/aggregate/:templateId', catchAsync(getAggregateData));
-router.get('/template/:templateId/aggregate', catchAsync(getAggregateData));
+router.get('/template/:templateId', verifyToken, getFormResponsesByTemplate);
 
-router.use(catchAsync(authMiddleware));
+router.get('/user', verifyToken, getFormResponsesByUser);
+router.get('/user/:userId', verifyToken, getFormResponsesByUser);
 
-router.post('/', catchAsync(createFormResponse));
-router.get('/user', catchAsync(getFormResponsesByUser));  
-router.get('/user/:userId', catchAsync(getFormResponsesByUser));  
-router.get('/template/:templateId', catchAsync(getFormResponsesByTemplate));
-router.get('/:id', catchAsync(getFormResponseById));
+router.get('/aggregate/:templateId', getAggregateData);
+
+router.get('/:id', verifyToken, getFormResponseById);
 
 export default router;

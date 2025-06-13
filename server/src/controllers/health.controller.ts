@@ -2,81 +2,115 @@ import { Request, Response } from 'express';
 import { sequelize } from '../models';
 
 /**
- * Health check endpoint
+ * Basic ping endpoint for health check
+ * @route GET /api/health/ping
  */
-export const healthCheck = async (req: Request, res: Response) => {
-  // Add permissive CORS headers for this specific health route
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  
+export const ping = (req: Request, res: Response): void => {
+  res.status(200).json({
+    status: 'ok',
+    message: 'API server is running',
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development'
+  });
+};
+
+/**
+ * Check database connectivity
+ * @route GET /api/health/database
+ */
+export const checkDatabase = async (req: Request, res: Response): Promise<void> => {
   try {
-    // Test database connection
     await sequelize.authenticate();
-    
     res.status(200).json({
       status: 'ok',
-      message: 'API server is healthy',
-      timestamp: new Date().toISOString(),
-      components: {
-        database: 'connected',
-        api: 'running'
-      },
-      environment: process.env.NODE_ENV || 'development'
+      message: 'Database connection is healthy',
+      timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('Health check failed:', error);
-    
-    res.status(503).json({
-      status: 'unhealthy',
-      message: 'API health check failed',
-      timestamp: new Date().toISOString(),
-      components: {
-        database: 'disconnected',
-        api: 'running'
-      },
-      error: process.env.NODE_ENV === 'production' ? 'Database connection error' : (error as Error).message
+    console.error('Database health check failed:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Database connection failed',
+      error: process.env.NODE_ENV === 'production' ? 'Database error' : (error as Error).message,
+      timestamp: new Date().toISOString()
     });
   }
 };
 
 /**
- * Simple ping endpoint for connectivity testing
+ * Health status endpoint
+ * @route GET /api/health/status
  */
-export const ping = (req: Request, res: Response) => {
-  // Add permissive CORS headers for this specific ping route
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  
+export const status = (req: Request, res: Response): void => {
   res.status(200).json({
-    message: 'pong',
-    timestamp: new Date().toISOString(),
-    origin: req.headers.origin || 'No origin',
-    requestHeaders: {
-      host: req.headers.host,
-      origin: req.headers.origin,
-      'user-agent': req.headers['user-agent']
-    }
+    status: 'ok',
+    message: 'API health check passed',
+    environment: process.env.NODE_ENV,
+    timestamp: new Date().toISOString()
   });
 };
 
 /**
- * CORS testing endpoint
+ * Check CORS configuration
+ * @route GET /api/health/cors
  */
-export const corsTest = (req: Request, res: Response) => {
-  // Add permissive CORS headers for this specific CORS test route
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  
+export const checkCors = (req: Request, res: Response): void => {
   res.status(200).json({
-    message: 'CORS test successful',
-    origin: req.headers.origin || 'No origin',
-    corsHeaders: {
-      'access-control-allow-origin': res.getHeader('Access-Control-Allow-Origin'),
-      'access-control-allow-methods': res.getHeader('Access-Control-Allow-Methods'),
-      'access-control-allow-headers': res.getHeader('Access-Control-Allow-Headers')
-    }
+    status: 'ok',
+    message: 'CORS is properly configured',
+    origin: req.headers.origin || 'No origin header',
+    cors_config: {
+      allowed_origins: process.env.CLIENT_URL ? process.env.CLIENT_URL.split(',') : 'All origins',
+      allow_all: process.env.ALLOW_ALL_ORIGINS === 'true'
+    },
+    timestamp: new Date().toISOString()
   });
 };
+
+/**
+ * Full system health check
+ * @route GET /api/health/full
+ */
+export const fullCheck = async (req: Request, res: Response): Promise<void> => {
+  try {
+    // Check database
+    let dbStatus = 'ok';
+    let dbMessage = 'Database connection is healthy';
+    
+    try {
+      await sequelize.authenticate();
+    } catch (error) {
+      dbStatus = 'error';
+      dbMessage = (error as Error).message;
+      console.error('Database health check failed during full check:', error);
+    }
+    
+    res.status(200).json({
+      api_status: 'ok',
+      api_version: process.env.npm_package_version || '1.0.0',
+      environment: process.env.NODE_ENV || 'development',
+      database: {
+        status: dbStatus,
+        message: dbMessage
+      },
+      cors: {
+        status: 'ok',
+        origin: req.headers.origin || 'No origin header'
+      },
+      memory_usage: process.memoryUsage(),
+      uptime: process.uptime(),
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Full health check failed:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Health check failed',
+      error: process.env.NODE_ENV === 'production' ? 'Internal error' : (error as Error).message,
+      timestamp: new Date().toISOString()
+    });
+  }
+};
+
+// Default route handler
+export default ping;

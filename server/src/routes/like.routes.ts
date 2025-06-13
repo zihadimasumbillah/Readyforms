@@ -1,15 +1,17 @@
-import { Router } from 'express';
-import { getLikesByTemplate, toggleLike, checkLike, countLikes } from '../controllers/like.controller';
-import { authMiddleware } from '../middleware/auth.middleware';
-import catchAsync from '../utils/catchAsync';
+import express from 'express';
+import { toggleLike, checkLike, countLikes, getLikesByTemplate } from '../controllers/like.controller';
+import verifyToken from '../middleware/auth.middleware';
 
-const router = Router();
+const router = express.Router();
 
-router.get('/template/:templateId', catchAsync(getLikesByTemplate));
-router.get('/count/:templateId', catchAsync(countLikes));
 
-router.get('/check/:templateId', catchAsync(authMiddleware), catchAsync(checkLike));
-router.post('/template/:templateId', catchAsync(authMiddleware), catchAsync(toggleLike));
-router.delete('/template/:templateId', catchAsync(authMiddleware), catchAsync(toggleLike));
+router.post('/template/:templateId', verifyToken, toggleLike);
+router.delete('/template/:templateId', verifyToken, toggleLike);
+
+router.get('/check/:templateId', verifyToken, checkLike);
+
+router.get('/count/:templateId', countLikes);
+
+router.get('/template/:templateId', getLikesByTemplate);
 
 export default router;

@@ -1,93 +1,99 @@
 import { Model, DataTypes, Sequelize } from 'sequelize';
-import Template from './Template';
+import bcrypt from 'bcryptjs';
 
-interface UserAttributes {
-  id?: string; 
-  name: string;
-  email: string;
-  password: string;
-  isAdmin: boolean;
-  blocked?: boolean; 
-  language: string;
-  theme: string;
-  lastLoginAt?: Date;
-  version?: number;
-  createdAt?: Date;
-  updatedAt?: Date;
-}
+class User extends Model {
+  declare id: string;
+  declare name: string;
+  declare email: string;
+  declare password: string;
+  declare isAdmin: boolean;
+  declare blocked: boolean;
+  declare language: string;
+  declare theme: string;
+  declare lastLoginAt: Date;
+  declare createdAt: Date;
+  declare updatedAt: Date;
+  declare version: number;
 
-class User extends Model<UserAttributes> implements UserAttributes {
-  public id!: string;
-  public name!: string;
-  public email!: string;
-  public password!: string;
-  public isAdmin!: boolean;
-  public blocked!: boolean;
-  public language!: string;
-  public theme!: string;
-  public lastLoginAt!: Date;
-  public version!: number;
-  public readonly createdAt!: Date;
-  public readonly updatedAt!: Date;
-
-  static initialize(sequelize: Sequelize) {
-    User.init({
-      id: {
-        type: DataTypes.UUID,
-        defaultValue: DataTypes.UUIDV4,
-        allowNull: false,
-        primaryKey: true
-      },
-      name: {
-        type: DataTypes.STRING,
-        allowNull: false
-      },
-      email: {
-        type: DataTypes.STRING,
-        allowNull: false,
-        unique: true
-      },
-      password: {
-        type: DataTypes.STRING,
-        allowNull: false
-      },
-      isAdmin: {
-        type: DataTypes.BOOLEAN,
-        defaultValue: false
-      },
-      blocked: {
-        type: DataTypes.BOOLEAN,
-        defaultValue: false
-      },
-      language: {
-        type: DataTypes.STRING,
-        defaultValue: 'en'
-      },
-      theme: {
-        type: DataTypes.STRING,
-        defaultValue: 'light'
-      },
-      lastLoginAt: {
-        type: DataTypes.DATE,
-        allowNull: true
-      },
-      version: {
-        type: DataTypes.INTEGER,
-        defaultValue: 0
-      }
-    }, {
-      sequelize,
-      modelName: 'user',
-      tableName: 'users',
-      timestamps: true
-    });
+  /**
+   * Initialize the User model with a sequelize instance
+   * Works with both Sequelize and SequelizeTS instances
+   */
+  static initialize(sequelize: any) {
+    try {
+      console.log('Initializing User model');
+      
+      // Get DataTypes from sequelize or require it directly
+      const DataTypes = sequelize.Sequelize ? sequelize.Sequelize.DataTypes : require('sequelize').DataTypes;
+      
+      // Initialize the model with sequelize
+      User.init({
+        id: {
+          type: DataTypes.UUID,
+          defaultValue: DataTypes.UUIDV4,
+          primaryKey: true
+        },
+        name: {
+          type: DataTypes.STRING,
+          allowNull: false,
+        },
+        email: {
+          type: DataTypes.STRING,
+          allowNull: false,
+          unique: true,
+          validate: {
+            isEmail: true,
+          },
+        },
+        password: {
+          type: DataTypes.STRING,
+          allowNull: false,
+        },
+        isAdmin: {
+          type: DataTypes.BOOLEAN,
+          defaultValue: false,
+        },
+        blocked: {
+          type: DataTypes.BOOLEAN,
+          defaultValue: false,
+        },
+        language: {
+          type: DataTypes.STRING,
+          defaultValue: 'en',
+        },
+        theme: {
+          type: DataTypes.STRING,
+          defaultValue: 'light',
+        },
+        lastLoginAt: {
+          type: DataTypes.DATE,
+          allowNull: true,
+        },
+        version: {
+          type: DataTypes.INTEGER,
+          defaultValue: 0,
+        }
+      }, {
+        sequelize,
+        tableName: 'users',
+        timestamps: true,
+      });
+      
+      // DON'T assign to the read-only sequelize property
+      // Instead, use static properties defined on the model
+      // The sequelize property will be available on the model via the init() call
+    } catch (error) {
+      console.error('Error initializing User model:', error);
+      throw error;
+    }
   }
 
-  static associate(models: any) {
-    User.hasMany(models.Template, { foreignKey: 'userId' });
-    User.hasMany(models.FormResponse, { foreignKey: 'userId' });
-    User.hasMany(models.Comment, { foreignKey: 'userId' });
-    User.hasMany(models.Like, { foreignKey: 'userId' });
+  /**
+   * Compare password with hashed password stored in database
+   * @param candidatePassword The plain password to compare
+   */
+  async comparePassword(candidatePassword: string): Promise<boolean> {
+    return bcrypt.compare(candidatePassword, this.password);
   }
 }
 

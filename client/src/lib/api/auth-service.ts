@@ -1,195 +1,147 @@
 import apiClient from './api-client';
+import { AxiosError } from 'axios';
 
-export interface AuthResponse {
-  success: boolean;
-  message: string;
-  token?: string;
-  user?: {
+interface LoginCredentials {
+  email: string;
+  password: string;
+}
+
+interface RegisterData {
+  name: string;
+  email: string;
+  password: string;
+  language?: string;
+  theme?: string;
+}
+
+interface AuthResponse {
+  token: string;
+  user: {
     id: string;
     name: string;
     email: string;
     isAdmin: boolean;
-    language: string;
-    theme: string;
+    language?: string;
+    theme?: string;
   };
-  error?: any;
+}
+
+interface ApiErrorResponse {
+  message: string;
+  status?: number;
+  error?: string;
+  isNetworkError?: boolean;
 }
 
 export const authService = {
-  /**
-   * Register a new user
-   */
-  async register(name: string, email: string, password: string, language = 'en', theme = 'system'): Promise<AuthResponse> {
+  async login(credentials: LoginCredentials): Promise<AuthResponse> {
     try {
-      const response = await apiClient.post('/auth/register', {
-        name,
-        email,
-        password,
-        language,
-        theme
-      });
+      const response = await apiClient.post<AuthResponse>('/auth/login', credentials);
       
-      // Store the token in localStorage
-      if (response.data.token) {
-        localStorage.setItem('authToken', response.data.token);
+      // Store token in localStorage
+      localStorage.setItem('auth_token', response.data.token);
+      
+      return response.data;
+    } catch (error) {
+      // Custom error handling
+      const axiosError = error as AxiosError;
+      let errorMessage = 'Login failed. Please try again.';
+      let isNetworkError = false;
+      
+      if (!axiosError.response) {
+        // Network error (no response)
+        errorMessage = 'Unable to connect to the authentication server. Please check your internet connection.';
+        console.error('Login network error:', axiosError.message);
+        isNetworkError = true;
+      } else if (axiosError.response.status === 401) {
+        errorMessage = 'Invalid email or password';
+      } else if (axiosError.response.status === 403) {
+        errorMessage = 'Your account is blocked. Please contact administrator.';
+      } else if (axiosError.response.data && (axiosError.response.data as any).message) {
+        errorMessage = (axiosError.response.data as any).message;
       }
       
-      return {
-        success: true,
-        message: response.data.message || 'Registration successful',
-        token: response.data.token,
-        user: response.data.user
-      };
-    } catch (error: any) {
-      console.error('Registration error:', error);
-      return {
-        success: false,
-        message: error.data?.message || 'Registration failed',
-        error
-      };
+      console.error('Login error:', errorMessage);
+      
+      // Throw a standardized error object
+      throw {
+        message: errorMessage,
+        status: axiosError.response?.status,
+        error: axiosError.message,
+        isNetworkError
+      } as ApiErrorResponse;
     }
   },
-  
-  /**
-   * Login a user
-   */
-  async login(email: string, password: string): Promise<AuthResponse> {
+
+  async register(data: RegisterData): Promise<AuthResponse> {
     try {
-      const response = await apiClient.post('/auth/login', {
-        email,
-        password
-      });
+      const response = await apiClient.post<AuthResponse>('/auth/register', data);
       
-      // Store the token in localStorage
-      if (response.data.token) {
-        localStorage.setItem('authToken', response.data.token);
+      // Store token in localStorage
+      localStorage.setItem('auth_token', response.data.token);
+      
+      return response.data;
+    } catch (error) {
+      // Custom error handling
+      const axiosError = error as AxiosError;
+      let errorMessage = 'Registration failed. Please try again.';
+      let isNetworkError = false;
+      
+      if (!axiosError.response) {
+        // Network error
+        errorMessage = 'Unable to connect to the registration server. Please check your internet connection.';
+        console.error('Register network error:', axiosError.message);
+        isNetworkError = true;
+      } else if (axiosError.response.status === 400) {
+        errorMessage = (axiosError.response.data as any).message || 'Invalid registration data';
+      } else if (axiosError.response.data && (axiosError.response.data as any).message) {
+        errorMessage = (axiosError.response.data as any).message;
       }
       
-      return {
-        success: true,
-        message: response.data.message || 'Login successful',
-        token: response.data.token,
-        user: response.data.user
-      };
-    } catch (error: any) {
-      console.error('Login error:', error);
-      return {
-        success: false,
-        message: error.data?.message || 'Login failed',
-        error
-      };
+      console.error('Registration error:', errorMessage);
+      
+      throw {
+        message: errorMessage,
+        status: axiosError.response?.status,
+        error: axiosError.message,
+        isNetworkError
+      } as ApiErrorResponse;
     }
   },
-  
-  /**
-   * Logout the current user
-   */
-  logout(): void {
-    localStorage.removeItem('authToken');
-    
-    // Dispatch a logout event that can be listened to by components
-    const logoutEvent = new CustomEvent('auth:logout', { 
-      detail: { reason: 'user_logout' } 
-    });
-    window.dispatchEvent(logoutEvent);
+
+  async logout(): Promise<void> {
+    // Remove token from localStorage
+    localStorage.removeItem('auth_token');
   },
-  
-  /**
-   * Get the current authenticated user
-   */
-  async getCurrentUser(): Promise<AuthResponse> {
+
+  async getCurrentUser() {
     try {
       const response = await apiClient.get('/auth/me');
-      
-      return {
-        success: true,
-        message: 'User fetched successfully',
-        user: response.data
-      };
-    } catch (error: any) {
-      console.error('Error getting current user:', error);
-      return {
-        success: false,
-        message: error.data?.message || 'Failed to get current user',
-        error
-      };
+      return response.data;
+    } catch (error) {
+      console.error('Get current user error:', error);
+      return null;
     }
   },
-  
-  /**
-   * Check if the user is authenticated
-   */
-  isAuthenticated(): boolean {
-    return !!localStorage.getItem('authToken');
-  },
-  
-  /**
-   * Update user preferences
-   */
-  async updatePreferences(preferences: { language?: string; theme?: string }): Promise<AuthResponse> {
+
+  async updatePreferences(preferences: { language?: string; theme?: string }) {
     try {
       const response = await apiClient.put('/auth/preferences', preferences);
-      
-      return {
-        success: true,
-        message: response.data.message || 'Preferences updated successfully',
-        user: response.data.user
-      };
-    } catch (error: any) {
-      console.error('Error updating preferences:', error);
-      return {
-        success: false,
-        message: error.data?.message || 'Failed to update preferences',
-        error
-      };
-    }
-  },
-  
-  /**
-   * Request password reset
-   */
-  async forgotPassword(email: string): Promise<AuthResponse> {
-    try {
-      const response = await apiClient.post('/auth/forgot-password', { email });
-      
-      return {
-        success: true,
-        message: response.data.message || 'Password reset email sent'
-      };
-    } catch (error: any) {
-      console.error('Error requesting password reset:', error);
-      return {
-        success: false,
-        message: error.data?.message || 'Failed to request password reset',
-        error
-      };
-    }
-  },
-  
-  /**
-   * Check if the user is logged in
-   */
-  isLoggedIn(): boolean {
-    // Check if token exists and hasn't expired
-    const token = localStorage.getItem('authToken');
-    if (!token) return false;
-    
-    try {
-      // You can optionally add JWT token validation logic here
-      // For basic check, just ensure the token exists
-      return true;
+      return response.data;
     } catch (error) {
-      console.error('Error checking token validity:', error);
-      return false;
+      console.error('Update preferences error:', error);
+      throw error;
     }
   },
+
+  isAuthenticated(): boolean {
+    if (typeof window === 'undefined') return false;
+    return !!localStorage.getItem('auth_token');
+  },
   
-  /**
-   * Get the stored token
-   */
+  // Add the getToken method
   getToken(): string | null {
-    return localStorage.getItem('authToken');
+    if (typeof window === 'undefined') return null;
+    return localStorage.getItem('auth_token');
   }
 };
-
-export default authService;

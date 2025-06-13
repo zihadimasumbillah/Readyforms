@@ -4,14 +4,13 @@ const path = require('path');
 
 console.log('Starting build process for Vercel deployment...');
 
-// Check if .env.production exists and if not, create it with default values
 const envProdPath = path.join(__dirname, '.env.production');
 if (!fs.existsSync(envProdPath)) {
   console.log('Creating .env.production file with default values...');
   const defaultEnv = `
 NODE_ENV=production
 PORT=3000
-CLIENT_URL=https://readyforms.vercel.app,https://readyformss.vercel.app,http://localhost:3000
+CLIENT_URL=https://readyforms.vercel.app,http://localhost:3000
 ALLOW_ALL_ORIGINS=true
 API_BASE_URL=https://readyforms-api.vercel.app
 `;

@@ -1,16 +1,17 @@
 import { Request, Response, NextFunction } from 'express';
 
-export const adminMiddleware = (req: Request, res: Response, next: NextFunction) => {
+const adminMiddleware = (req: Request, res: Response, next: NextFunction): void => {
   if (!req.user) {
-    return res.status(401).json({ message: 'Authentication required' });
+    res.status(401).json({ message: 'Authentication required' });
+    return;
   }
-  
+
   if (!req.user.isAdmin) {
-    return res.status(403).json({ message: 'Admin privileges required' });
+    res.status(403).json({ message: 'Admin privileges required' });
+    return;
   }
-  
+
   next();
 };
 
-export const isAdmin = adminMiddleware; 
-export default adminMiddleware; 
+export default adminMiddleware;

@@ -1,9 +1,9 @@
 .git
+.github
+server
 node_modules
-client/node_modules
-server/node_modules
-*.log
-.env
+!client/node_modules
 .env.*
-!.env.production
-/client
+*.log
+*.md
+!README.md

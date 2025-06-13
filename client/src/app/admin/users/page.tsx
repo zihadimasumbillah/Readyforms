@@ -25,7 +25,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/components/ui/use-toast';
 import { User } from '@/types';
 
-// Define possible filter statuses
 type StatusFilter = 'all' | 'active' | 'blocked' | 'admin';
 
 export default function AdminUsersPage() {
@@ -70,10 +69,8 @@ export default function AdminUsersPage() {
   }, [user, router]);
 
   useEffect(() => {
-    // Apply search and filters
     let filtered = [...users];
     
-    // Apply search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(user => 
@@ -82,7 +79,6 @@ export default function AdminUsersPage() {
       );
     }
     
-    // Apply status filter
     if (status === 'blocked') {
       filtered = filtered.filter(user => user.blocked);
     } else if (status === 'active') {
@@ -119,7 +115,6 @@ export default function AdminUsersPage() {
       }
       
       if (result) {
-        // Update the user in the local state
         const updatedUsers = users.map(u => {
           if (u.id === selectedUser.id) {
             return {

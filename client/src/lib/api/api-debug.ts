@@ -1,4 +1,5 @@
 import apiClient from './api-client';
+import ApiConfig from './api-config';
 
 /**
  * Utility functions for API debugging and connectivity testing
@@ -20,7 +21,8 @@ export const apiDebug = {
     };
   }> {
     try {
-      const baseUrl = apiClient.defaults.baseURL || 'No base URL configured';
+      // Get the base URL from ApiConfig instead of directly accessing defaults
+      const baseUrl = ApiConfig.BASE_URL || 'No base URL configured';
       console.log('Testing connection to API server:', baseUrl);
       
       const startTime = Date.now();
@@ -46,7 +48,7 @@ export const apiDebug = {
           data: error.response?.data,
           message: error.message
         },
-        baseUrl: apiClient.defaults.baseURL || 'No base URL configured',
+        baseUrl: ApiConfig.BASE_URL || 'No base URL configured',
         timestamp: new Date(),
         cors: isCorsError ? {
           status: 'error',
@@ -118,12 +120,12 @@ export const apiDebug = {
    */
   getClientInfo() {
     return {
-      apiUrl: apiClient.defaults.baseURL,
+      apiUrl: ApiConfig.BASE_URL,
       environment: process.env.NODE_ENV,
       appName: process.env.NEXT_PUBLIC_APP_NAME,
       clientHost: typeof window !== 'undefined' ? window.location.host : 'SSR',
       cors: {
-        credentials: apiClient.defaults.withCredentials,
+        credentials: ApiConfig.CREDENTIALS,
       }
     };
   }

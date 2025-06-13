@@ -1,28 +1,24 @@
-import { Model, DataTypes, Sequelize } from 'sequelize';
+import { Model, DataTypes } from 'sequelize';
 
-interface TopicAttributes {
-  id?: string; // Make id optional for creation
-  name: string;
-  description?: string;
-  version?: number;
-  createdAt?: Date;
-  updatedAt?: Date;
-}
-
-class Topic extends Model<TopicAttributes> implements TopicAttributes {
+class Topic extends Model {
   public id!: string;
   public name!: string;
   public description!: string;
   public version!: number;
-  public readonly createdAt!: Date;
-  public readonly updatedAt!: Date;
+  public createdAt!: Date;
+  public updatedAt!: Date;
 
-  static initialize(sequelize: Sequelize) {
+  /**
+   * Initialize the Topic model with a sequelize instance
+   * Works with both Sequelize and SequelizeTS instances
+   */
+  static initialize(sequelize: any) {
+    const DataTypes = sequelize.Sequelize ? sequelize.Sequelize.DataTypes : require('sequelize').DataTypes;
+    
     Topic.init({
       id: {
         type: DataTypes.UUID,
         defaultValue: DataTypes.UUIDV4,
-        allowNull: false,
         primaryKey: true
       },
       name: {
@@ -40,14 +36,10 @@ class Topic extends Model<TopicAttributes> implements TopicAttributes {
       }
     }, {
       sequelize,
-      modelName: 'topic',
       tableName: 'topics',
-      timestamps: true
+      timestamps: true,
+      version: true
     });
-  }
-
-  static associate(models: any) {
-    Topic.hasMany(models.Template, { foreignKey: 'topicId' });
   }
 }
 

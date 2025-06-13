@@ -1,9 +1,7 @@
-// Serverless entry point for Vercel
+
 const app = require('../dist/src/app').default;
 
-// Add a custom CORS handler for serverless environment
 app.use((req, res, next) => {
-  // For API health checks and ping endpoints, allow all origins
   if (req.path === '/api/health' || req.path === '/api/health/ping' || req.path === '/health') {
     res.header('Access-Control-Allow-Origin', '*');
     res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -16,7 +14,6 @@ app.use((req, res, next) => {
   next();
 });
 
-// Special permissive CORS direct endpoint (not through API routes)
 app.get('/cors-test', (req, res) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -30,5 +27,4 @@ app.get('/cors-test', (req, res) => {
   });
 });
 
-// Export the Express app
 module.exports = app;

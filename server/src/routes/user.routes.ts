@@ -1,16 +1,12 @@
-import { Router } from 'express';
+import express from 'express';
 import { getAllUsers, toggleUserBlock, toggleUserAdmin } from '../controllers/user.controller';
-import { authMiddleware } from '../middleware/auth.middleware';
-import { adminMiddleware } from '../middleware/admin.middleware';
-import catchAsync from '../utils/catchAsync';
+import verifyToken from '../middleware/auth.middleware';
+import adminMiddleware from '../middleware/admin.middleware';
 
-const router = Router();
+const router = express.Router();
 
-router.use(catchAsync(authMiddleware));
-router.use(catchAsync(adminMiddleware));
-
-router.get('/', catchAsync(getAllUsers));
-router.put('/:userId/block', catchAsync(toggleUserBlock));
-router.put('/:userId/admin', catchAsync(toggleUserAdmin));
+router.get('/', [verifyToken, adminMiddleware], getAllUsers);
+router.post('/:id/toggle-block', [verifyToken, adminMiddleware], toggleUserBlock);
+router.post('/:id/toggle-admin', [verifyToken, adminMiddleware], toggleUserAdmin);
 
 export default router;

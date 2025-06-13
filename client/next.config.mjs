@@ -24,6 +24,16 @@ const nextConfig = {
     
     return config;
   },
+  async rewrites() {
+    return [
+      {
+        source: '/api/:path*',
+        destination: process.env.NEXT_PUBLIC_API_URL 
+          ? `${process.env.NEXT_PUBLIC_API_URL}/:path*` 
+          : 'https://readyforms-api.vercel.app/api/:path*',
+      }
+    ];
+  },
 };
 
 export default nextConfig;

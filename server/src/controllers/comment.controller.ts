@@ -8,13 +8,14 @@ import { optimisticDelete, handleOptimisticLockError } from '../utils/optimistic
 /**
  * @route GET /api/comments/template/:templateId
  */
-export const getCommentsByTemplate = async (req: Request, res: Response) => {
+export const getCommentsByTemplate = async (req: Request, res: Response): Promise<void> => {
   try {
     const { templateId } = req.params;
     const template = await Template.findByPk(templateId);
     
     if (!template) {
-      return res.status(404).json({ message: 'Template not found' });
+      res.status(404).json({ message: 'Template not found' });
+      return;
     }
     const comments = await Comment.findAll({
       where: {
@@ -27,25 +28,27 @@ export const getCommentsByTemplate = async (req: Request, res: Response) => {
       order: [['createdAt', 'ASC']] 
     });
     
-    return res.status(200).json(comments);
+    res.status(200).json(comments);
   } catch (error) {
     console.error('Get comments error:', error);
-    return res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
 /**
  * @route POST /api/comments
  */
-export const createComment = catchAsync(async (req: Request, res: Response) => {
+export const createComment = catchAsync(async (req: Request, res: Response): Promise<void> => {
   const { templateId, content } = req.body;
   
   if (!templateId || !content) {
-    return res.status(400).json({ message: 'Template ID and content are required' });
+    res.status(400).json({ message: 'Template ID and content are required' });
+    return;
   }
 
   if (!req.user) {
-    return res.status(401).json({ message: 'Not authenticated' });
+    res.status(401).json({ message: 'Not authenticated' });
+    return;
   }
 
   const comment = await Comment.create({
@@ -60,24 +63,27 @@ export const createComment = catchAsync(async (req: Request, res: Response) => {
 /**
  * @route DELETE /api/comments/:id
  */
-export const deleteComment = async (req: Request, res: Response) => {
+export const deleteComment = async (req: Request, res: Response): Promise<void> => {
   try {
     if (!req.user) {
-      return res.status(401).json({ message: 'Not authenticated' });
+      res.status(401).json({ message: 'Not authenticated' });
+      return;
     }
     
     const { id } = req.params;
     const { version } = req.body;
     
     if (version === undefined) {
-      return res.status(400).json({ message: 'version field is required for optimistic locking' });
+      res.status(400).json({ message: 'version field is required for optimistic locking' });
+      return;
     }
     const comment = await Comment.findByPk(id, {
       include: [{ model: Template }]
     });
     
     if (!comment) {
-      return res.status(404).json({ message: 'Comment not found' });
+      res.status(404).json({ message: 'Comment not found' });
+      return;
     }
 
     const typedComment = comment as Comment & { template?: Template };
@@ -87,17 +93,20 @@ export const deleteComment = async (req: Request, res: Response) => {
     const isAdmin = req.user.isAdmin;
     
     if (!isCommentAuthor && !isTemplateOwner && !isAdmin) {
-      return res.status(403).json({ 
+      res.status(403).json({ 
         message: 'You do not have permission to delete this comment' 
       });
+      return;
     }
     await optimisticDelete(Comment as any, id, version);
     
-    return res.status(200).json({
+    res.status(200).json({
       message: 'Comment deleted successfully'
     });
   } catch (error) {
-    return handleOptimisticLockError(error, res) || res.status(500).json({ 
+    if (handleOptimisticLockError(error, res)) return;
+    
+    res.status(500).json({ 
       message: 'Server error while deleting comment' 
     });
   }

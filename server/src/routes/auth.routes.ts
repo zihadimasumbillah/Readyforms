@@ -1,16 +1,15 @@
-import { Router } from 'express';
+import express from 'express';
 import { register, login, getCurrentUser, updatePreferences, forgotPassword, checkAuth } from '../controllers/auth.controller';
-import { authMiddleware } from '../middleware/auth.middleware';
-import catchAsync from '../utils/catchAsync';
+import verifyToken from '../middleware/auth.middleware';
 
-const router = Router();
+const router = express.Router();
 
-router.post('/register', catchAsync(register));
-router.post('/login', catchAsync(login));
-router.post('/forgot-password', catchAsync(forgotPassword));
-router.get('/check', catchAsync(checkAuth));
+router.post('/register', register);
+router.post('/login', login);
+router.get('/check', checkAuth);
+router.post('/forgot-password', forgotPassword);
 
-router.get('/me', catchAsync(authMiddleware), catchAsync(getCurrentUser));
-router.put('/preferences', catchAsync(authMiddleware), catchAsync(updatePreferences));
+router.get('/me', verifyToken, getCurrentUser);
+router.put('/preferences', verifyToken, updatePreferences);
 
 export default router;

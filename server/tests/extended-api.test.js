@@ -14,7 +14,6 @@ beforeAll(async () => {
   try {
     console.log('Setting up extended API test database...');
     
-    // Create test users for admin operations
     const hashedPw = await bcrypt.hash('test123', 10);
     const testUser = await User.create({
       name: 'Test User for Admin Ops',
@@ -26,8 +25,7 @@ beforeAll(async () => {
       theme: 'light'
     });
     testUserId = testUser.id;
-    
-    // Login as admin and regular user
+
     const adminRes = await request(app)
       .post('/api/auth/login')
       .send({
@@ -43,15 +41,13 @@ beforeAll(async () => {
         password: 'user123'
       });
     userToken = userRes.body.token;
-    
-    // Create a test topic
+
     const topic = await Topic.create({
       name: 'Extended API Test Topic',
       description: 'For extended API testing'
     });
     testTopicId = topic.id;
-    
-    // Create a test tag
+
     const tag = await Tag.create({
       name: 'Extended API Test'
     });
@@ -93,8 +89,7 @@ describe('Admin User Management API', () => {
     
     expect(res.status).toBe(200);
     expect(res.body).toHaveProperty('blocked');
-    
-    // Toggle back to unblocked for subsequent tests
+
     if (res.body.blocked) {
       await request(app)
         .put(`/api/admin/users/${testUserId}/block`)
@@ -110,7 +105,6 @@ describe('Admin User Management API', () => {
     expect(res.status).toBe(200);
     expect(res.body).toHaveProperty('isAdmin');
     
-    // Toggle back to non-admin for subsequent tests
     if (res.body.isAdmin) {
       await request(app)
         .put(`/api/admin/users/${testUserId}/admin`)
@@ -163,7 +157,6 @@ describe('Admin Dashboard & Analytics API', () => {
 });
 
 describe('Admin Templates Management API', () => {
-  // Create a template first
   beforeAll(async () => {
     const templateData = {
       title: 'Admin API Test Template',
@@ -205,7 +198,6 @@ describe('Admin Templates Management API', () => {
 });
 
 describe('Admin Form Responses Management API', () => {
-  // Create a form response first
   beforeAll(async () => {
     if (testTemplateId) {
       const res = await request(app)

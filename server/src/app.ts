@@ -1,107 +1,68 @@
-import express from 'express';
+import express, { Express, Request, Response } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import morgan from 'morgan';
 import routes from './routes';
-import { errorMiddleware } from './middleware/error.middleware';
+import errorHandler from './middleware/error.middleware'; // Changed from named import to default import
+import dotenv from 'dotenv';
 
-const app = express();
+dotenv.config();
 
-// Parse incoming requests with JSON payloads
+const app: Express = express();
+
+// Apply middlewares
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-// Security middlewares
 app.use(helmet({
-  // Disable content security policy in development
-  contentSecurityPolicy: process.env.NODE_ENV === 'production',
+  // Content security policy disabled temporarily to help with development
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false
 }));
 
-// Get allowed origins from environment variable
-const getAllowedOrigins = (): string[] => {
-  const clientUrl = process.env.CLIENT_URL || 'http://localhost:3000';
-  const allowedOrigins = clientUrl.split(',').map(url => url.trim());
-  
-  // Always include localhost origins for development
-  if (!allowedOrigins.includes('http://localhost:3000')) {
-    allowedOrigins.push('http://localhost:3000');
-  }
-  if (!allowedOrigins.includes('https://localhost:3000')) {
-    allowedOrigins.push('https://localhost:3000');
-  }
-  
-  // Include Vercel preview URLs
-  if (process.env.NODE_ENV === 'production') {
-    allowedOrigins.push('https://readyforms.vercel.app');
-    allowedOrigins.push('https://readyformss.vercel.app');
-    // Vercel preview deployments pattern
-    allowedOrigins.push('https://*.vercel.app');
-  }
-  
-  console.log('Allowed origins for CORS:', allowedOrigins);
-  return allowedOrigins;
-};
-
-// CORS configuration
-const allowAllOrigins = process.env.ALLOW_ALL_ORIGINS === 'true';
-app.use(cors({
-  origin: allowAllOrigins ? true : (origin, callback) => {
-    const allowedOrigins = getAllowedOrigins();
+// Configure CORS
+const corsOptions = {
+  origin: (origin: string | undefined, callback: Function) => {
+    const allowedOrigins = process.env.CLIENT_URL?.split(',') || [];
+    const allowAllOrigins = process.env.ALLOW_ALL_ORIGINS === 'true';
     
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
-    
-    // Check if the origin is in our allowed list
-    const isAllowed = allowedOrigins.some(allowedOrigin => {
-      if (allowedOrigin === '*') return true;
-      if (allowedOrigin.includes('*')) {
-        const pattern = new RegExp('^' + allowedOrigin.replace(/\*/g, '.*') + '$');
-        return pattern.test(origin);
-      }
-      return allowedOrigin === origin;
-    });
-
-    if (isAllowed) {
-      return callback(null, true);
+    if (allowAllOrigins || !origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
     } else {
-      console.warn(`Origin ${origin} not allowed by CORS policy`);
-      return callback(new Error(`Origin ${origin} not allowed by CORS policy`), false);
+      callback(new Error('Not allowed by CORS'));
     }
   },
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   credentials: true,
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Version', 'X-Requested-With'],
-  preflightContinue: false,
-  optionsSuccessStatus: 204
-}));
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Version']
+};
 
-// Special endpoint that doesn't need API prefix - useful for quick health checks
-app.get('/health', (req, res) => {
-  // Override CORS headers directly on this specific route
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  
-  res.status(200).json({ 
-    status: 'ok',
-    message: 'API server is running',
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development'
+app.use(cors(corsOptions));
+
+// Logging middleware
+const morganFormat = process.env.NODE_ENV === 'production' ? 'combined' : 'dev';
+app.use(morgan(morganFormat));
+
+// Health check route
+app.get('/', (req: Request, res: Response) => {
+  res.status(200).json({
+    name: 'ReadyForms API',
+    version: '1.0.0',
+    health: 'OK',
+    timestamp: new Date().toISOString()
   });
 });
 
-// Main API routes
+// Simple ping endpoint
+app.get('/ping', (req: Request, res: Response) => {
+  res.status(200).json({
+    message: 'pong',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Apply API routes
 app.use('/api', routes);
 
-// Catch-all route for API routes that don't match
-app.all('/api/*', (req, res) => {
-  res.status(404).json({
-    message: 'API endpoint not found',
-    path: req.path
-  });
-});
-
-// Global error handler middleware - make sure it's the last middleware added
-// This is a special middleware with 4 parameters
-app.use(errorMiddleware);
+// Error handling middleware
+app.use(errorHandler);
 
 export default app;

@@ -2,10 +2,10 @@ import { Model, ModelStatic } from 'sequelize';
 import { Response } from 'express';
 
 /**
- * @param model The Sequelize model class
- * @param id The id of the record to update
- * @param version The expected version of the record
- * @param updateData The data to update
+ * @param model 
+ * @param id 
+ * @param version 
+ * @param updateData 
  */
 export async function optimisticUpdate<T extends Model>(
   model: ModelStatic<any>,
@@ -33,9 +33,9 @@ export async function optimisticUpdate<T extends Model>(
 }
 
 /**
- * @param model The Sequelize model class
- * @param id The id of the record to delete
- * @param version The expected version of the record
+ * @param model 
+ * @param id 
+ * @param version 
  */
 export async function optimisticDelete(
   model: ModelStatic<any>,
@@ -59,9 +59,9 @@ export async function optimisticDelete(
 }
 
 /**
- * @param error The error to handle
- * @param res Express response object
- * @returns true if error was handled, false otherwise
+ * @param error 
+ * @param res 
+ * @returns 
  */
 export function handleOptimisticLockError(error: any, res: Response): boolean {
   if (error.isOptimisticLockError) {

@@ -1,48 +1,64 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { User } from '../models';
 import jwtConfig from '../config/jwt.config';
+import { User } from '../models';
 
-interface DecodedToken {
+interface JwtPayload {
   id: string;
   email: string;
   isAdmin: boolean;
-  iat: number;
-  exp: number;
+  iat?: number;
+  exp?: number;
 }
 
-export const authMiddleware = async (req: Request, res: Response, next: NextFunction) => {
+
+const verifyToken = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const authHeader = req.headers.authorization;
-
+    
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ message: 'Authentication required' });
+      res.status(401).json({ message: 'Authentication required' });
+      return;
     }
-
+    
     const token = authHeader.split(' ')[1];
     
     try {
-      const decoded = jwt.verify(token, jwtConfig.secret) as DecodedToken;
+      const decoded = jwt.verify(token, jwtConfig.secret) as JwtPayload;
       
-      const user = await User.findByPk(decoded.id);
+      const user = await User.findByPk(decoded.id, {
+        attributes: { exclude: ['password'] }
+      });
       
       if (!user) {
-        return res.status(401).json({ message: 'User not found' });
+        res.status(404).json({ message: 'User not found' });
+        return;
       }
       
       if (user.blocked) {
-        return res.status(403).json({ message: 'User is blocked' });
+        res.status(403).json({ message: 'Your account is blocked' });
+        return;
       }
       
       req.user = user;
+      
       next();
     } catch (error) {
-      return res.status(401).json({ message: 'Invalid or expired token' });
+      if ((error as Error).name === 'TokenExpiredError') {
+        res.status(401).json({ message: 'Token expired' });
+        return;
+      }
+      res.status(401).json({ message: 'Invalid token' });
+      return;
     }
   } catch (error) {
     console.error('Auth middleware error:', error);
-    return res.status(500).json({ message: 'Server error during authentication' });
+    res.status(500).json({ message: 'Server error during authentication' });
+    return;
   }
 };
 
-export default authMiddleware; 
+export default verifyToken;
+export { verifyToken };
+
+export const authMiddleware = verifyToken;

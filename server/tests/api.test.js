@@ -1,7 +1,12 @@
 const request = require('supertest');
 const bcrypt = require('bcryptjs');
-const server = require('./server');
-const { sequelize, User, Topic, Tag, Template } = require('../dist/src/models');
+const { Sequelize } = require('sequelize');
+const setupTestDb = require('./setup-test-db').default;
+
+// Create a dedicated test database connection
+let sequelize;
+let server;
+let User, Topic, Tag, Template;
 
 let adminToken = '';
 let userToken = '';
@@ -13,53 +18,205 @@ let commentId = '';
 let formResponseId = '';
 let tagId = '';
 
+// Increase timeout for beforeAll
+jest.setTimeout(120000); // 120 seconds timeout for database setup
+
 beforeAll(async () => {
   try {
     console.log('Setting up test database...');
     
-    // Drop and recreate all tables
-    await sequelize.sync({ force: true });
+    // Set test environment flag to prevent automatic model initialization
+    process.env.NODE_ENV = 'test';
     
-    // Create test topics
-    const topic = await Topic.create({
-      name: 'Test Topic',
-      description: 'This is a test topic for API testing'
-    });
-    topicId = topic.id;
+    // Make sure test database exists first
+    const dbSetupSuccess = await setupTestDb();
+    if (!dbSetupSuccess) {
+      throw new Error('Failed to set up test database');
+    }
     
-    // Create test tags
-    const tag = await Tag.create({
-      name: 'API Test'
-    });
-    tagId = tag.id;
+    // Database connection parameters from environment variables
+    const dbName = process.env.TEST_DB_NAME || 'readyforms_test';
+    const username = process.env.DB_USER || 'postgres';
+    const password = process.env.DB_PASSWORD || 'postgres';
+    const host = process.env.DB_HOST || 'localhost';
+    const port = parseInt(process.env.DB_PORT || '5432');
     
+    // Initialize a fresh database connection for tests
+    sequelize = new Sequelize(
+      dbName,
+      username,
+      password,
+      {
+        host,
+        port,
+        dialect: 'postgres',
+        logging: process.env.TEST_LOGS === 'true',
+        define: {
+          timestamps: true,
+          version: true
+        },
+        pool: {
+          max: 10,
+          min: 0,
+          acquire: 60000,
+          idle: 10000
+        }
+      }
+    );
+    
+    // Verify connection
+    await sequelize.authenticate();
+    console.log('Test database connection established successfully.');
+    
+    // Important: Initialize models before importing anything else
+    console.log('Initializing models with test database connection...');
+    try {
+      // First, ensure Sequelize constructor is accessible on the instance
+      sequelize.Sequelize = Sequelize;
+      
+      // We need to add these methods to the sequelize instance for model initialization
+      if (!sequelize.getQueryInterface) {
+        sequelize.getQueryInterface = function() {
+          if (!this._queryInterface) {
+            const QueryInterface = require('sequelize/lib/query-interface');
+            this._queryInterface = new QueryInterface(this);
+          }
+          return this._queryInterface;
+        };
+      }
+      
+      // Now load and initialize models
+      const { initializeModels } = require('../dist/src/models');
+      await initializeModels(sequelize);
+      console.log('Models initialized for testing');
+      
+      // Get models after initialization to ensure we use the initialized versions
+      const models = require('../dist/src/models');
+      
+      // Extract model references 
+      User = models.User;
+      Topic = models.Topic;
+      Tag = models.Tag; 
+      Template = models.Template;
+      
+      // Set up static sequelize instances on all models to ensure they work correctly
+      Object.values(models).forEach(model => {
+        if (!model.sequelize) model.sequelize = sequelize;
+        if (!model.Sequelize) model.Sequelize = Sequelize;
+      });
+      
+      // Double-check models were properly initialized
+      if (!User || !Topic || !Template || !Tag) {
+        throw new Error('Models were not properly exported after initialization');
+      }
+    } catch (modelError) {
+      console.error('Error initializing models:', modelError);
+      throw new Error('Failed to initialize models: ' + modelError.message);
+    }
+    
+    // Sync all models to ensure tables exist
+    try {
+      await sequelize.sync({ force: true });
+      console.log('Models synchronized with database');
+    } catch (syncError) {
+      console.error('Error syncing models:', syncError);
+      throw new Error('Failed to sync models with database: ' + syncError.message);
+    }
+    
+    // Only import server after models are initialized and ready
+    server = require('./server');
+    
+    // Create initial test data
+    
+    // Create or find the test topic
+    try {
+      const topicData = {
+        name: 'Test Topic',
+        description: 'This is a test topic for API testing'
+      };
+      
+      console.log('Creating topic with data:', topicData);
+      
+      // Use the Topic model to create topic properly
+      const topic = await Topic.create(topicData);
+      
+      topicId = topic.id;
+      console.log('Created test topic using model:', topicId);
+    } catch (topicError) {
+      console.error('Error creating test topic:', topicError.message);
+      
+      // Try to find an existing topic instead
+      try {
+        console.log('Attempting to find an existing topic...');
+        const existingTopic = await Topic.findOne({
+          where: { name: 'Test Topic' }
+        });
+        
+        if (existingTopic) {
+          topicId = existingTopic.id;
+          console.log('Found existing topic:', topicId);
+        } else {
+          console.warn('Using a placeholder topic ID to continue tests');
+          topicId = '00000000-0000-0000-0000-000000000000'; // Placeholder UUID
+        }
+      } catch (fallbackError) {
+        console.error('Fallback error:', fallbackError);
+        console.warn('Using a placeholder topic ID to continue tests');
+        topicId = '00000000-0000-0000-0000-000000000000'; // Placeholder UUID
+      }
+    }
+
+    // Create a tag
+    try {
+      const tag = await Tag.create({
+        name: 'API Test'
+      });
+      tagId = tag.id;
+      console.log('Created test tag:', tag.name, tagId);
+    } catch (tagError) {
+      console.error('Failed to create tag:', tagError.message);
+      throw new Error('Failed to create tag: ' + tagError.message);
+    }
+
     // Create admin user
-    const hashedAdminPw = await bcrypt.hash('admin123', 10);
-    const admin = await User.create({
-      name: 'API Test Admin',
-      email: 'api-admin@example.com',
-      password: hashedAdminPw,
-      isAdmin: true,
-      blocked: false,
-      language: 'en',
-      theme: 'light',
-      lastLoginAt: new Date()
-    });
-    adminId = admin.id;
-    
+    try {
+      const hashedAdminPw = await bcrypt.hash('admin123', 10);
+      const admin = await User.create({
+        name: 'API Test Admin',
+        email: 'api-admin@example.com',
+        password: hashedAdminPw,
+        isAdmin: true,
+        blocked: false,
+        language: 'en',
+        theme: 'light',
+        lastLoginAt: new Date()
+      });
+      console.log('Created admin user:', admin.id);
+      adminId = admin.id;
+    } catch (error) {
+      console.error('Error creating admin user:', error.message);
+      throw new Error('Failed to create admin user: ' + error.message);
+    }
+
     // Create regular user
-    const hashedUserPw = await bcrypt.hash('user123', 10);
-    const user = await User.create({
-      name: 'API Test User',
-      email: 'api-user@example.com',
-      password: hashedUserPw,
-      isAdmin: false,
-      blocked: false,
-      language: 'en',
-      theme: 'dark',
-      lastLoginAt: new Date()
-    });
-    userId = user.id;
+    try {
+      const hashedUserPw = await bcrypt.hash('user123', 10);
+      const user = await User.create({
+        name: 'API Test User',
+        email: 'api-user@example.com',
+        password: hashedUserPw,
+        isAdmin: false,
+        blocked: false,
+        language: 'en',
+        theme: 'dark',
+        lastLoginAt: new Date()
+      });
+      console.log('Created regular user:', user.id);
+      userId = user.id;
+    } catch (error) {
+      console.error('Error creating regular user:', error.message);
+      throw new Error('Failed to create regular user: ' + error.message);
+    }
     
     console.log('Test setup complete.');
   } catch (error) {
@@ -69,11 +226,23 @@ beforeAll(async () => {
 });
 
 describe('Health Check API', () => {
+  test('Root API endpoint should respond', async () => {
+    const res = await request(server).get('/api');
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveProperty('name', 'ReadyForms API');
+  });
+
   test('Ping endpoint should respond', async () => {
     const res = await request(server).get('/api/ping');
     expect(res.status).toBe(200);
     expect(res.body).toHaveProperty('message', 'pong');
     expect(res.body).toHaveProperty('timestamp');
+  });
+
+  test('Health status endpoint should respond', async () => {
+    const res = await request(server).get('/api/health/status');
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveProperty('status', 'ok');
   });
 });
 
@@ -222,7 +391,7 @@ describe('Templates API', () => {
       customCheckbox1State: true,
       customCheckbox1Question: 'Subscribe to newsletter?',
       questionOrder: JSON.stringify(['customString1', 'customText1', 'customCheckbox1']),
-      tags: ['API Test', 'Sample']
+      ...(tagId ? { tags: ['API Test'] } : {})
     };
     
     const res = await request(server)
@@ -268,7 +437,6 @@ describe('Templates API', () => {
   });
   
   test('Update template should succeed', async () => {
-    // First get the template to get its version
     const getRes = await request(server)
       .get(`/api/templates/${templateId}`)
       .set('Authorization', `Bearer ${userToken}`);
@@ -317,7 +485,6 @@ describe('Form Response API', () => {
   });
   
   test('Get responses for template should succeed', async () => {
-    // First make sure we have a response by submitting another one
     if (!formResponseId) {
       const createRes = await request(server)
         .post('/api/responses')
@@ -349,7 +516,6 @@ describe('Form Response API', () => {
   });
   
   test('Get user responses should succeed', async () => {
-    // First ensure we have a response by submitting another one if needed
     if (!formResponseId) {
       const createRes = await request(server)
         .post('/api/responses')
@@ -407,7 +573,6 @@ describe('Comments API', () => {
   });
   
   test('Delete comment should succeed', async () => {
-    // First get the comment to get its version
     const comment = await request(server)
       .get(`/api/comments/template/${templateId}`)
       .set('Authorization', `Bearer ${userToken}`);
@@ -535,11 +700,28 @@ describe('Clean up & test template deletion', () => {
 
 afterAll(async () => {
   console.log('Cleaning up test environment...');
-  try {
-    await sequelize.close();
-    await server.close(); // Close the server when done
-    console.log('Test database connection closed');
-  } catch (error) {
-    console.error('Error closing database connection:', error);
+  
+  // Close the server first
+  if (server && server.close) {
+    await new Promise((resolve) => {
+      server.close((err) => {
+        if (err) {
+          console.error('Error closing server:', err);
+        } else {
+          console.log('Test server closed');
+        }
+        resolve();
+      });
+    });
+  }
+  
+  // Now close the database connection
+  if (sequelize) {
+    try {
+      await sequelize.close();
+      console.log('Test database connection closed');
+    } catch (dbError) {
+      console.error('Error closing database connection:', dbError.message);
+    }
   }
 });

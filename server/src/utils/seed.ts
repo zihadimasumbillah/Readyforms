@@ -1,521 +1,490 @@
-import { sequelize } from '../models';
-import { User, Template, Topic, FormResponse, Comment, Like, Tag, TemplateTag } from '../models';
+import { sequelize, User, Template, Topic, FormResponse, Comment, Like, Tag, TemplateTag } from '../models';
 import bcrypt from 'bcryptjs';
+import { faker } from '@faker-js/faker';
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+// Reduced configuration constants to limit data insertion
+const USERS_COUNT = 10;          // Reduced from 20
+const TOPICS_COUNT = 8;          // Reduced from 10
+const TAGS_COUNT = 10;           // Reduced from 15
+const TEMPLATES_COUNT = 15;      // Reduced from 30
+const RESPONSES_PER_TEMPLATE = 3; // Fixed number of responses per template
+const COMMENTS_PER_TEMPLATE = 2;  // Fixed number of comments per template
+const LIKES_PER_TEMPLATE = 3;     // Fixed number of likes per template
+
+// Language options limited to English and Bangla
+const LANGUAGES = ['en', 'bn'];
+const THEMES = ['light', 'dark', 'system'];
 
 const seedDatabase = async () => {
   try {
-    console.log('Dropping all tables...');
-    await sequelize.drop();
-
-    console.log('Synchronizing database schema...');
+    console.log('=========================================');
+    console.log('Starting database seeding process...');
+    console.log('=========================================');
+    
+    // Force sync to drop all tables and recreate them
+    console.log('Dropping all tables and recreating schema...');
     await sequelize.sync({ force: true });
-
-    console.log('Seeding database with initial data...');
-
-    // Define hashed passwords for seed users
-    const adminPassword = await bcrypt.hash('admin123', 10);
-    const userPassword = await bcrypt.hash('user123', 10);
-    const moderatorPassword = await bcrypt.hash('moderator123', 10);
+    console.log('✅ Database schema reset successful.');
 
     // Create Topics
-    const topics = await Topic.bulkCreate([
-      { name: 'Education', description: 'Forms related to education and learning' },
-      { name: 'Business', description: 'Forms for business operations and feedback' },
-      { name: 'Entertainment', description: 'Fun and entertainment forms' },
-      { name: 'Quizzes', description: 'Knowledge tests and surveys' },
-      { name: 'Research', description: 'Forms for academic and market research' },
-      { name: 'Healthcare', description: 'Medical forms and health surveys' },
-      { name: 'Event Planning', description: 'RSVPs and event feedback forms' },
-    ]);
+    console.log('\nCreating topics...');
+    const topics: Topic[] = [];
+    const topicNames = [
+      'Education', 'Business', 'Entertainment', 'Quizzes', 
+      'Research', 'Healthcare', 'Event Planning', 'Customer Feedback'
+    ];
+    
+    for (let i = 0; i < TOPICS_COUNT; i++) {
+      const name = i < topicNames.length ? topicNames[i] : faker.word.noun() + ' Forms';
+      const topic = await Topic.create({
+        name,
+        description: faker.lorem.sentence()
+      } as any);
+      topics.push(topic);
+    }
+    console.log(`✅ Created ${topics.length} topics`);
 
-    // Cast the topics array to access the id property
-    const topicsWithIds = topics as any[];
+    // Create Tags
+    console.log('\nCreating tags...');
+    const tags: Tag[] = [];
+    const tagNames = [
+      'Popular', 'Education', 'Feedback', 'Survey', 'Knowledge',
+      'Programming', 'Science', 'History', 'Customer', 'Evaluation'
+    ];
+    
+    for (let i = 0; i < TAGS_COUNT; i++) {
+      const name = i < tagNames.length ? tagNames[i] : faker.word.adjective();
+      const [tag] = await Tag.findOrCreate({
+        where: { name },
+        defaults: { name }
+      });
+      tags.push(tag);
+    }
+    console.log(`✅ Created ${tags.length} tags`);
 
-    // Create Users with various roles
-    const users = await User.bulkCreate([
-      { 
-        name: 'Admin User', 
-        email: 'admin@example.com', 
-        password: adminPassword, 
-        isAdmin: true,
-        blocked: false,
-        language: 'en',
-        theme: 'light',
-        lastLoginAt: new Date()
-      },
-      { 
-        name: 'Regular User', 
-        email: 'user@example.com', 
-        password: userPassword, 
-        isAdmin: false,
-        blocked: false,
-        language: 'en',
-        theme: 'dark',
-        lastLoginAt: new Date()
-      },
-      {
-        name: 'Moderator User',
-        email: 'moderator@example.com',
-        password: moderatorPassword,
-        isAdmin: false,
-        blocked: false,
-        language: 'en',
-        theme: 'system',
-        lastLoginAt: new Date(Date.now() - 86400000) // 1 day ago
-      },
-      {
-        name: 'Inactive User',
-        email: 'inactive@example.com',
-        password: await bcrypt.hash('inactive123', 10),
-        isAdmin: false,
-        blocked: false,
-        language: 'fr',
-        theme: 'dark',
-        lastLoginAt: new Date(Date.now() - 30 * 86400000) // 30 days ago
-      },
-      {
-        name: 'Test User',
-        email: 'test@example.com',
-        password: await bcrypt.hash('test123', 10),
-        isAdmin: false,
-        blocked: false,
-        language: 'es',
-        theme: 'light',
-        lastLoginAt: new Date(Date.now() - 2 * 86400000) // 2 days ago
-      }
-    ]);
+    // Create Users
+    console.log('\nCreating users...');
+    const users: User[] = [];
+    
+    // Create admin user
+    const adminPassword = await bcrypt.hash('admin123', 10);
+    const admin = await User.create({
+      name: 'Admin User',
+      email: 'admin@example.com',
+      password: adminPassword,
+      isAdmin: true,
+      blocked: false,
+      language: 'en',
+      theme: 'dark',
+      lastLoginAt: new Date()
+    });
+    users.push(admin);
+    
+    // Create regular user with English
+    const englishUserPassword = await bcrypt.hash('user123', 10);
+    const englishUser = await User.create({
+      name: 'Regular User',
+      email: 'user@example.com',
+      password: englishUserPassword,
+      isAdmin: false,
+      blocked: false,
+      language: 'en',
+      theme: 'light',
+      lastLoginAt: new Date()
+    });
+    users.push(englishUser);
+    
+    // Create Bangla user
+    const banglaUserPassword = await bcrypt.hash('user123', 10);
+    const banglaUser = await User.create({
+      name: 'বাংলা ব্যবহারকারী', // Bangla User
+      email: 'bangla@example.com',
+      password: banglaUserPassword,
+      isAdmin: false,
+      blocked: false,
+      language: 'bn',
+      theme: 'system',
+      lastLoginAt: new Date()
+    });
+    users.push(banglaUser);
+    
+    // Create additional random users (limit to remaining count)
+    for (let i = 0; i < USERS_COUNT - 3; i++) {
+      const name = faker.person.fullName();
+      const email = faker.internet.email().toLowerCase();
+      const password = await bcrypt.hash(faker.internet.password(), 10);
+      
+      const user = await User.create({
+        name,
+        email,
+        password,
+        isAdmin: Math.random() < 0.1, // 10% chance to be admin
+        blocked: Math.random() < 0.05, // 5% chance to be blocked
+        language: faker.helpers.arrayElement(LANGUAGES),
+        theme: faker.helpers.arrayElement(THEMES),
+        lastLoginAt: faker.date.past()
+      });
+      users.push(user);
+    }
+    console.log(`✅ Created ${users.length} users`);
 
-    // Create Tags for better categorization
-    const tags = await Tag.bulkCreate([
-      { name: 'Popular' },
-      { name: 'Education' },
-      { name: 'Feedback' },
-      { name: 'Survey' },
-      { name: 'Knowledge' },
-      { name: 'Programming' },
-      { name: 'Science' },
-      { name: 'History' },
-      { name: 'Customer' },
-      { name: 'Evaluation' },
-      { name: 'Beginner' },
-      { name: 'Advanced' },
-      { name: 'Short' },
-      { name: 'Detailed' }
-    ]);
-
-    // Create Templates with varied structures and types
-    const templates = await Template.bulkCreate([
-      {
-        title: 'Basic Quiz',
-        description: 'A sample quiz with automatic scoring',
+    // Create Templates
+    console.log('\nCreating templates...');
+    const templates: Template[] = [];
+    
+    // Quiz template function - English
+    const createEnglishQuizTemplate = async (userId: string, topicId: string) => {
+      const scoringCriteria = {
+        'customString1Answer': { answer: 'Paris', points: 5 },
+        'customString2Answer': { answer: 'Shakespeare', points: 5 },
+        'customInt1Answer': { answer: 8, points: 10 },
+        'customCheckbox1Answer': { answer: true, points: 5 }
+      };
+      
+      return await Template.create({
+        title: 'General Knowledge Quiz',
+        description: 'Test your knowledge with this general knowledge quiz',
         isPublic: true,
-        topicId: topicsWithIds[3].id, // Use the cast array
-        userId: users[0].id,
+        topicId,
+        userId,
         isQuiz: true,
         showScoreImmediately: true,
-        scoringCriteria: JSON.stringify({
-          'customString1Answer': { answer: 'Paris', points: 5 },
-          'customString2Answer': { answer: 'Jupiter', points: 5 },
-          'customInt1Answer': { answer: 1945, points: 10 },
-          'customCheckbox1Answer': { answer: true, points: 5 },
-        }),
+        scoringCriteria: JSON.stringify(scoringCriteria),
         customString1State: true,
         customString1Question: 'What is the capital of France?',
         customString2State: true,
-        customString2Question: 'What is the largest planet in our solar system?',
+        customString2Question: 'Who wrote "Romeo and Juliet"?',
         customInt1State: true,
-        customInt1Question: 'In what year did World War II end?',
+        customInt1Question: 'How many planets are in our solar system?',
         customCheckbox1State: true,
-        customCheckbox1Question: 'Is the Earth round?',
-        questionOrder: JSON.stringify([
-          'customString1',
-          'customString2',
-          'customInt1',
-          'customCheckbox1'
-        ])
-      },
-      {
-        title: 'Customer Feedback Form',
-        description: 'A simple feedback form for gathering customer opinions',
+        customCheckbox1Question: 'Is water a compound?',
+        questionOrder: JSON.stringify(['customString1', 'customString2', 'customInt1', 'customCheckbox1'])
+      });
+    };
+    
+    // Quiz template function - Bangla
+    const createBanglaQuizTemplate = async (userId: string, topicId: string) => {
+      const scoringCriteria = {
+        'customString1Answer': { answer: 'ঢাকা', points: 5 },
+        'customString2Answer': { answer: 'রবীন্দ্রনাথ ঠাকুর', points: 5 },
+        'customInt1Answer': { answer: 1971, points: 10 },
+        'customCheckbox1Answer': { answer: true, points: 5 }
+      };
+      
+      return await Template.create({
+        title: 'বাংলাদেশ কুইজ', // Bangladesh Quiz
+        description: 'বাংলাদেশ সম্পর্কিত প্রশ্ন',
         isPublic: true,
-        topicId: topicsWithIds[1].id, // Use the cast array
-        userId: users[1].id,
+        topicId,
+        userId,
+        isQuiz: true,
+        showScoreImmediately: true,
+        scoringCriteria: JSON.stringify(scoringCriteria),
+        customString1State: true,
+        customString1Question: 'বাংলাদেশের রাজধানী কি?',
+        customString2State: true,
+        customString2Question: 'রবীন্দ্র সংগীত কে রচনা করেছিলেন?',
+        customInt1State: true,
+        customInt1Question: 'বাংলাদেশ কত সালে স্বাধীন হয়েছিল?',
+        customCheckbox1State: true,
+        customCheckbox1Question: 'বাংলাদেশের জাতীয় ফল কি জ্যাকফ্রুট?',
+        questionOrder: JSON.stringify(['customString1', 'customString2', 'customInt1', 'customCheckbox1'])
+      });
+    };
+
+    // Feedback template function - English
+    const createEnglishFeedbackTemplate = async (userId: string, topicId: string) => {
+      return await Template.create({
+        title: 'Customer Feedback Form',
+        description: 'Please provide your feedback about our services',
+        isPublic: true,
+        topicId,
+        userId,
         isQuiz: false,
         customText1State: true,
-        customText1Question: 'How would you describe your experience with our product?',
+        customText1Question: 'What do you like about our service?',
+        customText2State: true,
+        customText2Question: 'What areas can we improve?',
         customInt1State: true,
         customInt1Question: 'On a scale of 1-10, how would you rate our service?',
         customCheckbox1State: true,
         customCheckbox1Question: 'Would you recommend us to others?',
-        questionOrder: JSON.stringify([
-          'customText1',
-          'customInt1',
-          'customCheckbox1'
-        ])
-      },
-      {
-        title: 'Programming Language Quiz',
-        description: 'Test your knowledge of programming languages',
+        questionOrder: JSON.stringify(['customText1', 'customText2', 'customInt1', 'customCheckbox1'])
+      });
+    };
+    
+    // Feedback template function - Bangla
+    const createBanglaFeedbackTemplate = async (userId: string, topicId: string) => {
+      return await Template.create({
+        title: 'মতামত ফর্ম', // Feedback Form
+        description: 'আমাদের সেবা সম্পর্কে আপনার মতামত প্রদান করুন',
         isPublic: true,
-        topicId: topicsWithIds[0].id, // Use the cast array
-        userId: users[0].id,
-        isQuiz: true,
-        showScoreImmediately: true,
-        scoringCriteria: JSON.stringify({
-          'customString1Answer': { answer: 'Brendan Eich', points: 10 },
-          'customString2Answer': { answer: 'Guido van Rossum', points: 10 },
-          'customString3Answer': { answer: '1995', points: 5 },
-          'customCheckbox1Answer': { answer: true, points: 5 }
-        }),
-        customString1State: true,
-        customString1Question: 'Who created JavaScript?',
-        customString2State: true,
-        customString2Question: 'Who created Python?',
-        customString3State: true,
-        customString3Question: 'In what year was Java released?',
-        customCheckbox1State: true,
-        customCheckbox1Question: 'Is TypeScript a superset of JavaScript?',
-        questionOrder: JSON.stringify([
-          'customString1',
-          'customString2',
-          'customString3',
-          'customCheckbox1'
-        ])
-      },
-      {
-        title: 'Private Survey',
-        description: 'A private survey only visible to selected users',
-        isPublic: false,
-        topicId: topicsWithIds[0].id, // Use the cast array
-        userId: users[0].id,
+        topicId,
+        userId,
         isQuiz: false,
-        allowedUsers: JSON.stringify([users[1].id, users[2].id]), // Only specific users can see this
-        customString1State: true,
-        customString1Question: 'What is your current job title?',
         customText1State: true,
-        customText1Question: 'Describe your educational background',
-        questionOrder: JSON.stringify([
-          'customString1',
-          'customText1'
-        ])
-      },
-      {
-        title: 'Science Knowledge Test',
-        description: 'Test your understanding of basic scientific concepts',
-        isPublic: true,
-        topicId: topicsWithIds[3].id, // Use the cast array
-        userId: users[2].id,
-        isQuiz: true,
-        showScoreImmediately: false,
-        scoringCriteria: JSON.stringify({
-          'customString1Answer': { answer: 'H2O', points: 5 },
-          'customString2Answer': { answer: 'Oxygen', points: 5 },
-          'customInt1Answer': { answer: 299792458, points: 10 },
-          'customCheckbox1Answer': { answer: true, points: 5 }
-        }),
-        customString1State: true,
-        customString1Question: 'What is the chemical formula for water?',
-        customString2State: true,
-        customString2Question: 'What gas do plants produce during photosynthesis?',
+        customText1Question: 'আমাদের সেবার কোন দিকটি আপনার পছন্দ?',
+        customText2State: true,
+        customText2Question: 'আমরা কোন দিকে উন্নতি করতে পারি?',
         customInt1State: true,
-        customInt1Question: 'What is the speed of light in meters per second?',
+        customInt1Question: '১-১০ স্কেলে, আমাদের সেবা কেমন রেট করবেন?',
         customCheckbox1State: true,
-        customCheckbox1Question: 'Is gravity a fundamental force?',
-        questionOrder: JSON.stringify([
-          'customString1',
-          'customString2',
-          'customInt1',
-          'customCheckbox1'
-        ])
-      },
-      {
+        customCheckbox1Question: 'আপনি কি অন্যদের কাছে আমাদের সুপারিশ করবেন?',
+        questionOrder: JSON.stringify(['customText1', 'customText2', 'customInt1', 'customCheckbox1'])
+      });
+    };
+    
+    // Registration template function - English
+    const createEnglishRegistrationTemplate = async (userId: string, topicId: string) => {
+      return await Template.create({
         title: 'Event Registration Form',
-        description: 'Register for our upcoming tech conference',
+        description: 'Register for our upcoming event',
         isPublic: true,
-        topicId: topicsWithIds[6].id, // Use the cast array
-        userId: users[1].id,
+        topicId,
+        userId,
         isQuiz: false,
         customString1State: true,
         customString1Question: 'Full Name',
         customString2State: true,
         customString2Question: 'Email Address',
         customString3State: true,
-        customString3Question: 'Company',
-        customString4State: true,
-        customString4Question: 'Job Title',
+        customString3Question: 'Organization',
         customText1State: true,
-        customText1Question: 'Dietary Restrictions',
+        customText1Question: 'Any special requirements?',
         customCheckbox1State: true,
-        customCheckbox1Question: 'Will you attend the networking dinner?',
-        questionOrder: JSON.stringify([
-          'customString1',
-          'customString2',
-          'customString3',
-          'customString4',
-          'customText1',
-          'customCheckbox1'
-        ])
-      },
-      {
-        title: 'Health Assessment',
-        description: 'Basic health questionnaire for new patients',
+        customCheckbox1Question: 'Subscribe to newsletter',
+        questionOrder: JSON.stringify(['customString1', 'customString2', 'customString3', 'customText1', 'customCheckbox1'])
+      });
+    };
+    
+    // Registration template function - Bangla
+    const createBanglaRegistrationTemplate = async (userId: string, topicId: string) => {
+      return await Template.create({
+        title: 'অনুষ্ঠান নিবন্ধন ফর্ম',
+        description: 'আমাদের আসন্ন অনুষ্ঠানে নিবন্ধন করুন',
         isPublic: true,
-        topicId: topicsWithIds[5].id, // Use the cast array
-        userId: users[0].id,
+        topicId,
+        userId,
         isQuiz: false,
-        customInt1State: true,
-        customInt1Question: 'What is your age?',
-        customInt2State: true,
-        customInt2Question: 'Height in cm',
-        customInt3State: true,
-        customInt3Question: 'Weight in kg',
-        customCheckbox1State: true,
-        customCheckbox1Question: 'Do you smoke?',
-        customCheckbox2State: true,
-        customCheckbox2Question: 'Do you drink alcohol?',
+        customString1State: true,
+        customString1Question: 'পুরো নাম',
+        customString2State: true,
+        customString2Question: 'ইমেইল ঠিকানা',
+        customString3State: true,
+        customString3Question: 'প্রতিষ্ঠান',
         customText1State: true,
-        customText1Question: 'List any current medications',
-        customText2State: true,
-        customText2Question: 'List any allergies',
-        questionOrder: JSON.stringify([
-          'customInt1',
-          'customInt2',
-          'customInt3',
-          'customCheckbox1',
-          'customCheckbox2',
-          'customText1',
-          'customText2'
-        ])
+        customText1Question: 'কোন বিশেষ প্রয়োজন আছে কি?',
+        customCheckbox1State: true,
+        customCheckbox1Question: 'নিউজলেটার সাবস্ক্রাইব করুন',
+        questionOrder: JSON.stringify(['customString1', 'customString2', 'customString3', 'customText1', 'customCheckbox1'])
+      });
+    };
+    
+    // Create templates using a mix of different types
+    const templateCreators = [
+      createEnglishQuizTemplate, createBanglaQuizTemplate,
+      createEnglishFeedbackTemplate, createBanglaFeedbackTemplate,
+      createEnglishRegistrationTemplate, createBanglaRegistrationTemplate
+    ];
+    
+    // First create one of each template type to ensure variety
+    for (let i = 0; i < templateCreators.length && templates.length < TEMPLATES_COUNT; i++) {
+      // Use appropriate users for language-specific templates
+      let userId;
+      if (i % 2 === 0) { // English templates
+        userId = englishUser.id;
+      } else { // Bangla templates
+        userId = banglaUser.id;
       }
-    ]);
-
-    // Connect Templates with Tags
-    await TemplateTag.bulkCreate([
-      { templateId: templates[0].id, tagId: tags[3].id }, // Basic Quiz - Survey
-      { templateId: templates[0].id, tagId: tags[4].id }, // Basic Quiz - Knowledge
-      { templateId: templates[0].id, tagId: tags[0].id }, // Basic Quiz - Popular
-      { templateId: templates[0].id, tagId: tags[10].id }, // Basic Quiz - Beginner
-
-      { templateId: templates[1].id, tagId: tags[2].id }, // Customer Feedback - Feedback
-      { templateId: templates[1].id, tagId: tags[8].id }, // Customer Feedback - Customer
-      { templateId: templates[1].id, tagId: tags[12].id }, // Customer Feedback - Short
-
-      { templateId: templates[2].id, tagId: tags[5].id }, // Programming Language Quiz - Programming
-      { templateId: templates[2].id, tagId: tags[4].id }, // Programming Language Quiz - Knowledge
-      { templateId: templates[2].id, tagId: tags[11].id }, // Programming Language Quiz - Advanced
       
-      { templateId: templates[3].id, tagId: tags[1].id }, // Private Survey - Education
-      { templateId: templates[3].id, tagId: tags[13].id }, // Private Survey - Detailed
+      const topicId = topics[i % topics.length].id;
+      const template = await templateCreators[i](userId, topicId);
+      templates.push(template);
       
-      { templateId: templates[4].id, tagId: tags[6].id }, // Science Knowledge Test - Science
-      { templateId: templates[4].id, tagId: tags[4].id }, // Science Knowledge Test - Knowledge
+      // Add 2-3 tags to template
+      const numTags = Math.floor(Math.random() * 2) + 2; // 2 to 3 tags
+      const shuffledTags = [...tags].sort(() => 0.5 - Math.random());
       
-      { templateId: templates[5].id, tagId: tags[6].id }, // Event Registration - Event
-      { templateId: templates[5].id, tagId: tags[13].id }, // Event Registration - Detailed
-      
-      { templateId: templates[6].id, tagId: tags[9].id }, // Health Assessment - Evaluation
-      { templateId: templates[6].id, tagId: tags[13].id }, // Health Assessment - Detailed
-    ]);
-
-    // Create Form Responses
-    await FormResponse.bulkCreate([
-      {
-        templateId: templates[0].id,
-        userId: users[1].id,
-        customString1Answer: 'Paris',
-        customString2Answer: 'Jupiter',
-        customInt1Answer: 1945,
-        customCheckbox1Answer: true,
-        score: 25,
-        totalPossiblePoints: 25,
-        scoreViewed: true
-      },
-      {
-        templateId: templates[0].id,
-        userId: users[0].id,
-        customString1Answer: 'London',
-        customString2Answer: 'Jupiter',
-        customInt1Answer: 1944,
-        customCheckbox1Answer: true,
-        score: 10,
-        totalPossiblePoints: 25,
-        scoreViewed: false
-      },
-      {
-        templateId: templates[1].id,
-        userId: users[0].id,
-        customText1Answer: 'Great experience overall, very satisfied!',
-        customInt1Answer: 9,
-        customCheckbox1Answer: true
-      },
-      {
-        templateId: templates[2].id,
-        userId: users[1].id,
-        customString1Answer: 'Brendan Eich',
-        customString2Answer: 'Guido van Rossum',
-        customString3Answer: '1995',
-        customCheckbox1Answer: true,
-        score: 30,
-        totalPossiblePoints: 30,
-        scoreViewed: true
-      },
-      {
-        templateId: templates[2].id,
-        userId: users[2].id,
-        customString1Answer: 'Brendan Eich',
-        customString2Answer: 'Larry Wall',
-        customString3Answer: '1996',
-        customCheckbox1Answer: true,
-        score: 15,
-        totalPossiblePoints: 30,
-        scoreViewed: true
-      },
-      {
-        templateId: templates[4].id,
-        userId: users[3].id,
-        customString1Answer: 'H2O',
-        customString2Answer: 'Carbon dioxide',
-        customInt1Answer: 300000000,
-        customCheckbox1Answer: true,
-        score: 10,
-        totalPossiblePoints: 25,
-        scoreViewed: false
-      },
-      {
-        templateId: templates[5].id,
-        userId: users[0].id,
-        customString1Answer: 'Jane Smith',
-        customString2Answer: 'jane@example.com',
-        customString3Answer: 'Acme Corp',
-        customString4Answer: 'Developer',
-        customText1Answer: 'Vegetarian',
-        customCheckbox1Answer: true
-      },
-      {
-        templateId: templates[5].id,
-        userId: users[1].id,
-        customString1Answer: 'John Doe',
-        customString2Answer: 'john@example.com',
-        customString3Answer: 'XYZ Inc',
-        customString4Answer: 'Manager',
-        customText1Answer: 'No restrictions',
-        customCheckbox1Answer: false
-      },
-      {
-        templateId: templates[6].id,
-        userId: users[2].id,
-        customInt1Answer: 35,
-        customInt2Answer: 175,
-        customInt3Answer: 70,
-        customCheckbox1Answer: false,
-        customCheckbox2Answer: true,
-        customText1Answer: 'None',
-        customText2Answer: 'Penicillin'
+      for (let j = 0; j < numTags && j < shuffledTags.length; j++) {
+        await TemplateTag.create({
+          templateId: template.id,
+          tagId: shuffledTags[j].id
+        });
       }
-    ]);
-
-    // Create Comments
-    await Comment.bulkCreate([
-      {
-        templateId: templates[0].id,
-        userId: users[1].id,
-        content: 'This is a great quiz, I learned a lot!'
-      },
-      {
-        templateId: templates[1].id,
-        userId: users[0].id,
-        content: 'Nice feedback form, very straightforward'
-      },
-      {
-        templateId: templates[2].id,
-        userId: users[1].id,
-        content: 'Some of these questions are tricky!'
-      },
-      {
-        templateId: templates[0].id,
-        userId: users[2].id,
-        content: 'Good for beginners, but could include more challenging questions.'
-      },
-      {
-        templateId: templates[2].id,
-        userId: users[0].id,
-        content: 'This quiz is very informative for programming enthusiasts.'
-      },
-      {
-        templateId: templates[4].id,
-        userId: users[1].id,
-        content: 'Science questions are well structured but quite difficult!'
-      },
-      {
-        templateId: templates[5].id,
-        userId: users[3].id,
-        content: 'Excellent event registration form, covers all the necessary details.'
-      },
-      {
-        templateId: templates[6].id,
-        userId: users[4].id,
-        content: 'Great health assessment form, though you might want to add more lifestyle questions.'
+    }
+    
+    // Then create more templates if needed to reach the target count
+    while (templates.length < TEMPLATES_COUNT) {
+      const userId = users[Math.floor(Math.random() * users.length)].id;
+      const topicId = topics[Math.floor(Math.random() * topics.length)].id;
+      const createTemplate = templateCreators[Math.floor(Math.random() * templateCreators.length)];
+      
+      const template = await createTemplate(userId, topicId);
+      templates.push(template);
+      
+      // Add 2-3 tags to template
+      const numTags = Math.floor(Math.random() * 2) + 2; // 2 to 3 tags
+      const shuffledTags = [...tags].sort(() => 0.5 - Math.random());
+      
+      for (let j = 0; j < numTags && j < shuffledTags.length; j++) {
+        await TemplateTag.create({
+          templateId: template.id,
+          tagId: shuffledTags[j].id
+        });
       }
-    ]);
-
-    // Create Likes
-    await Like.bulkCreate([
-      {
-        templateId: templates[0].id,
-        userId: users[1].id
-      },
-      {
-        templateId: templates[1].id,
-        userId: users[0].id
-      },
-      {
-        templateId: templates[2].id,
-        userId: users[1].id
-      },
-      {
-        templateId: templates[0].id,
-        userId: users[2].id
-      },
-      {
-        templateId: templates[0].id,
-        userId: users[3].id
-      },
-      {
-        templateId: templates[2].id,
-        userId: users[0].id
-      },
-      {
-        templateId: templates[2].id,
-        userId: users[2].id
-      },
-      {
-        templateId: templates[2].id,
-        userId: users[3].id
-      },
-      {
-        templateId: templates[4].id,
-        userId: users[0].id
-      },
-      {
-        templateId: templates[4].id,
-        userId: users[1].id
-      },
-      {
-        templateId: templates[5].id,
-        userId: users[2].id
-      },
-      {
-        templateId: templates[6].id,
-        userId: users[1].id
+    }
+    console.log(`✅ Created ${templates.length} templates with tags`);
+    
+    // Create Form Responses - limited number per template
+    console.log('\nCreating form responses...');
+    const responses: FormResponse[] = [];
+    
+    for (const template of templates) {
+      // Fixed number of responses per template
+      for (let i = 0; i < RESPONSES_PER_TEMPLATE; i++) {
+        const userId = users[i % users.length].id; // Distribute responses among users evenly
+        
+        // Generate responses based on the language of the template
+        const isBanglaTemplate = template.title.includes('বাংলা') || 
+                                template.description.includes('বাংলা') ||
+                                template.customString1Question?.includes('বাংলা');
+        
+        let customString1Answer, customString2Answer, customText1Answer, customText2Answer;
+        
+        if (isBanglaTemplate) {
+          const banglaAnswers = ['ঢাকা', 'খুলনা', 'রাজশাহী', 'চট্টগ্রাম', 'সিলেট'];
+          const banglaNames = ['রবীন্দ্রনাথ ঠাকুর', 'কাজী নজরুল ইসলাম', 'জসীম উদ্দিন', 'সুকান্ত ভট্টাচার্য'];
+          
+          customString1Answer = banglaAnswers[i % banglaAnswers.length];
+          customString2Answer = banglaNames[i % banglaNames.length];
+          customText1Answer = 'এটি একটি বাংলা উত্তর। আমি আপনাদের সেবার মান নিয়ে সন্তুষ্ট।';
+          customText2Answer = 'আপনারা খুব ভালো কাজ করছেন। ধন্যবাদ।';
+        } else {
+          customString1Answer = ['John Doe', 'Jane Smith', 'Alex Johnson'][i % 3];
+          customString2Answer = ['example@email.com', 'user@domain.com', 'contact@business.com'][i % 3];
+          customText1Answer = 'This is a sample response for testing purposes.';
+          customText2Answer = 'Everything looks good. Thanks for the service.';
+        }
+        
+        const response = await FormResponse.create({
+          templateId: template.id,
+          userId,
+          customString1Answer: customString1Answer,
+          customString2Answer: customString2Answer,
+          customString3Answer: isBanglaTemplate ? 'বাংলাদেশ বিশ্ববিদ্যালয়' : 'Acme Corporation',
+          customString4Answer: isBanglaTemplate ? 'টেস্ট' : 'Test',
+          customText1Answer: customText1Answer,
+          customText2Answer: customText2Answer,
+          customInt1Answer: i + 5, // 5, 6, 7 for ratings
+          customInt2Answer: (i + 1) * 10, // 10, 20, 30 for other numeric values
+          customCheckbox1Answer: i % 2 === 0, // alternating true/false
+          customCheckbox2Answer: i % 3 === 0,
+          score: template.isQuiz ? (i + 1) * 25 : undefined, // 25, 50, 75 for quiz scores
+          totalPossiblePoints: template.isQuiz ? 100 : undefined,
+          scoreViewed: template.isQuiz ? true : undefined
+        });
+        
+        responses.push(response);
       }
-    ]);
+    }
+    console.log(`✅ Created ${responses.length} form responses`);
+    
+    // Create Comments - limited number per template
+    console.log('\nCreating comments...');
+    const comments: Comment[] = [];
+    
+    for (const template of templates) {
+      // Fixed number of comments per template
+      for (let i = 0; i < COMMENTS_PER_TEMPLATE; i++) {
+        const userId = users[i % users.length].id; // Distribute comments among users evenly
+        const user = users.find(u => u.id === userId);
+        
+        // Generate comments based on the user's language preference
+        let content;
+        if (user?.language === 'bn') {
+          const banglaPhrases = [
+            'এই ফর্মটি খুব উপকারী!',
+            'আমি একটি ভাল অভিজ্ঞতা পেয়েছি।',
+            'কিছু প্রশ্ন আরও স্পষ্ট হওয়া দরকার।',
+            'এটি ব্যবহার করা খুব সহজ ছিল।'
+          ];
+          content = banglaPhrases[i % banglaPhrases.length];
+        } else {
+          const englishPhrases = [
+            'This form was very helpful!',
+            'I had a great experience with this template.',
+            'Some questions could be clearer.',
+            'It was very easy to use.'
+          ];
+          content = englishPhrases[i % englishPhrases.length];
+        }
+        
+        const comment = await Comment.create({
+          templateId: template.id,
+          userId,
+          content
+        });
+        
+        comments.push(comment);
+      }
+    }
+    console.log(`✅ Created ${comments.length} comments`);
+    
+    // Create Likes - limited number per template
+    console.log('\nCreating likes...');
+    const likes: Like[] = [];
+    
+    for (const template of templates) {
+      // Ensure we don't try to create more likes than we have users
+      const likeCount = Math.min(LIKES_PER_TEMPLATE, users.length);
+      
+      // Use different users for each template's likes
+      for (let i = 0; i < likeCount; i++) {
+        // Rotate through users to distribute likes
+        const userIndex = (templates.indexOf(template) + i) % users.length;
+        const userId = users[userIndex].id;
+        
+        const like = await Like.create({
+          templateId: template.id,
+          userId
+        });
+        
+        likes.push(like);
+      }
+    }
+    console.log(`✅ Created ${likes.length} likes`);
+    
+    console.log('\n=========================================');
+    console.log('Database seeding completed successfully! 🎉');
+    console.log('=========================================');
+    
+    // Print summary
+    console.log('\n📊 Seed Summary:');
+    console.log(`- ${users.length} users (including standard test users)`);
+    console.log(`  - admin@example.com / admin123 (Admin user)`);
+    console.log(`  - user@example.com / user123 (English user)`);
+    console.log(`  - bangla@example.com / user123 (Bangla user)`);
+    console.log(`- ${topics.length} topics`);
+    console.log(`- ${tags.length} tags`);
+    console.log(`- ${templates.length} templates (${templates.filter(t => t.title.includes('বাংলা') || t.description.includes('বাংলা')).length} in Bangla)`);
+    console.log(`- ${responses.length} form responses (${RESPONSES_PER_TEMPLATE} per template)`);
+    console.log(`- ${comments.length} comments (${COMMENTS_PER_TEMPLATE} per template)`);
+    console.log(`- ${likes.length} likes (${LIKES_PER_TEMPLATE} per template maximum)`);
 
-    console.log('Database seeding completed successfully.');
   } catch (error) {
-    console.error('Error seeding database:', error);
+    console.error('❌ Error seeding database:', error);
   } finally {
-    process.exit();
+    console.log('\nTerminating seed process...');
+    process.exit(0);
   }
 };
 
-seedDatabase();
+// Run script if called directly
+if (require.main === module) {
+  seedDatabase();
+}
+
+export default seedDatabase;

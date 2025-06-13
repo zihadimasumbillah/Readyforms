@@ -1,25 +1,60 @@
 import apiClient from './api-client';
+import ApiConfig from './api-config';
+
+const HEALTH_CHECK_TIMEOUT = 5000; // 5 second timeout for health checks
+
+interface HealthCheckResult {
+  status: 'ok' | 'error';
+  message: string;
+  data?: any;
+  timestamp: Date;
+  endpoint?: string;
+  error?: string; // Add the error property to the interface
+}
 
 /**
  * Check the health of the API
  * @returns Promise with health check result
  */
-export const checkApiHealth = async () => {
+export const checkApiHealth = async (): Promise<HealthCheckResult> => {
   try {
-    const response = await apiClient.get('/health/ping');
+    // First try the health ping endpoint with a shorter timeout
+    const response = await apiClient.get('/health/ping', {
+      timeout: HEALTH_CHECK_TIMEOUT
+    });
+    
     return {
       status: 'ok',
       message: 'API server is responding',
       data: response.data,
-      timestamp: new Date()
+      timestamp: new Date(),
+      endpoint: `${ApiConfig.BASE_URL}/health/ping`
     };
   } catch (error: any) {
-    return {
-      status: 'error',
-      message: 'API server is not responding',
-      error: error.message,
-      timestamp: new Date()
-    };
+    // If the primary health endpoint fails, try a fallback endpoint
+    try {
+      // Try API root as a fallback
+      const response = await apiClient.get('/', {
+        timeout: HEALTH_CHECK_TIMEOUT
+      });
+      
+      return {
+        status: 'ok',
+        message: 'API server is responding (fallback endpoint)',
+        data: response.data,
+        timestamp: new Date(),
+        endpoint: ApiConfig.BASE_URL
+      };
+    } catch (fallbackError: any) {
+      // Both attempts failed
+      return {
+        status: 'error',
+        message: 'API server is not responding',
+        error: error.message,
+        timestamp: new Date(),
+        endpoint: `${ApiConfig.BASE_URL}/health/ping`
+      };
+    }
   }
 };
 
@@ -31,7 +66,7 @@ export const apiHealthCheck = {
    * Check if the API server is responding
    * @returns Promise with health check result
    */
-  async checkHealth() {
+  async checkHealth(): Promise<HealthCheckResult> {
     return checkApiHealth();
   },
 
@@ -39,9 +74,12 @@ export const apiHealthCheck = {
    * Check database health status
    * @returns Promise with health check result
    */
-  async checkDatabase() {
+  async checkDatabase(): Promise<HealthCheckResult> {
     try {
-      const response = await apiClient.get('/health/database');
+      const response = await apiClient.get('/health/database', {
+        timeout: HEALTH_CHECK_TIMEOUT
+      });
+      
       return {
         status: 'ok',
         message: 'Database is connected',
@@ -62,9 +100,12 @@ export const apiHealthCheck = {
    * Check if auth system is working
    * @returns Promise with health check result
    */
-  async checkAuth() {
+  async checkAuth(): Promise<HealthCheckResult> {
     try {
-      const response = await apiClient.get('/auth/check');
+      const response = await apiClient.get('/auth/check', {
+        timeout: HEALTH_CHECK_TIMEOUT
+      });
+      
       return {
         status: 'ok',
         message: 'Auth system is working',

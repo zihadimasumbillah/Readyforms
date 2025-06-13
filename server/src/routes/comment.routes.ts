@@ -1,13 +1,13 @@
-import { Router } from 'express';
+import express from 'express';
 import { getCommentsByTemplate, createComment, deleteComment } from '../controllers/comment.controller';
-import { authMiddleware } from '../middleware/auth.middleware';
-import catchAsync from '../utils/catchAsync';
+import verifyToken from '../middleware/auth.middleware';
 
-const router = Router();
+const router = express.Router();
 
-router.get('/template/:templateId', catchAsync(getCommentsByTemplate));
+router.get('/template/:templateId', getCommentsByTemplate as express.RequestHandler);
 
-router.post('/', catchAsync(authMiddleware), catchAsync(createComment));
-router.delete('/:id', catchAsync(authMiddleware), catchAsync(deleteComment));
+router.post('/', verifyToken, createComment);
+
+router.delete('/:id', verifyToken, deleteComment as express.RequestHandler);
 
 export default router;
