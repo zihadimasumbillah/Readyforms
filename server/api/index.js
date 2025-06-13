@@ -14,20 +14,13 @@ app.use((req, res, next) => {
   next();
 });
 
-// Add basic health endpoints at root level for Vercel
+// Add basic health endpoints at root level for Vercel (only if not already handled by main app)
 app.get('/health', (req, res) => {
   res.status(200).json({
-    status: 'ok',
-    message: 'API server is running',
+    status: 'up',
+    message: 'Server is responding',
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development'
-  });
-});
-
-app.get('/ping', (req, res) => {
-  res.status(200).json({
-    message: 'pong',
-    timestamp: new Date().toISOString()
   });
 });
 
@@ -36,16 +29,6 @@ app.get('/cors-test', (req, res) => {
     message: 'CORS test is working',
     origin: req.headers.origin || 'No origin',
     environment: process.env.NODE_ENV || 'development',
-    timestamp: new Date().toISOString()
-  });
-});
-
-// Add a fallback handler for unmatched routes
-app.use('*', (req, res) => {
-  res.status(404).json({
-    error: 'Route not found',
-    path: req.originalUrl,
-    method: req.method,
     timestamp: new Date().toISOString()
   });
 });
