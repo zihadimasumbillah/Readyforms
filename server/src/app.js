@@ -96,17 +96,6 @@ app.get('/debug-cors', (req, res) => {
 // Mount API routes
 app.use('/api', routes);
 
-// Catch-all route for API routes that don't match
-app.all('/api/*', (req, res) => {
-  res.status(404).json({
-    message: 'API endpoint not found',
-    path: req.path,
-    method: req.method,
-    baseUrl: req.baseUrl,
-    timestamp: new Date().toISOString()
-  });
-});
-
 // Global error handling middleware
 app.use((err, req, res, next) => {
   console.error('Error caught by global error handler:', err);
