@@ -2,9 +2,10 @@ import express from 'express';
 // Gradually restore routes - starting with non-database dependent ones
 import healthRoutes from './health.routes'; 
 import debugRoutes from './debug.routes';
+// Enabling basic template routes for testing (without database dependencies)
+import templateRoutes from './template.routes.basic';
 // Still commenting out database-heavy routes for now
 // import authRoutes from './auth.routes';
-// import templateRoutes from './template.routes';
 // import commentRoutes from './comment.routes';
 // import likeRoutes from './like.routes';
 // import topicRoutes from './topic.routes';
@@ -29,8 +30,27 @@ router.get('/direct-test', (req, res) => {
   });
 });
 
+// Add a simple templates route for testing (without database)
+router.get('/templates', (req, res) => {
+  res.status(200).json({
+    message: 'Templates endpoint is working!',
+    data: [],
+    mockData: [
+      {
+        id: '1',
+        title: 'Sample Template',
+        description: 'This is a test template',
+        isPublic: true,
+        createdAt: new Date().toISOString()
+      }
+    ],
+    timestamp: new Date().toISOString()
+  });
+});
+
 // router.use('/auth', authRoutes);
-// router.use('/templates', templateRoutes);
+// Temporarily mounting basic template routes
+router.use('/templates', templateRoutes);
 // router.use('/comments', commentRoutes);
 // router.use('/likes', likeRoutes);
 // router.use('/topics', topicRoutes);
