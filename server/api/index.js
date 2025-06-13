@@ -1,5 +1,5 @@
 
-const app = require('./src/app').default;
+const app = require('../src/app').default;
 
 // Add comprehensive CORS middleware for all routes
 app.use((req, res, next) => {

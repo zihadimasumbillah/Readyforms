@@ -156,3 +156,4 @@ app.get('/', (req, res) => {
 
 // Export the Express app
 module.exports = app;
+module.exports.default = app;
