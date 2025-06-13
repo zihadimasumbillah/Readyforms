@@ -4,9 +4,34 @@ import bcrypt from 'bcryptjs';
 
 const router = Router();
 
+// Always allow basic test endpoints regardless of environment
+router.get('/test', (req, res) => {
+  res.status(200).json({
+    message: 'Debug test endpoint is working',
+    environment: process.env.NODE_ENV || 'development',
+    timestamp: new Date().toISOString(),
+    headers: req.headers
+  });
+});
+
+router.get('/env-check', (req, res) => {
+  res.status(200).json({
+    environment: process.env.NODE_ENV || 'development',
+    hasDbUrl: !!process.env.DATABASE_URL,
+    hasClientUrl: !!process.env.CLIENT_URL,
+    timestamp: new Date().toISOString()
+  });
+});
+
 if (process.env.NODE_ENV === 'production') {
-  router.all('*', (_req, res) => {
-    res.status(404).send('Debug routes not available in production');
+  router.all('*', (req, res) => {
+    // Only block non-test routes in production
+    if (req.path !== '/test' && req.path !== '/env-check') {
+      return res.status(404).json({ 
+        error: 'Debug routes not available in production',
+        availableRoutes: ['/test', '/env-check']
+      });
+    }
   });
 } else {
 

@@ -6,9 +6,14 @@ class ApiClient {
   private isInitialized: boolean = false;
   
   constructor() {
+    // Use shorter timeout during build time to avoid hanging
+    const timeout = typeof window === 'undefined' && process.env.NODE_ENV === 'production' 
+      ? 5000  // 5 seconds for build time
+      : ApiConfig.TIMEOUT; // 30 seconds for runtime
+    
     this.client = axios.create({
       baseURL: ApiConfig.BASE_URL,
-      timeout: ApiConfig.TIMEOUT,
+      timeout: timeout,
       withCredentials: ApiConfig.CREDENTIALS,
       headers: {
         'Content-Type': 'application/json',
@@ -21,6 +26,7 @@ class ApiClient {
     
     if (ApiConfig.DEBUG) {
       console.log('API Client initialized with base URL:', ApiConfig.BASE_URL);
+      console.log('Timeout:', timeout);
       console.log('Credentials enabled:', ApiConfig.CREDENTIALS);
     }
   }

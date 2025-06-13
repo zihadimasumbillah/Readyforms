@@ -8,6 +8,13 @@ const nextConfig = {
     optimizeCss: true,
     esmExternals: true,
   },
+  // Add better error handling for production builds
+  typescript: {
+    ignoreBuildErrors: false,
+  },
+  eslint: {
+    ignoreDuringBuilds: false,
+  },
   // Ensure that fonts are properly handled during the build process
   webpack(config) {
     config.module.rules.push({
@@ -34,6 +41,7 @@ const nextConfig = {
       }
     ];
   },
+};
 };
 
 export default nextConfig;

@@ -1,20 +1,9 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Navbar } from "@/components/navbar";
-import { Template } from "@/types";
-import { templateService } from "@/lib/api/template-service";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import FeaturedTemplatesSection from "@/components/home/featured-templates-section";
 
-export default async function Home() {
-  // Fetch featured templates for the homepage
-  let templates: Template[] = [];
-  try {
-    templates = await templateService.getFeaturedTemplates(6);
-  } catch (error) {
-    console.error("Error fetching featured templates:", error);
-    // If API fails, use empty array (already initialized)
-  }
-
+export default function Home() {
   return (
     <>
       {/* Hero Section */}
@@ -120,51 +109,7 @@ export default async function Home() {
       </section>
 
       {/* Featured Templates Section */}
-      <section className="py-20 bg-muted">
-        <div className="container mx-auto px-4">
-          <div className="flex justify-between items-center mb-12">
-            <h2 className="text-3xl font-bold">Featured Templates</h2>
-            <Button asChild variant="outline">
-              <Link href="/templates">View all templates</Link>
-            </Button>
-          </div>
-          
-          {templates.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {templates.map((template) => (
-                <Card key={template.id} className="overflow-hidden">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-lg">{template.title}</CardTitle>
-                    <CardDescription className="line-clamp-2">
-                      {template.description || "No description available"}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center justify-between">
-                      <div className="text-sm text-muted-foreground">
-                        {template.topic?.name || "General"}
-                      </div>
-                      <Button asChild size="sm" className="mt-2">
-                        <Link href={`/templates/${template.id}`}>View</Link>
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          ) : (
-            <div className="bg-background rounded-lg p-8 text-center">
-              <h3 className="text-xl font-bold mb-2">No templates found</h3>
-              <p className="text-muted-foreground mb-6">
-                We couldn't load the featured templates. Please try again later.
-              </p>
-              <Button asChild>
-                <Link href="/templates/create">Create a Template</Link>
-              </Button>
-            </div>
-          )}
-        </div>
-      </section>
+      <FeaturedTemplatesSection />
 
       {/* CTA Section */}
       <section className="py-20 bg-background">

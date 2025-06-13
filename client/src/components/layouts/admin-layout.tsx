@@ -123,7 +123,7 @@ export function AdminLayout({
         </div>
         <div className="ml-auto flex items-center gap-2">
           {/* Add the API health indicator */}
-          {user?.isAdmin && <ApiHealthIndicator showText={true} />}
+          {user?.isAdmin && <ApiHealthIndicator />}
           <ThemeToggle />
           
           {user && (

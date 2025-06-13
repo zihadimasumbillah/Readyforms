@@ -9,7 +9,7 @@ import Tag from './Tag';
 import TemplateTag from './TemplateTag';
 import { Sequelize } from 'sequelize';
 
-// Export models both as default export and named exports
+
 const models = {
   User,
   Template,
@@ -21,16 +21,12 @@ const models = {
   TemplateTag
 };
 
-// Track initialization state
 let isInitialized = false;
 
-// Store the initialized sequelize instance for reference
 let initializedSequelize: any = null;
 
 /**
- * Initialize models with a sequelize instance
- * Designed to work with both plain Sequelize and SequelizeTS instances
- * @param sequelize The sequelize instance to use for model initialization
+ * @param sequelize 
  * @returns The sequelize instance that was used
  */
 export const initializeModels = (sequelize: any): any => {

@@ -72,14 +72,14 @@ if (pgAvailable) {
             rejectUnauthorized: false
           },
           keepAlive: true,
-          connectTimeout: 90000, // 90 seconds
-          idle_in_transaction_session_timeout: 60000 // 60 seconds
+          connectTimeout: 30000, // Reduced from 90 to 30 seconds
+          idle_in_transaction_session_timeout: 30000 // Reduced from 60 to 30 seconds
         },
         logging: process.env.NODE_ENV === 'development',
         pool: {
           max: isProd ? 10 : 5,
           min: 0,
-          acquire: 60000, // 60 seconds
+          acquire: 30000, // Reduced from 60 to 30 seconds
           idle: 10000
         },
         define: {

@@ -124,6 +124,12 @@ export const templateService = {
    */
   async getFeaturedTemplates(limit = 6): Promise<Template[]> {
     try {
+      // Check if we're in a build environment and skip API call
+      if (typeof window === 'undefined' && process.env.NODE_ENV === 'production') {
+        console.log('Skipping API call during production build');
+        return [];
+      }
+      
       // For now, just return the latest templates as featured
       const response = await apiClient.get('/templates', { 
         params: { limit, page: 1 } 

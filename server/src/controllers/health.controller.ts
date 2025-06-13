@@ -20,7 +20,15 @@ export const ping = (req: Request, res: Response): void => {
  */
 export const checkDatabase = async (req: Request, res: Response): Promise<void> => {
   try {
-    await sequelize.authenticate();
+    // Set a timeout for database connection check
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Database connection timeout')), 5000);
+    });
+    
+    const authPromise = sequelize.authenticate();
+    
+    await Promise.race([authPromise, timeoutPromise]);
+    
     res.status(200).json({
       status: 'ok',
       message: 'Database connection is healthy',
@@ -28,10 +36,10 @@ export const checkDatabase = async (req: Request, res: Response): Promise<void> 
     });
   } catch (error) {
     console.error('Database health check failed:', error);
-    res.status(500).json({
+    res.status(503).json({
       status: 'error',
       message: 'Database connection failed',
-      error: process.env.NODE_ENV === 'production' ? 'Database error' : (error as Error).message,
+      error: process.env.NODE_ENV === 'production' ? 'Database connection timeout or failure' : (error as Error).message,
       timestamp: new Date().toISOString()
     });
   }
@@ -81,11 +89,13 @@ export const fullCheck = async (req: Request, res: Response): Promise<void> => {
       await sequelize.authenticate();
     } catch (error) {
       dbStatus = 'error';
-      dbMessage = (error as Error).message;
+      dbMessage = process.env.NODE_ENV === 'production' ? 'Database connection failed' : (error as Error).message;
       console.error('Database health check failed during full check:', error);
     }
     
-    res.status(200).json({
+    const healthStatus = dbStatus === 'ok' ? 200 : 503;
+    
+    res.status(healthStatus).json({
       api_status: 'ok',
       api_version: process.env.npm_package_version || '1.0.0',
       environment: process.env.NODE_ENV || 'development',
