@@ -7,6 +7,16 @@ router.use((req, res, next) => {
   next();
 });
 
+// Add completely new test endpoint with unique name
+router.get('/test-new-endpoint-12345', (req, res) => {
+  res.status(200).json({
+    message: 'NEW ENDPOINT IS WORKING!',
+    success: true,
+    timestamp: new Date().toISOString(),
+    source: 'JavaScript router'
+  });
+});
+
 // Add debugging endpoint to list available routes
 router.get('/debug-routes', (req, res) => {
   res.status(200).json({
