@@ -88,6 +88,16 @@ console.log('🔧 Mounting API routes...');
 app.use('/api', routes);
 console.log('✅ API routes mounted successfully');
 
+// Add a diagnostic endpoint directly in app.js to test if it works
+app.get('/api/diagnostic-direct', (req, res) => {
+  res.status(200).json({
+    message: 'Direct app.js endpoint working!',
+    source: 'app.js',
+    timestamp: new Date().toISOString(),
+    routerMounted: true
+  });
+});
+
 // Global error handling middleware
 app.use((err, req, res, next) => {
   console.error('Error caught by global error handler:', err);
