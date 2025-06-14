@@ -85,6 +85,7 @@ router.get('/templates', (req, res) => {
 router.get('/ping', (req, res) => {
   res.status(200).json({ 
     message: 'pong', 
+    source: 'router',
     timestamp: new Date().toISOString() 
   });
 });
@@ -93,6 +94,7 @@ router.get('/status', (req, res) => {
   res.status(200).json({
     status: 'ok',
     api: 'ReadyForms API',
+    source: 'router',
     version: process.env.npm_package_version || '1.0.0',
     environment: process.env.NODE_ENV || 'development',
     timestamp: new Date().toISOString()

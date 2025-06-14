@@ -70,33 +70,7 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Special ping endpoint for connectivity testing
-app.get('/api/ping', (req, res) => {
-  res.status(200).json({ 
-    message: 'pong', 
-    server: 'ReadyForms API',
-    env: process.env.NODE_ENV,
-    origin: req.headers.origin || 'No origin',
-    timestamp: new Date().toISOString() 
-  });
-});
-
-// API diagnostics endpoints for easier debugging
-app.get('/api/status', (req, res) => {
-  res.status(200).json({
-    status: 'online',
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV,
-    headers: req.headers,
-    cors: {
-      enabled: true,
-      origin: req.headers.origin || 'No origin'
-    },
-    version: process.env.npm_package_version || '1.0.0'
-  });
-});
-
-// CORS testing endpoint
+// CORS testing endpoint (not under /api to avoid conflicts)
 app.get('/debug-cors', (req, res) => {
   res.json({
     message: 'CORS is configured correctly',
@@ -109,7 +83,7 @@ app.get('/debug-cors', (req, res) => {
   });
 });
 
-// Mount API routes
+// Mount API routes BEFORE any other /api/* routes
 console.log('🔧 Mounting API routes...');
 app.use('/api', routes);
 console.log('✅ API routes mounted successfully');
