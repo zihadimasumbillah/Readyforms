@@ -16,6 +16,46 @@ router.get('/direct-test', (req, res) => {
   });
 });
 
+// Add templates route directly in the main router
+router.get('/templates', (req, res) => {
+  res.status(200).json({
+    message: 'Templates endpoint is working!',
+    data: [],
+    mockData: [
+      {
+        id: '1',
+        title: 'Sample Quiz Template',
+        description: 'This is a test quiz template',
+        isPublic: true,
+        isQuiz: true,
+        createdAt: new Date().toISOString(),
+        author: { id: '1', name: 'Test User' },
+        topic: { id: '1', name: 'Education' },
+        tags: [{ id: '1', name: 'quiz' }, { id: '2', name: 'education' }],
+        likesCount: 5,
+        commentsCount: 2
+      },
+      {
+        id: '2',
+        title: 'Sample Survey Template',
+        description: 'This is a test survey template',
+        isPublic: true,
+        isQuiz: false,
+        createdAt: new Date().toISOString(),
+        author: { id: '2', name: 'Another User' },
+        topic: { id: '2', name: 'Business' },
+        tags: [{ id: '3', name: 'survey' }, { id: '4', name: 'business' }],
+        likesCount: 8,
+        commentsCount: 4
+      }
+    ],
+    timestamp: new Date().toISOString(),
+    total: 2,
+    page: 1,
+    limit: 10
+  });
+});
+
 router.get('/ping', (req, res) => {
   res.status(200).json({ 
     message: 'pong', 

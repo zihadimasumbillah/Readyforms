@@ -6,25 +6,41 @@ const app = express();
 let routes;
 try {
   routes = require('./routes').default;
+  console.log('✅ Routes loaded successfully from TypeScript');
 } catch (error) {
-  console.error('Failed to load API routes:', error);
-  // Create fallback routes
-  routes = express.Router();
-  routes.get('/', (req, res) => {
-    res.status(200).json({ 
-      message: 'ReadyForms API Server (Reduced Functionality)',
-      status: 'Limited',
-      error: 'Database connection issue',
-      timestamp: new Date().toISOString() 
+  console.error('❌ Failed to load TypeScript routes:', error.message);
+  try {
+    // Try loading the JavaScript fallback
+    routes = require('./routes/index.js');
+    console.log('✅ Routes loaded from JavaScript fallback');
+  } catch (jsError) {
+    console.error('❌ Failed to load JavaScript routes:', jsError.message);
+    // Create basic fallback routes
+    routes = require('express').Router();
+    routes.get('/', (req, res) => {
+      res.status(200).json({ 
+        message: 'ReadyForms API Server (Reduced Functionality)',
+        status: 'Limited',
+        error: 'Route loading issue',
+        timestamp: new Date().toISOString() 
+      });
     });
-  });
-  routes.get('/health', (req, res) => {
-    res.status(200).json({ 
-      status: 'limited',
-      message: 'Server is responding with limited functionality',
-      timestamp: new Date().toISOString() 
+    routes.get('/health', (req, res) => {
+      res.status(200).json({ 
+        status: 'limited',
+        message: 'Server is responding with limited functionality',
+        timestamp: new Date().toISOString() 
+      });
     });
-  });
+    routes.get('/templates', (req, res) => {
+      res.status(200).json({
+        message: 'Basic templates endpoint',
+        data: [],
+        fallback: true,
+        timestamp: new Date().toISOString()
+      });
+    });
+  }
 }
 
 app.use(express.json());
@@ -94,7 +110,9 @@ app.get('/debug-cors', (req, res) => {
 });
 
 // Mount API routes
+console.log('🔧 Mounting API routes...');
 app.use('/api', routes);
+console.log('✅ API routes mounted successfully');
 
 // Global error handling middleware
 app.use((err, req, res, next) => {
