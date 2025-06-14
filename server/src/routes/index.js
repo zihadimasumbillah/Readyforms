@@ -7,6 +7,22 @@ router.use((req, res, next) => {
   next();
 });
 
+// Add debugging endpoint to list available routes
+router.get('/debug-routes', (req, res) => {
+  res.status(200).json({
+    message: 'Available API routes debug info',
+    routes: [
+      'GET /api/ping',
+      'GET /api/status', 
+      'GET /api/templates',
+      'GET /api/direct-test',
+      'GET /api/debug-routes'
+    ],
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development'
+  });
+});
+
 // Add simple direct routes for testing
 router.get('/direct-test', (req, res) => {
   res.status(200).json({
@@ -18,42 +34,52 @@ router.get('/direct-test', (req, res) => {
 
 // Add templates route directly in the main router
 router.get('/templates', (req, res) => {
-  res.status(200).json({
-    message: 'Templates endpoint is working!',
-    data: [],
-    mockData: [
-      {
-        id: '1',
-        title: 'Sample Quiz Template',
-        description: 'This is a test quiz template',
-        isPublic: true,
-        isQuiz: true,
-        createdAt: new Date().toISOString(),
-        author: { id: '1', name: 'Test User' },
-        topic: { id: '1', name: 'Education' },
-        tags: [{ id: '1', name: 'quiz' }, { id: '2', name: 'education' }],
-        likesCount: 5,
-        commentsCount: 2
-      },
-      {
-        id: '2',
-        title: 'Sample Survey Template',
-        description: 'This is a test survey template',
-        isPublic: true,
-        isQuiz: false,
-        createdAt: new Date().toISOString(),
-        author: { id: '2', name: 'Another User' },
-        topic: { id: '2', name: 'Business' },
-        tags: [{ id: '3', name: 'survey' }, { id: '4', name: 'business' }],
-        likesCount: 8,
-        commentsCount: 4
-      }
-    ],
-    timestamp: new Date().toISOString(),
-    total: 2,
-    page: 1,
-    limit: 10
-  });
+  try {
+    console.log('📋 Templates endpoint called');
+    res.status(200).json({
+      message: 'Templates endpoint is working!',
+      data: [],
+      mockData: [
+        {
+          id: '1',
+          title: 'Sample Quiz Template',
+          description: 'This is a test quiz template',
+          isPublic: true,
+          isQuiz: true,
+          createdAt: new Date().toISOString(),
+          author: { id: '1', name: 'Test User' },
+          topic: { id: '1', name: 'Education' },
+          tags: [{ id: '1', name: 'quiz' }, { id: '2', name: 'education' }],
+          likesCount: 5,
+          commentsCount: 2
+        },
+        {
+          id: '2',
+          title: 'Sample Survey Template',
+          description: 'This is a test survey template',
+          isPublic: true,
+          isQuiz: false,
+          createdAt: new Date().toISOString(),
+          author: { id: '2', name: 'Another User' },
+          topic: { id: '2', name: 'Business' },
+          tags: [{ id: '3', name: 'survey' }, { id: '4', name: 'business' }],
+          likesCount: 8,
+          commentsCount: 4
+        }
+      ],
+      timestamp: new Date().toISOString(),
+      total: 2,
+      page: 1,
+      limit: 10
+    });
+  } catch (error) {
+    console.error('❌ Error in templates endpoint:', error);
+    res.status(500).json({
+      message: 'Error in templates endpoint',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 router.get('/ping', (req, res) => {
