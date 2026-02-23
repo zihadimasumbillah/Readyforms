@@ -63,17 +63,18 @@ try {
 if (pgAvailable) {
   try {
     // Configure Sequelize with connection URL
+    const needsSsl = connectionUrl ? (connectionUrl.includes('neon.tech') || connectionUrl.includes('sslmode=require')) : false;
     if (connectionUrl) {
       sequelize = new Sequelize(connectionUrl, {
         dialect: 'postgres',
         dialectOptions: {
-          ssl: {
+          ssl: needsSsl ? {
             require: true,
             rejectUnauthorized: false
-          },
+          } : false,
           keepAlive: true,
-          connectTimeout: 30000, // Reduced from 90 to 30 seconds
-          idle_in_transaction_session_timeout: 30000 // Reduced from 60 to 30 seconds
+          connectTimeout: 30000,
+          idle_in_transaction_session_timeout: 30000
         },
         logging: process.env.NODE_ENV === 'development',
         pool: {

@@ -77,6 +77,10 @@ const server = app.listen(PORT, () => {
   sequelize.authenticate()
     .then(() => {
       console.log('Database connection has been established successfully.');
+      return sequelize.sync({ alter: true });
+    })
+    .then(() => {
+      console.log('Database tables synced successfully.');
     })
     .catch(error => {
       console.error('Unable to connect to the database:', error);
