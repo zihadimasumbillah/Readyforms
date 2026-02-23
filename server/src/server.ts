@@ -6,11 +6,13 @@ import routes from './routes';
 import errorHandler from './middleware/error.middleware';
 import { sequelize } from './models';
 import morgan from 'morgan';
+import { createProxyMiddleware } from 'http-proxy-middleware';
 
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = 5000;
+const NEXT_PORT = 3000;
 
 const allowedOrigins = process.env.CLIENT_URL ? 
   process.env.CLIENT_URL.split(',').map(origin => origin.trim()) : 
@@ -56,17 +58,16 @@ app.get('/ping', (req, res) => {
 
 app.use('/api', routes);
 
+app.use(errorHandler);
 
-app.use('*', errorHandler);
-
-app.get('/', (req, res) => {
-  res.status(200).json({
-    message: 'ReadyForms API Server',
-    version: process.env.npm_package_version || '1.0.0',
-    environment: process.env.NODE_ENV || 'development',
-    timestamp: new Date().toISOString()
-  });
-});
+app.use(
+  createProxyMiddleware({
+    target: `http://localhost:${NEXT_PORT}`,
+    changeOrigin: true,
+    ws: true,
+    logger: console,
+  })
+);
 
 
 const server = app.listen(PORT, () => {

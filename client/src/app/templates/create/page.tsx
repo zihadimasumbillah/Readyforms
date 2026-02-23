@@ -28,7 +28,9 @@ import {
 import { toast } from '@/components/ui/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { X, Loader2, GripVertical, Plus, Eye, Save } from 'lucide-react';
+import { X, Loader2, GripVertical, Plus, Eye, Save, Sparkles } from 'lucide-react';
+import { AIFormGenerator } from '@/components/ai/ai-form-generator';
+import { GeneratedFormData } from '@/lib/api/ai-service';
 import { 
   DndContext, 
   closestCenter, 
@@ -191,7 +193,7 @@ export default function CreateTemplatePage() {
   const [questionFields, setQuestionFields] = useState<QuestionField[]>([]);
   const [isQuizMode, setIsQuizMode] = useState(false);
   const [showScoreImmediately, setShowScoreImmediately] = useState(false);
-  const [activeTab, setActiveTab] = useState('basic');
+  const [activeTab, setActiveTab] = useState('ai-generate');
   const [loading, setLoading] = useState(false);
   const [topicsLoading, setTopicsLoading] = useState(true);
 
@@ -428,6 +430,34 @@ export default function CreateTemplatePage() {
     }
   };
 
+  const handleAIApply = (data: GeneratedFormData) => {
+    setTitle(data.title);
+    setDescription(data.description);
+    if (data.isQuiz) {
+      setIsQuizMode(true);
+    }
+    const newFields: QuestionField[] = data.questions.map((q, idx) => {
+      const typeMap: Record<string, 'String' | 'Text' | 'Int' | 'Checkbox'> = {
+        string: 'String',
+        text: 'Text',
+        int: 'Int',
+        checkbox: 'Checkbox',
+      };
+      const mappedType = typeMap[q.type] || 'String';
+      return {
+        id: generateId(),
+        type: mappedType,
+        index: idx + 1,
+        question: q.question,
+        isActive: q.isActive !== undefined ? q.isActive : true,
+        answer: mappedType === 'Checkbox' ? false : '',
+        points: 1,
+      };
+    });
+    setQuestionFields(newFields);
+    setActiveTab('basic');
+  };
+
   const handlePreview = () => {
     const previewData = {
       title,
@@ -473,12 +503,21 @@ export default function CreateTemplatePage() {
 
       <form onSubmit={handleSubmit}>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="ai-generate">
+              <Sparkles className="mr-1 h-4 w-4" />
+              AI Generate
+            </TabsTrigger>
             <TabsTrigger value="basic">Basic Info</TabsTrigger>
             <TabsTrigger value="questions">Questions</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
             <TabsTrigger value="preview">Preview</TabsTrigger>
           </TabsList>
+
+          {/* AI Generate Tab */}
+          <TabsContent value="ai-generate" className="space-y-4">
+            <AIFormGenerator onApply={handleAIApply} />
+          </TabsContent>
 
           {/* Basic Info Tab */}
           <TabsContent value="basic" className="space-y-4">

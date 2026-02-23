@@ -10,7 +10,7 @@ import { dashboardService } from "@/lib/api/dashboard-service";
 import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
 import { useAuth } from "@/contexts/auth-context";
-import { FileText, MessageSquare, Heart, PlusCircle, ArrowRight, Calendar, Clock, ShieldAlert } from "lucide-react";
+import { FileText, MessageSquare, Heart, PlusCircle, ArrowRight, Calendar, Clock, ShieldAlert, Sparkles, Share2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from '@/components/ui/use-toast';
 
@@ -280,10 +280,22 @@ export default function DashboardPage() {
             <CardDescription>Common tasks and actions</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4">
+            <Button className="justify-start text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700" asChild>
+              <Link href="/templates/create">
+                <Sparkles className="h-4 w-4 mr-2" />
+                <span>Create with AI</span>
+              </Link>
+            </Button>
             <Button className="justify-start" variant="outline" asChild>
               <Link href="/templates/create">
                 <PlusCircle className="h-4 w-4 mr-2" />
                 <span>Create New Template</span>
+              </Link>
+            </Button>
+            <Button className="justify-start" variant="outline" asChild>
+              <Link href="/templates">
+                <Share2 className="h-4 w-4 mr-2" />
+                <span>Share Your Forms</span>
               </Link>
             </Button>
             <Button className="justify-start" variant="outline" asChild>
