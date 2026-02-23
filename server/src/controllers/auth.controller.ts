@@ -17,6 +17,19 @@ export const register = catchAsync(async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Name, email and password are required' });
     }
 
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ message: 'Please provide a valid email address' });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ message: 'Password must be at least 6 characters long' });
+    }
+
+    if (name.trim().length < 2) {
+      return res.status(400).json({ message: 'Name must be at least 2 characters long' });
+    }
+
     const existingUser = await User.findOne({ 
       where: { 
         email: { [Op.iLike]: email.toLowerCase().trim() } 
@@ -63,7 +76,6 @@ export const register = catchAsync(async (req: Request, res: Response) => {
       { expiresIn: jwtConfig.expiresIn }
     );
 
-    console.log('User registered successfully:', user.id, normalizedEmail);
     return res.status(201).json({
       message: 'User registered successfully',
       token,
@@ -96,8 +108,6 @@ export const login = catchAsync(async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Email and password are required' });
     }
 
-    // Debug log to help with authentication issues
-    console.log(`Login attempt for: ${email}`);
 
     const user = await User.findOne({ 
       where: { 
@@ -106,21 +116,17 @@ export const login = catchAsync(async (req: Request, res: Response) => {
     });
 
     if (!user) {
-      console.log(`User not found: ${email}`);
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
     if (user.blocked) {
-      console.log(`Blocked user attempting login: ${email}`);
       return res.status(403).json({ message: 'Your account is blocked. Please contact administrator.' });
     }
     
     try {
-      console.log(`Validating password for user: ${email}`);
       const isValidPassword = await bcrypt.compare(password, user.password);
       
       if (!isValidPassword) {
-        console.log(`Invalid password for user: ${email}`);
         return res.status(401).json({ message: 'Invalid credentials' });
       }
     } catch (error) {
@@ -232,14 +238,8 @@ export const updatePreferences = catchAsync(async (req: Request, res: Response) 
  * Handle forgot password request
  */
 export const forgotPassword = async (req: Request, res: Response) => {
-  const { email } = req.body;
-
-  // Check if email exists in the database
-  // TODO: Implement actual email validation and password reset token generation
-
-  res.status(200).json({
-    success: true,
-    message: 'If an account with that email exists, a password reset link has been sent.'
+  res.status(501).json({
+    message: 'Password reset is not yet available. Please contact support.'
   });
 };
 

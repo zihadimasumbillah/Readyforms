@@ -1008,6 +1008,9 @@ video {
 .h-\[250px\] {
   height: 250px;
 }
+.h-\[60vh\] {
+  height: 60vh;
+}
 .h-\[var\(--radix-navigation-menu-viewport-height\)\] {
   height: var(--radix-navigation-menu-viewport-height);
 }
@@ -1070,9 +1073,6 @@ video {
 }
 .w-1\/2 {
   width: 50%;
-}
-.w-1\/3 {
-  width: 33.333333%;
 }
 .w-10 {
   width: 2.5rem;
@@ -1301,11 +1301,6 @@ video {
   --tw-scale-y: 1;
   transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
 }
-.scale-105 {
-  --tw-scale-x: 1.05;
-  --tw-scale-y: 1.05;
-  transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
-}
 .transform {
   transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
 }
@@ -1361,9 +1356,6 @@ video {
 }
 .grid-cols-3 {
   grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-.grid-cols-5 {
-  grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 .flex-row {
   flex-direction: row;
@@ -1507,6 +1499,9 @@ video {
 }
 .overflow-hidden {
   overflow: hidden;
+}
+.overflow-x-auto {
+  overflow-x: auto;
 }
 .overflow-y-auto {
   overflow-y: auto;
@@ -2355,6 +2350,9 @@ video {
   --tw-enter-translate-x: initial;
   --tw-enter-translate-y: initial;
 }
+.fade-in {
+  --tw-enter-opacity: 0;
+}
 .fade-in-0 {
   --tw-enter-opacity: 0;
 }
@@ -2363,6 +2361,9 @@ video {
 }
 .zoom-in-95 {
   --tw-enter-scale: .95;
+}
+.slide-in-from-right {
+  --tw-enter-translate-x: 100%;
 }
 .duration-200 {
   animation-duration: 200ms;
@@ -3305,6 +3306,14 @@ video {
     display: block;
   }
 
+  .sm\:inline {
+    display: inline;
+  }
+
+  .sm\:hidden {
+    display: none;
+  }
+
   .sm\:w-full {
     width: 100%;
   }
@@ -3445,6 +3454,12 @@ video {
 
   .md\:flex-none {
     flex: none;
+  }
+
+  .md\:scale-105 {
+    --tw-scale-x: 1.05;
+    --tw-scale-y: 1.05;
+    transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
   }
 
   .md\:grid-cols-2 {

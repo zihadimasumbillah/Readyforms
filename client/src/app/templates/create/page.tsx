@@ -488,8 +488,19 @@ export default function CreateTemplatePage() {
     Checkbox: sortedFields.filter(field => field.type === 'Checkbox')
   };
 
+  useEffect(() => {
+    if (!user) {
+      router.push('/auth/login?redirect=/templates/create');
+    }
+  }, [user, router]);
+
   if (!user) {
-    return <div className="flex justify-center items-center h-screen">Loading...</div>;
+    return (
+      <div className="flex flex-col justify-center items-center h-[60vh] gap-4">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <p className="text-muted-foreground">Redirecting to login...</p>
+      </div>
+    );
   }
 
   return (
@@ -503,15 +514,22 @@ export default function CreateTemplatePage() {
 
       <form onSubmit={handleSubmit}>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="ai-generate">
-              <Sparkles className="mr-1 h-4 w-4" />
-              AI Generate
+          <TabsList className="flex w-full overflow-x-auto">
+            <TabsTrigger value="ai-generate" className="flex-1 min-w-0">
+              <Sparkles className="mr-1 h-4 w-4 shrink-0" />
+              <span className="hidden sm:inline">AI Generate</span>
+              <span className="sm:hidden">AI</span>
             </TabsTrigger>
-            <TabsTrigger value="basic">Basic Info</TabsTrigger>
-            <TabsTrigger value="questions">Questions</TabsTrigger>
-            <TabsTrigger value="settings">Settings</TabsTrigger>
-            <TabsTrigger value="preview">Preview</TabsTrigger>
+            <TabsTrigger value="basic" className="flex-1 min-w-0">
+              <span className="hidden sm:inline">Basic Info</span>
+              <span className="sm:hidden">Basic</span>
+            </TabsTrigger>
+            <TabsTrigger value="questions" className="flex-1 min-w-0">
+              <span className="hidden sm:inline">Questions</span>
+              <span className="sm:hidden">Q&A</span>
+            </TabsTrigger>
+            <TabsTrigger value="settings" className="flex-1 min-w-0">Settings</TabsTrigger>
+            <TabsTrigger value="preview" className="flex-1 min-w-0">Preview</TabsTrigger>
           </TabsList>
 
           {/* AI Generate Tab */}

@@ -113,9 +113,9 @@ export default function TemplatesPage() {
             variant={showFilters ? "default" : "outline"}
             size="icon"
             onClick={() => setShowFilters(!showFilters)}
+            aria-label="Toggle filters"
           >
             <Filter className="h-4 w-4" />
-            <span className="sr-only">Filter</span>
           </Button>
 
           {hasActiveFilters && (

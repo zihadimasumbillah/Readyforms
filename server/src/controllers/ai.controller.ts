@@ -10,6 +10,11 @@ export const generateFormController = async (req: Request, res: Response): Promi
       return;
     }
 
+    if (prompt.trim().length > 2000) {
+      res.status(400).json({ message: 'Prompt must be under 2000 characters' });
+      return;
+    }
+
     const formData = await generateForm(prompt.trim());
     res.status(200).json(formData);
   } catch (error) {

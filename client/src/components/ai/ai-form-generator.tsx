@@ -1,13 +1,15 @@
 "use client";
 
 import React, { useState } from "react";
-import { Sparkles, Wand2, Loader2, Check, RefreshCw } from "lucide-react";
+import { Sparkles, Wand2, Loader2, Check, RefreshCw, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { aiService, GeneratedFormData, GeneratedQuestion } from "@/lib/api/ai-service";
+import { useAuth } from "@/contexts/auth-context";
+import Link from "next/link";
 
 interface AIFormGeneratorProps {
   onApply: (data: GeneratedFormData) => void;
@@ -25,6 +27,8 @@ export function AIFormGenerator({ onApply }: AIFormGeneratorProps) {
   const [loading, setLoading] = useState(false);
   const [generatedData, setGeneratedData] = useState<GeneratedFormData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const auth = useAuth();
+  const isLoggedIn = !!auth?.user;
 
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
@@ -103,23 +107,32 @@ export function AIFormGenerator({ onApply }: AIFormGeneratorProps) {
             ))}
           </div>
 
-          <Button
-            onClick={handleGenerate}
-            disabled={loading || !prompt.trim()}
-            className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Generating...
-              </>
-            ) : (
-              <>
-                <Wand2 className="mr-2 h-4 w-4" />
-                Generate with AI
-              </>
-            )}
-          </Button>
+          {isLoggedIn ? (
+            <Button
+              onClick={handleGenerate}
+              disabled={loading || !prompt.trim()}
+              className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Wand2 className="mr-2 h-4 w-4" />
+                  Generate with AI
+                </>
+              )}
+            </Button>
+          ) : (
+            <Button asChild className="w-full" variant="outline">
+              <Link href="/auth/login?redirect=/templates/create">
+                <LogIn className="mr-2 h-4 w-4" />
+                Log in to use AI Generation
+              </Link>
+            </Button>
+          )}
 
           {error && (
             <div className="text-sm text-destructive bg-destructive/10 rounded-md p-3">

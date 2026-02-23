@@ -7,6 +7,7 @@ import errorHandler from './middleware/error.middleware';
 import { sequelize } from './models';
 import morgan from 'morgan';
 import { createProxyMiddleware } from 'http-proxy-middleware';
+import rateLimit from 'express-rate-limit';
 
 dotenv.config();
 
@@ -36,6 +37,26 @@ app.use(helmet({ contentSecurityPolicy: false }));
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 app.use(morgan('tiny'));
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  message: { message: 'Too many attempts. Please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const aiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  message: { message: 'AI generation rate limit reached. Please wait a moment.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/register', authLimiter);
+app.use('/api/ai', aiLimiter);
 
 app.get('/health', (req, res) => {
   res.status(200).json({ 

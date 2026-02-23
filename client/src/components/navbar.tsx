@@ -163,6 +163,7 @@ export function Navbar() {
         <button
           className="md:hidden"
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
         >
           {mobileMenuOpen ? (
             <X className="h-6 w-6" />
@@ -176,10 +177,10 @@ export function Navbar() {
       {mobileMenuOpen && (
         <div className="md:hidden">
           <div className="fixed inset-0 z-50" onClick={closeMobileMenu}>
-            <div className="absolute inset-0 bg-black/50" />
-            <div className="fixed right-0 top-0 h-full w-3/4 max-w-sm bg-background p-6 shadow-lg" onClick={(e) => e.stopPropagation()}>
+            <div className="absolute inset-0 bg-black/50 animate-in fade-in duration-200" />
+            <div className="fixed right-0 top-0 h-full w-3/4 max-w-sm bg-background p-6 shadow-lg animate-in slide-in-from-right duration-300" onClick={(e) => e.stopPropagation()}>
               <div className="flex justify-end mb-8">
-                <Button variant="ghost" size="icon" onClick={closeMobileMenu}>
+                <Button variant="ghost" size="icon" onClick={closeMobileMenu} aria-label="Close menu">
                   <X className="h-6 w-6" />
                 </Button>
               </div>

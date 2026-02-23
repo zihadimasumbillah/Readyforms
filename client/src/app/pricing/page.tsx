@@ -33,7 +33,7 @@ function PricingTier({
   badge
 }: PricingTierProps) {
   return (
-    <Card className={`flex flex-col relative ${highlighted ? 'border-primary shadow-lg scale-105' : ''}`}>
+    <Card className={`flex flex-col relative ${highlighted ? 'border-primary shadow-lg md:scale-105' : ''}`}>
       {badge && (
         <div className="absolute -top-3 left-1/2 -translate-x-1/2">
           <Badge className="px-3 py-1">{badge}</Badge>

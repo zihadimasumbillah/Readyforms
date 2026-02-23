@@ -252,22 +252,21 @@ export default function DashboardPage() {
               </div>
             ) : (
               <div className="space-y-4">
-                <div className="flex items-center gap-4 p-3 rounded-md border">
-                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                    <Clock className="h-5 w-5 text-primary" />
+                <div className="flex flex-col items-center justify-center py-6 text-center">
+                  <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
+                    <Clock className="h-6 w-6 text-primary" />
                   </div>
-                  <div>
-                    <p className="font-medium">Activity feed coming soon</p>
-                    <p className="text-sm text-muted-foreground">
-                      We're working on showing your recent activity here
-                    </p>
-                  </div>
+                  <p className="font-medium">No recent activity</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Create your first form to start seeing activity here
+                  </p>
+                  <Button variant="outline" size="sm" className="mt-4" asChild>
+                    <Link href="/templates/create">
+                      <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+                      Create a Form
+                    </Link>
+                  </Button>
                 </div>
-                <Button variant="outline" className="w-full" asChild>
-                  <Link href="/dashboard/activity">
-                    View All Activity
-                  </Link>
-                </Button>
               </div>
             )}
           </CardContent>
