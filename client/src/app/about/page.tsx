@@ -1,9 +1,10 @@
 import React from 'react';
 import { Metadata } from 'next';
+import { Sparkles, Users, Shield, Zap } from 'lucide-react';
 
 export const metadata: Metadata = {
-  title: 'About ReadyForms | Easy form creation and management',
-  description: 'Learn about ReadyForms - the simple and powerful platform for creating, managing, and analyzing forms and surveys.',
+  title: 'About ReadyForms | AI-Powered Form Builder',
+  description: 'Learn about ReadyForms - the AI-powered platform for creating, managing, and analyzing forms and surveys.',
 };
 
 export default function AboutPage() {
@@ -13,27 +14,24 @@ export default function AboutPage() {
         <div>
           <h1 className="text-4xl font-bold tracking-tight">About ReadyForms</h1>
           <p className="mt-4 text-xl text-muted-foreground">
-            A modern platform designed to simplify form creation and data collection
+            The AI-powered platform that transforms how you create and manage forms
           </p>
         </div>
 
         <div className="space-y-6">
           <h2 className="text-2xl font-semibold">Our Story</h2>
           <p className="leading-7">
-            ReadyForms was created to address the common challenges faced by organizations when collecting and managing data through forms. 
-            We believe that creating and deploying forms should be simple, while providing powerful tools for analysis and integration.
+            ReadyForms was born from a simple idea: form creation should take seconds, not hours. By combining the power of AI with an intuitive form builder, we've created a platform that lets anyone create professional forms by simply describing what they need.
           </p>
           <p className="leading-7">
-            Founded in 2023, our team brings together expertise in web development, user experience, and data analysis
-            to build a platform that serves the needs of businesses, educational institutions, and individuals alike.
+            Our team brings together expertise in AI, web development, and user experience to build a platform that serves businesses, educational institutions, and individuals who need to collect data efficiently.
           </p>
         </div>
 
         <div className="space-y-6">
           <h2 className="text-2xl font-semibold">Our Mission</h2>
           <p className="leading-7">
-            Our mission is to empower users with intuitive tools that make form creation and data collection effortless.
-            We're committed to developing features that help you gather insights, make decisions, and improve experiences.
+            We're on a mission to make form creation effortless through AI. Whether you're conducting surveys, gathering feedback, or running quizzes, ReadyForms gives you the tools to go from idea to published form in seconds.
           </p>
         </div>
 
@@ -41,37 +39,42 @@ export default function AboutPage() {
           <h2 className="text-2xl font-semibold">What Sets Us Apart</h2>
           <div className="grid md:grid-cols-2 gap-6">
             <div className="border rounded-lg p-6">
-              <h3 className="text-lg font-medium mb-2">User-friendly Design</h3>
+              <div className="h-10 w-10 rounded-lg bg-purple-500/10 flex items-center justify-center mb-3">
+                <Sparkles className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+              </div>
+              <h3 className="text-lg font-medium mb-2">AI-First Design</h3>
               <p className="text-muted-foreground">
-                Our intuitive interface makes it easy to create forms without requiring technical expertise.
+                Describe your form in plain English and our AI generates a complete, professional form with the right field types instantly.
               </p>
             </div>
             <div className="border rounded-lg p-6">
-              <h3 className="text-lg font-medium mb-2">Versatile Templates</h3>
+              <div className="h-10 w-10 rounded-lg bg-blue-500/10 flex items-center justify-center mb-3">
+                <Zap className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              </div>
+              <h3 className="text-lg font-medium mb-2">Instant Sharing</h3>
               <p className="text-muted-foreground">
-                Start with pre-built templates or create your own custom forms for any purpose.
+                Every form gets a unique shareable link. Send it to respondents or embed it anywhere with one click.
               </p>
             </div>
             <div className="border rounded-lg p-6">
-              <h3 className="text-lg font-medium mb-2">Advanced Analytics</h3>
+              <div className="h-10 w-10 rounded-lg bg-emerald-500/10 flex items-center justify-center mb-3">
+                <Users className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <h3 className="text-lg font-medium mb-2">Built for Teams</h3>
               <p className="text-muted-foreground">
-                Gain insights from responses with built-in analytics and visualization tools.
+                Collaborate on forms, track responses in real-time, and manage everything from a centralized dashboard.
               </p>
             </div>
             <div className="border rounded-lg p-6">
+              <div className="h-10 w-10 rounded-lg bg-orange-500/10 flex items-center justify-center mb-3">
+                <Shield className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+              </div>
               <h3 className="text-lg font-medium mb-2">Secure & Reliable</h3>
               <p className="text-muted-foreground">
-                We prioritize data security and ensure your information is protected.
+                Enterprise-grade security with encrypted data storage. Your form data is protected and always available.
               </p>
             </div>
           </div>
-        </div>
-
-        <div className="space-y-6">
-          <h2 className="text-2xl font-semibold">Contact Us</h2>
-          <p className="leading-7">
-            Have questions or feedback? We'd love to hear from you. Reach out to our team at <a href="mailto:support@readyforms.example.com" className="text-primary hover:underline">support@readyforms.example.com</a>.
-          </p>
         </div>
       </div>
     </div>

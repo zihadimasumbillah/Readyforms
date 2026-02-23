@@ -35,12 +35,14 @@ Both services start via `bash start.sh`:
 
 ## Key Features
 
-- **AI Form Generation**: Describe a form in natural language, AI generates the structure
+- **AI Form Generation**: Describe a form in natural language, AI generates the structure (uses `max_completion_tokens` for gpt-5.2)
 - **Template Builder**: Manual form creation with drag-and-drop field ordering
-- **Public Shareable Forms**: `/forms/[id]` for public form filling
+- **Public Shareable Forms**: `/forms/[id]` for public form filling with share button
 - **User Authentication**: JWT-based auth with login/signup
-- **Dashboard**: User dashboard with quick actions and form management
-- **Pricing Page**: Tiered SaaS pricing (Free/Pro/Enterprise)
+- **Dashboard**: User dashboard with AI quick actions and form management
+- **Templates Gallery**: Searchable/filterable by topic with "Create with AI" CTA
+- **Pricing Page**: Tiered SaaS pricing (Free/Pro/Enterprise) with AI feature tiers
+- **Footer**: Global footer with product/company links (hidden on dashboard/admin)
 
 ## Key Files
 
@@ -49,10 +51,13 @@ Both services start via `bash start.sh`:
 - `server/src/services/ai.service.ts` - AI form generation service
 - `server/src/routes/index.ts` - All API routes registration
 - `client/src/app/page.tsx` - SaaS landing page
+- `client/src/app/templates/page.tsx` - Template gallery with topic filtering
 - `client/src/app/templates/create/page.tsx` - Form builder with AI tab
 - `client/src/app/forms/[id]/page.tsx` - Public form filling page
 - `client/src/components/ai/ai-form-generator.tsx` - AI form generator component
-- `client/src/lib/api/api-config.ts` - API client configuration (uses `/api` relative path)
+- `client/src/components/footer.tsx` - Global footer component
+- `client/src/components/template/template-card.tsx` - Template card with share button
+- `client/src/lib/api/api-config.ts` - API client configuration (uses `/api` relative path, SSR uses port 5000)
 
 ## Key Environment Variables
 

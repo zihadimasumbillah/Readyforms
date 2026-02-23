@@ -112,7 +112,7 @@ Set isQuiz to true only if the user explicitly asks for a quiz or test.`;
       { role: 'user', content: prompt },
     ],
     temperature: 0.7,
-    max_tokens: 2000,
+    max_completion_tokens: 2000,
   });
 
   const content = response.choices[0]?.message?.content;
@@ -152,7 +152,7 @@ Maximum 4 of each type. Improve question wording, add missing fields, and enhanc
       { role: 'user', content: userMessage },
     ],
     temperature: 0.7,
-    max_tokens: 2000,
+    max_completion_tokens: 2000,
   });
 
   const content = response.choices[0]?.message?.content;

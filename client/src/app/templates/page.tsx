@@ -9,7 +9,8 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, Filter } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Search, Filter, Sparkles, X } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { TemplateCard } from '@/components/template/template-card';
@@ -21,6 +22,8 @@ export default function TemplatesPage() {
   const [topics, setTopics] = useState<Array<{ id: string; name: string }>>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
 
@@ -31,10 +34,6 @@ export default function TemplatesPage() {
         setTopics(topicsArray);
 
         const templatesData = await templateService.getTemplates();
-        console.log("Templates data type:", typeof templatesData);
-        console.log("Templates is array:", Array.isArray(templatesData));
-        console.log("Number of templates:", templatesData.length);
-        
         setTemplates(templatesData);
         setFilteredTemplates(templatesData);
       } catch (error) {
@@ -53,30 +52,54 @@ export default function TemplatesPage() {
   }, [toast]);
 
   useEffect(() => {
-    if (searchTerm.trim() === '') {
-      setFilteredTemplates(templates);
-    } else {
-      const filtered = templates.filter(template => {
+    let filtered = templates;
+
+    if (searchTerm.trim() !== '') {
+      const searchLower = searchTerm.toLowerCase();
+      filtered = filtered.filter(template => {
         const title = template.title?.toLowerCase() || '';
         const description = template.description?.toLowerCase() || '';
-        const searchLower = searchTerm.toLowerCase();
         return title.includes(searchLower) || description.includes(searchLower);
       });
-      setFilteredTemplates(filtered);
     }
-  }, [searchTerm, templates]);
+
+    if (selectedTopic) {
+      filtered = filtered.filter(template => template.topicId === selectedTopic);
+    }
+
+    setFilteredTemplates(filtered);
+  }, [searchTerm, selectedTopic, templates]);
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
   };
 
+  const clearFilters = () => {
+    setSearchTerm('');
+    setSelectedTopic(null);
+  };
+
+  const hasActiveFilters = searchTerm.trim() !== '' || selectedTopic !== null;
+
   return (
     <div className="container mx-auto py-8">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
-        <h1 className="text-3xl font-bold">Templates</h1>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+        <div>
+          <h1 className="text-3xl font-bold">Templates</h1>
+          <p className="text-muted-foreground mt-1">Browse and use community-created form templates</p>
+        </div>
         
-        <div className="flex w-full sm:w-auto gap-2">
-          <div className="relative w-full sm:w-64">
+        <Button asChild className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white">
+          <Link href="/templates/create">
+            <Sparkles className="h-4 w-4 mr-2" />
+            Create with AI
+          </Link>
+        </Button>
+      </div>
+
+      <div className="flex flex-col gap-4 mb-8">
+        <div className="flex w-full gap-2">
+          <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search templates..."
@@ -86,11 +109,38 @@ export default function TemplatesPage() {
             />
           </div>
           
-          <Button variant="outline" size="icon">
+          <Button
+            variant={showFilters ? "default" : "outline"}
+            size="icon"
+            onClick={() => setShowFilters(!showFilters)}
+          >
             <Filter className="h-4 w-4" />
             <span className="sr-only">Filter</span>
           </Button>
+
+          {hasActiveFilters && (
+            <Button variant="ghost" size="sm" onClick={clearFilters}>
+              <X className="h-4 w-4 mr-1" />
+              Clear
+            </Button>
+          )}
         </div>
+
+        {showFilters && topics.length > 0 && (
+          <div className="flex flex-wrap gap-2 p-4 border rounded-lg bg-muted/30">
+            <span className="text-sm font-medium text-muted-foreground mr-2 self-center">Topics:</span>
+            {topics.map((topic) => (
+              <Badge
+                key={topic.id}
+                variant={selectedTopic === topic.id ? "default" : "outline"}
+                className="cursor-pointer transition-colors"
+                onClick={() => setSelectedTopic(selectedTopic === topic.id ? null : topic.id)}
+              >
+                {topic.name}
+              </Badge>
+            ))}
+          </div>
+        )}
       </div>
 
       {loading ? (
@@ -115,14 +165,28 @@ export default function TemplatesPage() {
       ) : (
         <Card className="w-full py-12">
           <CardContent className="flex flex-col items-center justify-center text-center">
-            <div className="text-5xl mb-4">🔍</div>
+            <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center mb-4">
+              <Search className="h-8 w-8 text-muted-foreground" />
+            </div>
             <h3 className="text-lg font-semibold">No templates found</h3>
-            <p className="text-muted-foreground mb-6">
-              {searchTerm ? "No templates match your search criteria." : "There are no templates available at the moment."}
+            <p className="text-muted-foreground mb-6 max-w-sm">
+              {hasActiveFilters
+                ? "No templates match your filters. Try adjusting your search or clearing filters."
+                : "There are no templates available yet. Be the first to create one!"}
             </p>
-            <Button asChild>
-              <Link href="/templates/create">Create Template</Link>
-            </Button>
+            <div className="flex gap-3">
+              {hasActiveFilters && (
+                <Button variant="outline" onClick={clearFilters}>
+                  Clear Filters
+                </Button>
+              )}
+              <Button asChild>
+                <Link href="/templates/create">
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  Create with AI
+                </Link>
+              </Button>
+            </div>
           </CardContent>
         </Card>
       )}

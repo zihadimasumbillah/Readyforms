@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Badge } from "@/components/ui/badge";
 import { Template } from "@/types";
 import { Button } from "@/components/ui/button";
-import { Heart, MessageSquare, ArrowRight } from "lucide-react";
+import { Heart, MessageSquare, ArrowRight, Share2 } from "lucide-react";
 import Link from "next/link";
 import { likeService } from '@/lib/api/like-service';
 import { commentService } from '@/lib/api/comment-service';
@@ -116,11 +116,26 @@ export function TemplateCard({ template }: TemplateCardProps) {
           </div>
         </div>
         
-        <Button size="sm" variant="ghost" asChild>
-          <Link href={`/templates/${template.id}`}>
-            View <ArrowRight className="ml-1 h-3 w-3" />
-          </Link>
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => {
+              try {
+                const url = `${window.location.origin}/forms/${template.id}`;
+                navigator.clipboard.writeText(url);
+              } catch {}
+            }}
+            title="Copy share link"
+          >
+            <Share2 className="h-3 w-3" />
+          </Button>
+          <Button size="sm" variant="ghost" asChild>
+            <Link href={`/templates/${template.id}`}>
+              View <ArrowRight className="ml-1 h-3 w-3" />
+            </Link>
+          </Button>
+        </div>
       </CardFooter>
     </Card>
   );

@@ -4,6 +4,7 @@ import { QueryProvider } from "@/components/query-provider";
 import { AuthProvider } from "@/contexts/auth-context";
 import { Toaster } from "@/components/ui/toaster";
 import { Navbar } from "@/components/navbar";
+import { Footer } from "@/components/footer";
 import localFont from 'next/font/local';
 // Import Analytics component properly
 import { type FC } from "react";
@@ -51,8 +52,8 @@ const europa = localFont({
 });
 
 export const metadata = {
-  title: 'ReadyForms',
-  description: 'Create and share custom forms easily',
+  title: 'ReadyForms - AI-Powered Form Builder',
+  description: 'Build professional forms in seconds with AI. Describe what you need in plain English and let AI create forms instantly. Free to get started.',
 };
 
 export default function RootLayout({
@@ -67,7 +68,8 @@ export default function RootLayout({
           <QueryProvider>
             <AuthProvider>
               <Navbar />
-              <main>{children}</main>
+              <main className="min-h-[calc(100vh-4rem)]">{children}</main>
+              <Footer />
               <Toaster />
               <Analytics />
             </AuthProvider>
