@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { DashboardLayout } from '@/components/layouts/dashboard-layout';
+import { AdminLayout } from '@/components/layouts/admin-layout';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -168,14 +168,7 @@ export default function AdminUsersPage() {
   }
 
   return (
-    <DashboardLayout
-      user={{
-        name: user.name || 'Admin',
-        email: user.email || 'admin@example.com',
-        isAdmin: true
-      }}
-      onLogout={handleLogout}
-    >
+    <AdminLayout>
       <div className="mb-6">
         <h1 className="text-2xl font-bold">User Management</h1>
         <p className="text-muted-foreground">Manage user accounts and permissions</p>
@@ -402,6 +395,6 @@ export default function AdminUsersPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </DashboardLayout>
+    </AdminLayout>
   );
 }

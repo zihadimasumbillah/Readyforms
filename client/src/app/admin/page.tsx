@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import { DashboardLayout } from "@/components/layouts/dashboard-layout";
+import { AdminLayout } from "@/components/layouts/admin-layout";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -179,14 +179,7 @@ export default function AdminDashboardPage() {
   }
 
   return (
-    <DashboardLayout 
-      user={{
-        name: user.name || 'Admin User',
-        email: user.email || 'admin@example.com',
-        isAdmin: true
-      }}
-      onLogout={handleLogout}
-    >
+    <AdminLayout>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Admin Dashboard</h1>
         <div className="space-x-2">
@@ -535,6 +528,6 @@ export default function AdminDashboardPage() {
           </Button>
         </CardContent>
       </Card>
-    </DashboardLayout>
+    </AdminLayout>
   );
 }

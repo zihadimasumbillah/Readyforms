@@ -134,12 +134,58 @@ export const authService = {
     }
   },
 
+  async updateProfile(profileData: { name?: string; currentPassword?: string; newPassword?: string; theme?: string; language?: string }) {
+    try {
+      const response = await apiClient.put('/auth/profile', profileData);
+      if (response.data?.user) {
+        localStorage.setItem('auth_user', JSON.stringify(response.data.user));
+      }
+      return response.data;
+    } catch (error: any) {
+      console.error('Update profile error:', error);
+      throw error?.response?.data || error;
+    }
+  },
+
+  async sendOTP(email: string, purpose = 'login') {
+    try {
+      const response = await apiClient.post('/auth/send-otp', { email, purpose });
+      return response.data;
+    } catch (error: any) {
+      console.error('Send OTP error:', error);
+      throw error?.response?.data || error;
+    }
+  },
+
+  async verifyOTP(email: string, otp: string): Promise<AuthResponse> {
+    try {
+      const response = await apiClient.post<AuthResponse>('/auth/verify-otp', { email, otp });
+      if (response.data?.token) {
+        localStorage.setItem('auth_token', response.data.token);
+        localStorage.setItem('auth_user', JSON.stringify(response.data.user));
+      }
+      return response.data;
+    } catch (error: any) {
+      console.error('Verify OTP error:', error);
+      throw error?.response?.data || error;
+    }
+  },
+
+  async forgotPassword(email: string) {
+    try {
+      const response = await apiClient.post('/auth/forgot-password', { email });
+      return response.data;
+    } catch (error: any) {
+      console.error('Forgot password error:', error);
+      throw error?.response?.data || error;
+    }
+  },
+
   isAuthenticated(): boolean {
     if (typeof window === 'undefined') return false;
     return !!localStorage.getItem('auth_token');
   },
   
-  // Add the getToken method
   getToken(): string | null {
     if (typeof window === 'undefined') return null;
     return localStorage.getItem('auth_token');

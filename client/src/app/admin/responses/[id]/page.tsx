@@ -106,14 +106,7 @@ export default function ResponseDetailPage() {
   };
 
   return (
-    <AdminLayout 
-      user={user ? {
-        name: user.name || 'Admin',
-        email: user.email || '',
-        isAdmin: true
-      } : undefined}
-      onLogout={handleLogout}
-    >
+    <AdminLayout>
       <div className="flex flex-col gap-8">
         <Button 
           variant="ghost" 

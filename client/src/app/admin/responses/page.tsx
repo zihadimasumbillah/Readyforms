@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import { AdminLayout } from "@/components/layouts/admin-layout";
 import { adminService } from '@/lib/api/admin-service';
 import { FormResponse } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,7 +10,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Trash2, Search, Eye } from "lucide-react";
+import { Trash2, Search, Eye, FileText } from "lucide-react";
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from "@/contexts/auth-context";
@@ -28,7 +29,7 @@ export default function AdminResponsesPage() {
 
   useEffect(() => {
     if (!auth?.user?.isAdmin) {
-      router.push("/auth/login");
+      router.push("/dashboard");
       return;
     }
 
@@ -108,115 +109,111 @@ export default function AdminResponsesPage() {
   };
 
   return (
-    <div className="container mx-auto py-8 space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <AdminLayout>
+      <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Form Responses Management</h1>
-          <p className="text-muted-foreground">View and manage all user-submitted form responses</p>
+          <h1 className="text-3xl font-bold tracking-tight">System Form Submissions</h1>
+          <p className="text-muted-foreground">Administrative oversight of all user responses across all templates</p>
         </div>
-        <Button variant="outline" onClick={() => router.push('/admin')}>
-          Back to Admin Dashboard
-        </Button>
-      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>All Submitted Responses</CardTitle>
-          <CardDescription>
-            Total responses: {filteredResponses.length}
-          </CardDescription>
-          <div className="pt-4">
-            <div className="relative">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search by user or template title..."
-                className="pl-8"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
+        <Card>
+          <CardHeader>
+            <CardTitle>Global Responses Log ({filteredResponses.length})</CardTitle>
+            <CardDescription>Total responses recorded in database</CardDescription>
+            <div className="pt-4">
+              <div className="relative">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by respondent name, email, or template title..."
+                  className="pl-8"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
             </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="space-y-3">
-              {[...Array(5)].map((_, i) => (
-                <Skeleton key={i} className="h-12 w-full" />
-              ))}
-            </div>
-          ) : filteredResponses.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-muted-foreground">No form responses found</p>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Template</TableHead>
-                  <TableHead>Submitted By</TableHead>
-                  <TableHead>Submitted At</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredResponses.map((res) => (
-                  <TableRow key={res.id}>
-                    <TableCell className="font-medium">
-                      {res.template?.title || 'Unknown Template'}
-                    </TableCell>
-                    <TableCell>
-                      {res.user ? `${res.user.name} (${res.user.email})` : 'Anonymous'}
-                    </TableCell>
-                    <TableCell>{formatDate(res.createdAt)}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button variant="outline" size="sm" asChild>
-                          <Link href={`/admin/responses/${res.id}`}>
-                            <Eye className="h-4 w-4 mr-1" />
-                            View
-                          </Link>
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          disabled={processingId === res.id}
-                          onClick={() => {
-                            setResponseToDelete(res);
-                            setShowDeleteDialog(true);
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4 mr-1" />
-                          Delete
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <div className="space-y-3">
+                {[...Array(5)].map((_, i) => (
+                  <Skeleton key={i} className="h-12 w-full" />
                 ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+              </div>
+            ) : filteredResponses.length === 0 ? (
+              <div className="text-center py-12">
+                <FileText className="mx-auto h-12 w-12 text-muted-foreground opacity-40 mb-3" />
+                <p className="text-muted-foreground font-medium">No form responses match search criteria</p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Template</TableHead>
+                    <TableHead>Submitted By</TableHead>
+                    <TableHead>Submission Timestamp</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredResponses.map((res) => (
+                    <TableRow key={res.id}>
+                      <TableCell className="font-medium">
+                        {res.template?.title || 'Unknown Template'}
+                      </TableCell>
+                      <TableCell>
+                        {res.user ? `${res.user.name} (${res.user.email})` : 'Anonymous'}
+                      </TableCell>
+                      <TableCell>{formatDate(res.createdAt)}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button variant="outline" size="sm" asChild>
+                            <Link href={`/admin/responses/${res.id}`}>
+                              <Eye className="h-4 w-4 mr-1" />
+                              View Details
+                            </Link>
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            disabled={processingId === res.id}
+                            onClick={() => {
+                              setResponseToDelete(res);
+                              setShowDeleteDialog(true);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4 mr-1" />
+                            Delete
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
 
-      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently delete this response. This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-red-600 hover:bg-red-700"
-              onClick={handleDelete}
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
+        <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Submission Permanently?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. The response data will be permanently removed from system records.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-red-600 hover:bg-red-700"
+                onClick={handleDelete}
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+    </AdminLayout>
   );
 }

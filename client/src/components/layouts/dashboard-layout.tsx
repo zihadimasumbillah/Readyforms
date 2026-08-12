@@ -86,17 +86,26 @@ export function DashboardLayout({
     {
       href: "/dashboard/responses",
       icon: <FileText className="h-4 w-4" />,
-      label: "Responses",
+      label: "My Responses",
+    },
+    {
+      href: "/profile",
+      icon: <User className="h-4 w-4" />,
+      label: "Profile",
+    },
+    {
+      href: "/settings",
+      icon: <Settings className="h-4 w-4" />,
+      label: "Settings",
     },
   ];
 
-  // Add admin route if user is admin
   const adminItems = user?.isAdmin
     ? [
         {
           href: "/admin",
-          icon: <ShieldAlert className="h-4 w-4" />,
-          label: "Admin",
+          icon: <ShieldAlert className="h-4 w-4 text-purple-500" />,
+          label: "Admin Panel",
         },
       ]
     : [];

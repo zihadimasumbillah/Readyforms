@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import { AdminLayout } from '@/components/layouts/admin-layout';
 import { templateService } from '@/lib/api/template-service';
 import { adminService } from '@/lib/api/admin-service';
 import { Template } from '@/types';
@@ -145,7 +146,8 @@ export default function AdminTemplatesPage() {
   };
   
   return (
-    <div className="container mx-auto py-10">
+    <AdminLayout>
+      <div className="space-y-6">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Templates Management</h1>
         
@@ -290,6 +292,7 @@ export default function AdminTemplatesPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+      </div>
+    </AdminLayout>
   );
 }
