@@ -58,7 +58,31 @@ const verifyToken = async (req: Request, res: Response, next: NextFunction): Pro
   }
 };
 
+export const optionalAuth = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.split(' ')[1];
+      try {
+        const decoded = jwt.verify(token, jwtConfig.secret) as JwtPayload;
+        const user = await User.findByPk(decoded.id, {
+          attributes: { exclude: ['password'] }
+        });
+        if (user && !user.blocked) {
+          req.user = user;
+        }
+      } catch (err) {
+        // Token invalid or expired - ignore for optionalAuth
+      }
+    }
+    next();
+  } catch (error) {
+    next();
+  }
+};
+
 export default verifyToken;
 export { verifyToken };
 
 export const authMiddleware = verifyToken;
+

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { DashboardLayout } from "@/components/layouts/dashboard-layout";
+import { AdminLayout } from "@/components/layouts/admin-layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -88,14 +88,7 @@ export default function ApiStatusPage() {
   }
 
   return (
-    <DashboardLayout
-      user={{
-        name: user.name || 'Admin',
-        email: user.email || 'admin@example.com',
-        isAdmin: user.isAdmin || false
-      }}
-      onLogout={handleLogout}
-    >
+    <AdminLayout>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">API System Status</h1>
         <Button onClick={checkHealth} disabled={refreshing}>
@@ -148,6 +141,6 @@ export default function ApiStatusPage() {
           )}
         </CardContent>
       </Card>
-    </DashboardLayout>
+    </AdminLayout>
   );
 }

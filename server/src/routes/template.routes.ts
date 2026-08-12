@@ -7,14 +7,14 @@ import {
   deleteTemplate,
   searchTemplates
 } from '../controllers/template.controller';
-import verifyToken from '../middleware/auth.middleware';
+import verifyToken, { optionalAuth } from '../middleware/auth.middleware';
 
 const router = express.Router();
 
 router.get('/', getAllTemplates);
 router.get('/search', searchTemplates);
 
-router.get('/:id', getTemplateById);
+router.get('/:id', optionalAuth as express.RequestHandler, getTemplateById);
 
 router.post('/', verifyToken, createTemplate);
 

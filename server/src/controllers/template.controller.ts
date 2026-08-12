@@ -103,17 +103,20 @@ export const createTemplate = catchAsync(async (req: Request, res: Response) => 
     return res.status(400).json({ message: 'At least one form field is required' });
   }
 
-  // Verify that topicId exists (DB call AFTER auth)
-  const topic = await Topic.findByPk(topicId);
+  let topic = isUuid(topicId) ? await Topic.findByPk(topicId) : null;
   if (!topic) {
-    return res.status(404).json({ message: 'Topic not found' });
+    topic = await Topic.findOne();
   }
+  if (!topic) {
+    return res.status(404).json({ message: 'No valid topic found' });
+  }
+  const resolvedTopicId = topic.id;
 
   const templateData = {
     title: String(title).trim().slice(0, 200),
     description: description ? String(description).trim().slice(0, 2000) : '',
     isPublic: isPublic === undefined ? true : Boolean(isPublic),
-    topicId,
+    topicId: resolvedTopicId,
     userId: req.user.id,
     customString1State: customString1State || false,
     customString1Question: customString1Question || '',
