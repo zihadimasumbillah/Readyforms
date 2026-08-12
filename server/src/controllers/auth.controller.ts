@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import { User } from '../models';
 import jwtConfig from '../config/jwt.config';
 import catchAsync from '../utils/catchAsync';
@@ -200,13 +201,23 @@ export const updatePreferences = catchAsync(async (req: Request, res: Response) 
 });
 
 /**
- * OTP In-Memory Store
+ * OTP Store with TTL & Periodic Eviction
  */
 interface OTPRecord {
   code: string;
   expiresAt: number;
 }
 const otpStore = new Map<string, OTPRecord>();
+
+// Periodic eviction sweep every 5 minutes to prevent heap memory accumulation
+setInterval(() => {
+  const now = Date.now();
+  for (const [email, record] of otpStore.entries()) {
+    if (now > record.expiresAt) {
+      otpStore.delete(email);
+    }
+  }
+}, 5 * 60 * 1000);
 
 /**
  * @route POST /api/auth/send-otp
@@ -223,7 +234,8 @@ export const sendOTP = catchAsync(async (req: Request, res: Response) => {
     return res.status(400).json({ message: 'Invalid email address' });
   }
 
-  const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+  // Cryptographically secure 6-digit OTP generation (CSPRNG)
+  const otpCode = crypto.randomInt(100000, 999999).toString();
   const expiresAt = Date.now() + 10 * 60 * 1000;
 
   otpStore.set(normalizedEmail, { code: otpCode, expiresAt });
@@ -250,7 +262,7 @@ export const verifyOTP = catchAsync(async (req: Request, res: Response) => {
   const normalizedEmail = String(email).toLowerCase().trim();
   const record = otpStore.get(normalizedEmail);
 
-  if (!record || record.code !== String(otp).trim()) {
+  if (!record) {
     return res.status(400).json({ message: 'Invalid or expired OTP code' });
   }
 
@@ -259,12 +271,22 @@ export const verifyOTP = catchAsync(async (req: Request, res: Response) => {
     return res.status(400).json({ message: 'OTP code has expired' });
   }
 
+  // Timing-safe constant-time buffer comparison against side-channel attacks
+  const expectedBuf = Buffer.from(record.code);
+  const suppliedBuf = Buffer.from(String(otp).trim());
+
+  if (expectedBuf.length !== suppliedBuf.length || !crypto.timingSafeEqual(expectedBuf, suppliedBuf)) {
+    return res.status(400).json({ message: 'Invalid or expired OTP code' });
+  }
+
   otpStore.delete(normalizedEmail);
 
   let user = await User.findOne({ where: { email: { [Op.iLike]: normalizedEmail } } });
 
   if (!user) {
-    const randomPassword = await bcrypt.hash(Math.random().toString(36), 12);
+    // Cryptographically secure password hash for auto-provisioned user
+    const randomSecret = crypto.randomBytes(32).toString('hex');
+    const randomPassword = await bcrypt.hash(randomSecret, 12);
     user = await User.create({
       name: normalizedEmail.split('@')[0],
       email: normalizedEmail,

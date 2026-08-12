@@ -6,6 +6,8 @@ const baseURL = process.env.OPENAI_BASE_URL || process.env.AI_INTEGRATIONS_OPENA
 const openai = new OpenAI({
   apiKey,
   ...(baseURL ? { baseURL } : {}),
+  timeout: 10000, // 10 second socket timeout safeguard
+  maxRetries: 2,
 });
 
 interface GeneratedQuestion {
