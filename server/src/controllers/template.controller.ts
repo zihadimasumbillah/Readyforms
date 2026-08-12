@@ -238,18 +238,12 @@ export const updateTemplate = catchAsync(async (req: Request, res: Response) => 
       return res.status(400).json({ message: 'Invalid template ID format. Please provide a valid UUID.' });
     }
 
-    if (version === undefined) {
-      return res.status(400).json({ message: 'Version field is required for optimistic locking' });
-    }
-
-    if (!title || !topicId) {
-      return res.status(400).json({ message: 'Title and topic are required' });
-    }
-
     const template = await Template.findByPk(id);
     if (!template) {
       return res.status(404).json({ message: 'Template not found' });
     }
+
+    const targetVersion = version !== undefined ? Number(version) : template.version;
 
     const isOwner = template.userId === req.user.id;
     const isAdmin = req.user.isAdmin === true;
