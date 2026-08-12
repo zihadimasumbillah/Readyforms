@@ -95,7 +95,7 @@ export default function ApiStatusPage() {
         <Card>
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
-              <Activity className="h-5 w-5 text-purple-500" />
+              <Activity className="h-5 w-5 text-cyan-500" />
               Subsystem Endpoint Status
             </CardTitle>
             <CardDescription>Monitored services and response latencies</CardDescription>

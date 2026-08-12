@@ -17,7 +17,10 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Search, MoreHorizontal, Shield, ShieldOff, Ban, UserCheck, UserCog } from 'lucide-react';
+import {
+  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter
+} from "@/components/ui/dialog";
+import { Search, MoreHorizontal, Shield, ShieldOff, Ban, UserCheck, UserCog, Mail, Calendar, Clock, Lock, CheckCircle2, User as UserIcon } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { useRouter } from 'next/navigation';
 import { adminService } from '@/lib/api/admin-service';
@@ -34,6 +37,7 @@ export default function AdminUsersPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [status, setStatus] = useState<StatusFilter>('all');
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [detailUserModal, setDetailUserModal] = useState<User | null>(null);
   const [action, setAction] = useState<'block' | 'unblock' | 'makeAdmin' | 'removeAdmin' | null>(null);
   
   const auth = useAuth();
@@ -73,29 +77,22 @@ export default function AdminUsersPage() {
     
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(user => 
-        user.name?.toLowerCase().includes(query) || 
-        user.email?.toLowerCase().includes(query)
+      filtered = filtered.filter(u => 
+        u.name?.toLowerCase().includes(query) || 
+        u.email?.toLowerCase().includes(query)
       );
     }
     
     if (status === 'blocked') {
-      filtered = filtered.filter(user => user.blocked);
+      filtered = filtered.filter(u => u.blocked);
     } else if (status === 'active') {
-      filtered = filtered.filter(user => !user.blocked);
+      filtered = filtered.filter(u => !u.blocked);
     } else if (status === 'admin') {
-      filtered = filtered.filter(user => user.isAdmin);
+      filtered = filtered.filter(u => u.isAdmin);
     }
     
     setFilteredUsers(filtered);
   }, [searchQuery, status, users]);
-
-  const handleLogout = () => {
-    if (logout) {
-      logout();
-      router.push('/auth/login');
-    }
-  };
 
   const handleAction = async () => {
     if (!selectedUser || !action) return;
@@ -170,19 +167,19 @@ export default function AdminUsersPage() {
   return (
     <AdminLayout>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold">User Management</h1>
-        <p className="text-muted-foreground">Manage user accounts and permissions</p>
+        <h1 className="text-2xl font-bold">User Governance & Profiles</h1>
+        <p className="text-muted-foreground">Manage system users, credentials, roles, and security policies</p>
       </div>
 
       <Card>
         <CardHeader className="flex flex-col space-y-2 lg:flex-row lg:items-center lg:justify-between lg:space-y-0">
-          <CardTitle>Users</CardTitle>
+          <CardTitle>Registered Users ({filteredUsers.length})</CardTitle>
           <div className="flex flex-col space-y-2 md:flex-row md:items-center md:space-x-2 md:space-y-0">
             <div className="relative">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 type="search"
-                placeholder="Search users..."
+                placeholder="Search by name or email..."
                 className="pl-8 w-full md:w-[200px] lg:w-[300px]"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -237,60 +234,72 @@ export default function AdminUsersPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>User</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="hidden md:table-cell">Created</TableHead>
+                  <TableHead>User Profile</TableHead>
+                  <TableHead>System Role & Status</TableHead>
+                  <TableHead className="hidden md:table-cell">Registration Date</TableHead>
                   <TableHead className="hidden md:table-cell">Last Login</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredUsers.length > 0 ? (
-                  filteredUsers.map((user) => (
-                    <TableRow key={user.id}>
+                  filteredUsers.map((u) => (
+                    <TableRow key={u.id}>
                       <TableCell>
-                        <div className="flex flex-col">
-                          <span className="font-medium">{user.name}</span>
-                          <span className="text-xs text-muted-foreground">{user.email}</span>
+                        <div className="flex items-center gap-3">
+                          <div className="h-9 w-9 rounded-full bg-cyan-500/10 text-cyan-500 font-bold flex items-center justify-center shrink-0">
+                            {u.name?.charAt(0).toUpperCase() || 'U'}
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="font-medium text-sm">{u.name}</span>
+                            <span className="text-xs text-muted-foreground">{u.email}</span>
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="flex flex-wrap gap-1">
-                          {user.isAdmin && (
-                            <Badge variant="default" className="bg-blue-500">
+                        <div className="flex flex-wrap gap-1.5">
+                          {u.isAdmin ? (
+                            <Badge variant="default" className="bg-indigo-600 hover:bg-indigo-700">
                               Admin
                             </Badge>
+                          ) : (
+                            <Badge variant="secondary">User</Badge>
                           )}
-                          {user.blocked ? (
+                          {u.blocked ? (
                             <Badge variant="destructive">Blocked</Badge>
                           ) : (
-                            <Badge variant="outline">Active</Badge>
+                            <Badge variant="outline" className="border-emerald-500 text-emerald-600">Active</Badge>
                           )}
                         </div>
                       </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        {formatDate(user.createdAt)}
+                      <TableCell className="hidden md:table-cell text-xs text-muted-foreground">
+                        {formatDate(u.createdAt)}
                       </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        {formatDate(user.lastLoginAt)}
+                      <TableCell className="hidden md:table-cell text-xs text-muted-foreground">
+                        {formatDate(u.lastLoginAt)}
                       </TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0" disabled={user.id === auth?.user?.id}>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
                               <span className="sr-only">Open menu</span>
                               <MoreHorizontal className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            {user.isAdmin ? (
+                            <DropdownMenuLabel>User Governance</DropdownMenuLabel>
+                            <DropdownMenuItem onClick={() => setDetailUserModal(u)}>
+                              <UserCog className="mr-2 h-4 w-4 text-cyan-500" />
+                              <span>View Full Details</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            {u.isAdmin ? (
                               <DropdownMenuItem
                                 onClick={() => {
-                                  setSelectedUser(user);
+                                  setSelectedUser(u);
                                   setAction('removeAdmin');
                                 }}
-                                disabled={user.id === auth?.user?.id}
+                                disabled={u.id === auth?.user?.id}
                                 className="text-amber-600"
                               >
                                 <ShieldOff className="mr-2 h-4 w-4" />
@@ -299,23 +308,23 @@ export default function AdminUsersPage() {
                             ) : (
                               <DropdownMenuItem
                                 onClick={() => {
-                                  setSelectedUser(user);
+                                  setSelectedUser(u);
                                   setAction('makeAdmin');
                                 }}
-                                disabled={user.id === auth?.user?.id}
+                                disabled={u.id === auth?.user?.id}
                               >
                                 <Shield className="mr-2 h-4 w-4" />
-                                <span>Make Admin</span>
+                                <span>Promote to Admin</span>
                               </DropdownMenuItem>
                             )}
                             <DropdownMenuSeparator />
-                            {user.blocked ? (
+                            {u.blocked ? (
                               <DropdownMenuItem
                                 onClick={() => {
-                                  setSelectedUser(user);
+                                  setSelectedUser(u);
                                   setAction('unblock');
                                 }}
-                                disabled={user.id === auth?.user?.id}
+                                disabled={u.id === auth?.user?.id}
                               >
                                 <UserCheck className="mr-2 h-4 w-4" />
                                 <span>Unblock User</span>
@@ -323,21 +332,16 @@ export default function AdminUsersPage() {
                             ) : (
                               <DropdownMenuItem
                                 onClick={() => {
-                                  setSelectedUser(user);
+                                  setSelectedUser(u);
                                   setAction('block');
                                 }}
-                                disabled={user.id === auth?.user?.id}
+                                disabled={u.id === auth?.user?.id}
                                 className="text-red-600"
                               >
                                 <Ban className="mr-2 h-4 w-4" />
-                                <span>Block User</span>
+                                <span>Block Account</span>
                               </DropdownMenuItem>
                             )}
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem>
-                              <UserCog className="mr-2 h-4 w-4" />
-                              <span>View Details</span>
-                            </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
@@ -348,12 +352,7 @@ export default function AdminUsersPage() {
                     <TableCell colSpan={5} className="text-center py-10">
                       <div className="flex flex-col items-center">
                         <Search className="h-8 w-8 text-muted-foreground mb-2" />
-                        <h3 className="text-lg font-semibold">No users found</h3>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          {searchQuery
-                            ? "No users match your search criteria."
-                            : "There are no users available."}
-                        </p>
+                        <h3 className="text-lg font-semibold">No users match criteria</h3>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -363,6 +362,79 @@ export default function AdminUsersPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Interactive User View Details Modal */}
+      <Dialog open={Boolean(detailUserModal)} onOpenChange={() => setDetailUserModal(null)}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-xl flex items-center gap-3">
+              <div className="h-10 w-10 rounded-full bg-cyan-500/10 text-cyan-500 font-bold flex items-center justify-center">
+                {detailUserModal?.name?.charAt(0).toUpperCase() || 'U'}
+              </div>
+              <div>
+                <p>{detailUserModal?.name}</p>
+                <p className="text-xs text-muted-foreground font-normal">{detailUserModal?.email}</p>
+              </div>
+            </DialogTitle>
+            <DialogDescription>Full User Profile & Security Audit View</DialogDescription>
+          </DialogHeader>
+
+          {detailUserModal && (
+            <div className="space-y-4 pt-2">
+              <div className="grid grid-cols-2 gap-3 p-3 rounded-xl bg-muted/40 text-sm">
+                <div>
+                  <span className="text-xs text-muted-foreground block">System Role</span>
+                  <Badge variant={detailUserModal.isAdmin ? "default" : "secondary"} className="mt-1">
+                    {detailUserModal.isAdmin ? "Administrator" : "Standard User"}
+                  </Badge>
+                </div>
+                <div>
+                  <span className="text-xs text-muted-foreground block">Account Status</span>
+                  <Badge variant={detailUserModal.blocked ? "destructive" : "outline"} className={`mt-1 ${!detailUserModal.blocked ? 'border-emerald-500 text-emerald-600' : ''}`}>
+                    {detailUserModal.blocked ? "Blocked" : "Active"}
+                  </Badge>
+                </div>
+              </div>
+
+              <div className="space-y-3 text-sm">
+                <div className="flex justify-between p-2.5 rounded-lg border">
+                  <span className="text-muted-foreground flex items-center gap-2">
+                    <UserIcon className="h-4 w-4 text-cyan-500" /> User UUID
+                  </span>
+                  <span className="font-mono text-xs">{detailUserModal.id}</span>
+                </div>
+
+                <div className="flex justify-between p-2.5 rounded-lg border">
+                  <span className="text-muted-foreground flex items-center gap-2">
+                    <Mail className="h-4 w-4 text-cyan-500" /> Email Address
+                  </span>
+                  <span className="font-medium">{detailUserModal.email}</span>
+                </div>
+
+                <div className="flex justify-between p-2.5 rounded-lg border">
+                  <span className="text-muted-foreground flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-cyan-500" /> Registration Date
+                  </span>
+                  <span>{formatDate(detailUserModal.createdAt)}</span>
+                </div>
+
+                <div className="flex justify-between p-2.5 rounded-lg border">
+                  <span className="text-muted-foreground flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-cyan-500" /> Last Active Timestamp
+                  </span>
+                  <span>{formatDate(detailUserModal.lastLoginAt)}</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setDetailUserModal(null)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Confirmation Dialog */}
       <AlertDialog open={!!selectedUser && !!action} onOpenChange={() => { setSelectedUser(null); setAction(null); }}>
@@ -380,17 +452,14 @@ export default function AdminUsersPage() {
                action === 'unblock' ? 
                 `Are you sure you want to unblock ${selectedUser?.name}? They will be able to log in again.` : 
                action === 'makeAdmin' ? 
-                `Are you sure you want to make ${selectedUser?.name} an admin? They will have full access to all areas of the application.` : 
-                `Are you sure you want to remove admin status from ${selectedUser?.name}? They will lose access to admin areas.`}
+                `Are you sure you want to make ${selectedUser?.name} an admin?` : 
+                `Are you sure you want to remove admin status from ${selectedUser?.name}?`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleAction}>
-              {action === 'block' ? 'Block' : 
-               action === 'unblock' ? 'Unblock' : 
-               action === 'makeAdmin' ? 'Make Admin' : 
-               'Remove Admin'}
+              Confirm Action
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

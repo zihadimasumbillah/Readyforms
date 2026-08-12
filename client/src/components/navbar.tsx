@@ -36,8 +36,14 @@ export function Navbar() {
     setMounted(true);
   }, []);
 
-  // Don't show navbar on dashboard pages - they have their own layout
-  if (pathname?.startsWith('/dashboard') || pathname?.startsWith('/admin')) {
+  // Don't show global navbar on dashboard/admin/app layout pages - they have their own dedicated layout
+  if (
+    pathname?.startsWith('/dashboard') ||
+    pathname?.startsWith('/admin') ||
+    pathname?.startsWith('/api-status') ||
+    pathname?.startsWith('/profile') ||
+    pathname?.startsWith('/settings')
+  ) {
     return null;
   }
 
