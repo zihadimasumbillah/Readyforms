@@ -71,7 +71,7 @@ export const templateService = {
   }): Promise<Template[]> {
     try {
       const response = await apiClient.get('/templates', { params });
-      return response.data;
+      return Array.isArray(response.data) ? response.data : (response.data?.data || []);
     } catch (error) {
       console.error('Error fetching templates:', error);
       return [];

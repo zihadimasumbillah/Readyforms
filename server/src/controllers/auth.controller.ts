@@ -200,24 +200,7 @@ export const updatePreferences = catchAsync(async (req: Request, res: Response) 
   });
 });
 
-/**
- * OTP Store with TTL & Periodic Eviction
- */
-interface OTPRecord {
-  code: string;
-  expiresAt: number;
-}
-const otpStore = new Map<string, OTPRecord>();
-
-// Periodic eviction sweep every 5 minutes to prevent heap memory accumulation
-setInterval(() => {
-  const now = Date.now();
-  for (const [email, record] of otpStore.entries()) {
-    if (now > record.expiresAt) {
-      otpStore.delete(email);
-    }
-  }
-}, 5 * 60 * 1000);
+import { OTPService } from '../services/otp.service';
 
 /**
  * @route POST /api/auth/send-otp
@@ -234,11 +217,7 @@ export const sendOTP = catchAsync(async (req: Request, res: Response) => {
     return res.status(400).json({ message: 'Invalid email address' });
   }
 
-  // Cryptographically secure 6-digit OTP generation (CSPRNG)
-  const otpCode = crypto.randomInt(100000, 999999).toString();
-  const expiresAt = Date.now() + 10 * 60 * 1000;
-
-  otpStore.set(normalizedEmail, { code: otpCode, expiresAt });
+  const otpCode = OTPService.setOTP(normalizedEmail, 10 * 60 * 1000);
 
   console.log(`[OTP SYSTEM] Generated OTP for ${normalizedEmail} (${purpose}): ${otpCode}`);
 
@@ -246,7 +225,7 @@ export const sendOTP = catchAsync(async (req: Request, res: Response) => {
     message: `OTP sent successfully to ${normalizedEmail}`,
     email: normalizedEmail,
     expiresInSeconds: 600,
-    devOtp: process.env.NODE_ENV !== 'production' ? otpCode : undefined,
+    devOtp: process.env.NODE_ENV === 'development' ? otpCode : undefined,
   });
 });
 
@@ -260,26 +239,11 @@ export const verifyOTP = catchAsync(async (req: Request, res: Response) => {
   }
 
   const normalizedEmail = String(email).toLowerCase().trim();
-  const record = otpStore.get(normalizedEmail);
+  const isValid = OTPService.verifyOTP(normalizedEmail, String(otp));
 
-  if (!record) {
+  if (!isValid) {
     return res.status(400).json({ message: 'Invalid or expired OTP code' });
   }
-
-  if (Date.now() > record.expiresAt) {
-    otpStore.delete(normalizedEmail);
-    return res.status(400).json({ message: 'OTP code has expired' });
-  }
-
-  // Timing-safe constant-time buffer comparison against side-channel attacks
-  const expectedBuf = Buffer.from(record.code);
-  const suppliedBuf = Buffer.from(String(otp).trim());
-
-  if (expectedBuf.length !== suppliedBuf.length || !crypto.timingSafeEqual(expectedBuf, suppliedBuf)) {
-    return res.status(400).json({ message: 'Invalid or expired OTP code' });
-  }
-
-  otpStore.delete(normalizedEmail);
 
   let user = await User.findOne({ where: { email: { [Op.iLike]: normalizedEmail } } });
 
@@ -384,16 +348,14 @@ export const forgotPassword = catchAsync(async (req: Request, res: Response) => 
   const normalizedEmail = String(email).toLowerCase().trim();
   const user = await User.findOne({ where: { email: { [Op.iLike]: normalizedEmail } } });
 
-  // Generate 6-digit OTP
-  const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-  const expiresAt = Date.now() + 10 * 60 * 1000;
-  otpStore.set(normalizedEmail, { code: otpCode, expiresAt });
+  // Generate CSPRNG 6-digit OTP via OTPService
+  const otpCode = OTPService.setOTP(normalizedEmail, 10 * 60 * 1000);
 
   console.log(`[PASSWORD RESET OTP] For ${normalizedEmail}: ${otpCode}`);
 
   return res.status(200).json({
     message: 'If an account exists with this email, an OTP code has been generated.',
-    devOtp: process.env.NODE_ENV !== 'production' && user ? otpCode : undefined,
+    devOtp: process.env.NODE_ENV === 'development' && user ? otpCode : undefined,
   });
 });
 

@@ -12,7 +12,7 @@ export const getAllTemplates = catchAsync(async (req: Request, res: Response) =>
   const limitNumber = Math.max(1, Math.min(50, parseInt(limit as string) || 10)); 
   const offset = (pageNumber - 1) * limitNumber;
   
-  const templates = await Template.findAll({
+  const { count, rows: templates } = await Template.findAndCountAll({
     where: { isPublic: true },
     include: [
       { model: User, attributes: ['id', 'name'] },
@@ -21,10 +21,20 @@ export const getAllTemplates = catchAsync(async (req: Request, res: Response) =>
     ],
     order: [['createdAt', 'DESC']],
     limit: limitNumber,
-    offset: offset
+    offset: offset,
+    distinct: true,
   });
   
-  res.status(200).json(templates);
+  // Return structured response with metadata while maintaining array compatibility if needed
+  res.status(200).json({
+    data: templates,
+    meta: {
+      total: count,
+      page: pageNumber,
+      limit: limitNumber,
+      totalPages: Math.ceil(count / limitNumber)
+    }
+  });
 });
 
 export const getTemplateById = catchAsync(async (req: Request, res: Response) => {
