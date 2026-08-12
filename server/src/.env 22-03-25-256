@@ -1,7 +1,0 @@
-# ⚠️  THIS FILE CONTAINED REAL SECRETS AND HAS BEEN SANITIZED.
-# The original credentials MUST be rotated immediately at neon.tech.
-# Do not store secrets in files — use Vercel Environment Variables.
-# See: https://vercel.com/docs/projects/environment-variables
-
-DATABASE_URL=ROTATE_IMMEDIATELY
-JWT_SECRET=ROTATE_IMMEDIATELY

@@ -36,6 +36,7 @@ interface DashboardLayoutProps {
     isAdmin?: boolean;
   };
   onLogout: () => void;
+  hideHeader?: boolean;
 }
 
 interface NavItemProps {
@@ -68,6 +69,7 @@ export function DashboardLayout({
   children,
   user,
   onLogout,
+  hideHeader,
 }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const pathname = usePathname();
@@ -104,7 +106,7 @@ export function DashboardLayout({
     ? [
         {
           href: "/admin",
-          icon: <ShieldAlert className="h-4 w-4 text-purple-500" />,
+          icon: <ShieldAlert className="h-4 w-4 text-indigo-600" />,
           label: "Admin Panel",
         },
       ]
@@ -117,7 +119,7 @@ export function DashboardLayout({
 
   return (
     <div className="h-full min-h-screen flex flex-col">
-      {/* Top Navigation */}
+      {!hideHeader && (
       <header className="sticky top-0 z-30 h-16 border-b bg-background flex items-center px-4 md:px-6">
         <Button
           variant="ghost"
@@ -187,6 +189,7 @@ export function DashboardLayout({
           </DropdownMenu>
         </div>
       </header>
+      )}
 
       <div className="flex-1 flex">
         {/* Mobile Sidebar */}

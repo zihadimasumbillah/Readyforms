@@ -215,7 +215,7 @@ export default function EditTemplatePage() {
 
   if (loading) {
     return (
-      <DashboardLayout user={currentUser} onLogout={() => auth?.logout?.()}>
+      <DashboardLayout user={currentUser} onLogout={() => auth?.logout?.()} hideHeader>
         <div className="flex items-center justify-center min-h-[400px]">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
@@ -224,7 +224,7 @@ export default function EditTemplatePage() {
   }
 
   return (
-    <DashboardLayout user={currentUser} onLogout={() => auth?.logout?.()}>
+    <DashboardLayout user={currentUser} onLogout={() => auth?.logout?.()} hideHeader>
       <div className="max-w-5xl mx-auto space-y-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -241,7 +241,7 @@ export default function EditTemplatePage() {
             <Button variant="outline" onClick={() => router.push(`/templates/${id}`)}>
               Cancel
             </Button>
-            <Button onClick={handleSave} disabled={saving} className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white">
+            <Button onClick={handleSave} disabled={saving} className="bg-gradient-to-r from-cyan-500 via-teal-500 to-emerald-500 hover:from-cyan-400 hover:to-emerald-400 text-slate-950 font-bold">
               {saving ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -260,7 +260,7 @@ export default function EditTemplatePage() {
         <Tabs defaultValue="questions" className="w-full">
           <TabsList className="grid w-full grid-cols-2 mb-6">
             <TabsTrigger value="questions" className="flex items-center gap-2">
-              <ListOrdered className="h-4 w-4 text-purple-500" />
+              <ListOrdered className="h-4 w-4 text-cyan-500" />
               Form Questions ({questions.filter((q) => q.enabled).length} Enabled)
             </TabsTrigger>
             <TabsTrigger value="settings" className="flex items-center gap-2">
@@ -369,7 +369,7 @@ export default function EditTemplatePage() {
             <Card className="border-purple-500/30">
               <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2">
-                  <Sparkles className="h-5 w-5 text-purple-500" />
+                  <Sparkles className="h-5 w-5 text-cyan-500" />
                   Quiz Mode & Timed Countdown Assessment
                 </CardTitle>
                 <CardDescription>
@@ -389,7 +389,7 @@ export default function EditTemplatePage() {
                   <div className="space-y-3 pt-2">
                     <div className="space-y-2">
                       <label className="text-sm font-medium flex items-center gap-2">
-                        <Clock className="h-4 w-4 text-purple-500" />
+                        <Clock className="h-4 w-4 text-cyan-500" />
                         Countdown Time Limit (Minutes)
                       </label>
                       <Input

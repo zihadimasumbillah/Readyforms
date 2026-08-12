@@ -52,8 +52,8 @@ const NavItem = ({ href, icon, label, isActive, onClick, badge }: NavItemProps) 
         className={cn(
           "flex items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all",
           isActive
-            ? "bg-cyan-600 text-slate-950 font-semibold shadow-md shadow-cyan-500/20"
-            : "text-muted-foreground hover:bg-cyan-500/10 hover:text-cyan-500 dark:hover:text-cyan-400"
+            ? "bg-indigo-600 text-white font-semibold shadow-md shadow-indigo-500/20"
+            : "text-muted-foreground hover:bg-indigo-500/10 hover:text-indigo-600 dark:hover:text-indigo-400"
         )}
       >
         <div className="flex items-center gap-3">
@@ -61,7 +61,7 @@ const NavItem = ({ href, icon, label, isActive, onClick, badge }: NavItemProps) 
           <span>{label}</span>
         </div>
         {badge && (
-          <Badge variant="secondary" className="text-xs bg-cyan-500/20 text-cyan-500">
+          <Badge variant="secondary" className="text-xs bg-indigo-500/20 text-indigo-600 dark:text-indigo-400">
             {badge}
           </Badge>
         )}
@@ -88,9 +88,9 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     return null;
   }
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     if (logout) {
-      logout();
+      await logout();
       router.push("/auth/login");
     }
   };
@@ -98,27 +98,27 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   const navItems = [
     {
       href: "/admin",
-      icon: <ShieldAlert className="h-4 w-4 text-purple-500" />,
+      icon: <ShieldAlert className="h-4 w-4 text-indigo-600" />,
       label: "Admin Overview",
     },
     {
       href: "/admin/users",
-      icon: <Users className="h-4 w-4 text-blue-500" />,
+      icon: <Users className="h-4 w-4 text-blue-600" />,
       label: "User Accounts",
     },
     {
       href: "/admin/templates",
-      icon: <BookTemplate className="h-4 w-4 text-indigo-500" />,
+      icon: <BookTemplate className="h-4 w-4 text-indigo-600" />,
       label: "Global Templates",
     },
     {
       href: "/admin/responses",
-      icon: <FileText className="h-4 w-4 text-emerald-500" />,
+      icon: <FileText className="h-4 w-4 text-emerald-600" />,
       label: "Form Submissions",
     },
     {
       href: "/api-status",
-      icon: <Activity className="h-4 w-4 text-amber-500" />,
+      icon: <Activity className="h-4 w-4 text-amber-600" />,
       label: "System Health",
     },
   ];
@@ -138,11 +138,11 @@ export function AdminLayout({ children }: AdminLayoutProps) {
 
         <div className="flex items-center gap-3">
           <Link href="/admin" className="flex items-center gap-2">
-            <div className="h-9 w-9 rounded-lg bg-gradient-to-tr from-purple-600 to-indigo-600 flex items-center justify-center text-white font-bold shadow-md shadow-purple-500/20">
+            <div className="h-9 w-9 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold shadow-md shadow-indigo-500/20">
               <ShieldAlert className="h-5 w-5" />
             </div>
             <span className="font-bold text-lg tracking-tight hidden sm:inline-block">
-              ReadyForms <span className="text-purple-600 font-extrabold">ADMIN</span>
+              ReadyForms <span className="text-indigo-600 font-extrabold">ADMIN</span>
             </span>
           </Link>
           <Badge variant="destructive" className="ml-2 font-mono text-xs uppercase tracking-wider">
@@ -151,9 +151,9 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         </div>
 
         <div className="ml-auto flex items-center gap-3">
-          <Button variant="outline" size="sm" asChild className="hidden sm:flex border-purple-500/30 hover:bg-purple-500/10">
+          <Button variant="outline" size="sm" asChild className="hidden sm:flex border-indigo-500/30 hover:bg-indigo-500/10">
             <Link href="/dashboard">
-              <LayoutDashboard className="h-4 w-4 mr-1.5 text-purple-500" />
+              <LayoutDashboard className="h-4 w-4 mr-1.5 text-indigo-500" />
               User Dashboard
             </Link>
           </Button>
@@ -162,9 +162,9 @@ export function AdminLayout({ children }: AdminLayoutProps) {
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="relative h-9 w-9 rounded-full border border-purple-500/30 p-0">
+              <Button variant="ghost" className="relative h-9 w-9 rounded-full border border-indigo-500/30 p-0">
                 <Avatar className="h-8 w-8">
-                  <AvatarFallback className="bg-purple-600 text-white font-semibold">
+                  <AvatarFallback className="bg-indigo-600 text-white font-semibold">
                     {user.name ? user.name.slice(0, 2).toUpperCase() : "AD"}
                   </AvatarFallback>
                 </Avatar>
@@ -180,13 +180,13 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
                 <Link href="/profile">
-                  <User className="mr-2 h-4 w-4 text-purple-500" />
+                  <User className="mr-2 h-4 w-4 text-indigo-500" />
                   <span>Profile</span>
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link href="/settings">
-                  <Settings className="mr-2 h-4 w-4 text-purple-500" />
+                  <Settings className="mr-2 h-4 w-4 text-indigo-500" />
                   <span>Settings</span>
                 </Link>
               </DropdownMenuItem>
@@ -253,8 +253,8 @@ export function AdminLayout({ children }: AdminLayoutProps) {
             ))}
           </div>
 
-          <div className="p-3 bg-purple-500/10 rounded-xl border border-purple-500/20 space-y-2 mt-auto">
-            <div className="flex items-center gap-2 font-semibold text-xs text-purple-600 dark:text-purple-400">
+          <div className="p-3 bg-indigo-500/10 rounded-xl border border-indigo-500/20 space-y-2 mt-auto">
+            <div className="flex items-center gap-2 font-semibold text-xs text-indigo-600 dark:text-indigo-400">
               <Sparkles className="h-3.5 w-3.5" />
               <span>Admin Mode Active</span>
             </div>

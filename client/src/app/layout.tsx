@@ -5,6 +5,7 @@ import { AuthProvider } from "@/contexts/auth-context";
 import { Toaster } from "@/components/ui/toaster";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
+import { AuthClientInitializer } from "@/components/auth-client-initializer";
 import localFont from 'next/font/local';
 import dynamic from 'next/dynamic';
 import type { Metadata } from 'next';
@@ -66,6 +67,7 @@ export default function RootLayout({
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <QueryProvider>
             <AuthProvider>
+              <AuthClientInitializer />
               <Navbar />
               <main className="min-h-[calc(100vh-4rem)]">{children}</main>
               <Footer />

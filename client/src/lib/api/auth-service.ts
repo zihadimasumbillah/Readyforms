@@ -1,4 +1,4 @@
-import apiClient from './api-client';
+import apiClient, { setTokenGetter } from './api-client';
 import { AxiosError } from 'axios';
 
 interface LoginCredentials {
@@ -37,19 +37,13 @@ export const authService = {
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
     try {
       const response = await apiClient.post<AuthResponse>('/auth/login', credentials);
-      
-      // Store token in localStorage
-      localStorage.setItem('auth_token', response.data.token);
-      
       return response.data;
     } catch (error) {
-      // Custom error handling
       const axiosError = error as AxiosError;
       let errorMessage = 'Login failed. Please try again.';
       let isNetworkError = false;
       
       if (!axiosError.response) {
-        // Network error (no response)
         errorMessage = 'Unable to connect to the authentication server. Please check your internet connection.';
         console.error('Login network error:', axiosError.message);
         isNetworkError = true;
@@ -63,7 +57,6 @@ export const authService = {
       
       console.error('Login error:', errorMessage);
       
-      // Throw a standardized error object
       throw {
         message: errorMessage,
         status: axiosError.response?.status,
@@ -76,19 +69,13 @@ export const authService = {
   async register(data: RegisterData): Promise<AuthResponse> {
     try {
       const response = await apiClient.post<AuthResponse>('/auth/register', data);
-      
-      // Store token in localStorage
-      localStorage.setItem('auth_token', response.data.token);
-      
       return response.data;
     } catch (error) {
-      // Custom error handling
       const axiosError = error as AxiosError;
       let errorMessage = 'Registration failed. Please try again.';
       let isNetworkError = false;
       
       if (!axiosError.response) {
-        // Network error
         errorMessage = 'Unable to connect to the registration server. Please check your internet connection.';
         console.error('Register network error:', axiosError.message);
         isNetworkError = true;
@@ -110,8 +97,7 @@ export const authService = {
   },
 
   async logout(): Promise<void> {
-    // Remove token from localStorage
-    localStorage.removeItem('auth_token');
+    // NextAuth handles logout via signOut()
   },
 
   async getCurrentUser() {
@@ -137,9 +123,6 @@ export const authService = {
   async updateProfile(profileData: { name?: string; currentPassword?: string; newPassword?: string; theme?: string; language?: string }) {
     try {
       const response = await apiClient.put('/auth/profile', profileData);
-      if (response.data?.user) {
-        localStorage.setItem('auth_user', JSON.stringify(response.data.user));
-      }
       return response.data;
     } catch (error: any) {
       console.error('Update profile error:', error);
@@ -160,10 +143,6 @@ export const authService = {
   async verifyOTP(email: string, otp: string): Promise<AuthResponse> {
     try {
       const response = await apiClient.post<AuthResponse>('/auth/verify-otp', { email, otp });
-      if (response.data?.token) {
-        localStorage.setItem('auth_token', response.data.token);
-        localStorage.setItem('auth_user', JSON.stringify(response.data.user));
-      }
       return response.data;
     } catch (error: any) {
       console.error('Verify OTP error:', error);
@@ -182,12 +161,14 @@ export const authService = {
   },
 
   isAuthenticated(): boolean {
-    if (typeof window === 'undefined') return false;
-    return !!localStorage.getItem('auth_token');
+    return false;
   },
   
   getToken(): string | null {
-    if (typeof window === 'undefined') return null;
-    return localStorage.getItem('auth_token');
+    return null;
   }
 };
+
+export function initializeAuthClient(getToken: () => string | null) {
+  setTokenGetter(getToken);
+}

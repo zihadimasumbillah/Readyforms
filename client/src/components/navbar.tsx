@@ -4,8 +4,8 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { BookTemplate, Menu, X, LogIn, User } from 'lucide-react';
-import { useAuth } from '@/contexts/auth-context';
+import { BookOpen, Menu, X, LogIn, User } from 'lucide-react';
+import { useAuth } from '@/hooks/use-auth';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { cn } from '@/lib/utils';
 import {
@@ -36,23 +36,22 @@ export function Navbar() {
     setMounted(true);
   }, []);
 
-  // Don't show global navbar on dashboard/admin/app layout pages - they have their own dedicated layout
   if (
     pathname?.startsWith('/dashboard') ||
     pathname?.startsWith('/admin') ||
     pathname?.startsWith('/api-status') ||
     pathname?.startsWith('/profile') ||
-    pathname?.startsWith('/settings')
+    pathname?.startsWith('/settings') ||
+    pathname?.startsWith('/templates/') ||
+    pathname?.startsWith('/forms/')
   ) {
     return null;
   }
 
-  // Close mobile menu when clicking outside
   const closeMobileMenu = () => {
     setMobileMenuOpen(false);
   };
 
-  // Navigation items based on authentication status
   const navItems = [
     { label: 'Home', href: '/' },
     { label: 'Templates', href: '/templates' },
@@ -60,7 +59,6 @@ export function Navbar() {
     { label: 'Pricing', href: '/pricing' },
   ];
 
-  // User is authenticated
   const userMenuItems = auth?.user ? [
     { label: 'Dashboard', href: '/dashboard' },
     { label: 'My Templates', href: '/dashboard/templates' },
@@ -78,8 +76,10 @@ export function Navbar() {
         {/* Logo */}
         <div className="flex items-center gap-2">
           <Link href="/" className="flex items-center gap-2">
-            <BookTemplate className="h-6 w-6" />
-            <span className="font-bold text-lg">ReadyForms</span>
+            <div className="h-8 w-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white">
+              <BookOpen className="h-4 w-4" />
+            </div>
+            <span className="font-bold text-lg tracking-tight">ReadyForms</span>
           </Link>
         </div>
 
@@ -157,7 +157,7 @@ export function Navbar() {
                     Log in
                   </Link>
                 </Button>
-                <Button asChild size="sm">
+                <Button asChild size="sm" className="bg-indigo-600 hover:bg-indigo-700">
                   <Link href="/auth/register">Sign up</Link>
                 </Button>
               </div>
@@ -257,12 +257,12 @@ export function Navbar() {
                 ) : (
                   <div className="pt-4 border-t">
                     <div className="flex flex-col space-y-3">
-                      <Button asChild>
+                      <Button asChild variant="ghost">
                         <Link href="/auth/login" onClick={closeMobileMenu}>
                           Log in
                         </Link>
                       </Button>
-                      <Button asChild variant="outline">
+                      <Button asChild className="bg-indigo-600 hover:bg-indigo-700">
                         <Link href="/auth/register" onClick={closeMobileMenu}>
                           Sign up
                         </Link>

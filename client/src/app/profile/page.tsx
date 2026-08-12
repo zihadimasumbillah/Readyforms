@@ -48,8 +48,8 @@ export default function ProfilePage() {
     try {
       setSaving(true);
       const res = await authService.updateProfile({ name, theme, language });
-      if (auth.login && auth.token && res.user) {
-        auth.login(auth.token, res.user);
+      if (res.user && auth.updateSession) {
+        await auth.updateSession();
       }
       toast({
         title: "Profile updated",
