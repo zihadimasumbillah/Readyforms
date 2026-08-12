@@ -2,12 +2,13 @@
 
 import React, { useState, useEffect } from 'react';
 import { AdminLayout } from "@/components/layouts/admin-layout";
+import { DashboardLayout } from "@/components/layouts/dashboard-layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/components/ui/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
-import { RefreshCw, CheckCircle, AlertCircle, Database } from "lucide-react";
+import { RefreshCw, CheckCircle, AlertCircle, Activity } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { useRouter } from "next/navigation";
 import healthService, { EndpointStatusResponse } from "@/lib/api/health-service";
@@ -33,25 +34,25 @@ export default function ApiStatusPage() {
       setRefreshing(true);
       const status = await healthService.checkEndpoints();
       setEndpointStatus(status);
-      
+
       if (status.status === 'healthy') {
         toast({
-          title: "Health Check Successful",
-          description: "All systems are operational",
+          title: "System Operational",
+          description: "All API subsystems are performing normally.",
         });
       } else {
         toast({
-          title: "Health Check Warning",
-          description: "Some systems may not be functioning properly",
-          variant: "destructive"
+          title: "Degraded Performance",
+          description: "One or more subsystems reported warnings.",
+          variant: "destructive",
         });
       }
     } catch (error) {
       console.error("Error checking API health:", error);
       toast({
         title: "Health Check Failed",
-        description: "Unable to complete the health check",
-        variant: "destructive"
+        description: "Unable to reach API server.",
+        variant: "destructive",
       });
     } finally {
       setRefreshing(false);
@@ -63,84 +64,89 @@ export default function ApiStatusPage() {
     checkHealth();
   }, []);
 
-  useEffect(() => {
-    if (user && !user.isAdmin) {
-      toast({
-        title: "Access Denied",
-        description: "You must be an administrator to view this page",
-        variant: "destructive"
-      });
-      router.push('/dashboard');
-    }
-  }, [user, router]);
-
   if (!user) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center space-y-4">
-          <h2 className="text-2xl font-bold">Loading</h2>
-          <div className="flex justify-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-          </div>
-        </div>
+      <div className="flex flex-col items-center justify-center min-h-screen">
+        <Activity className="h-8 w-8 animate-spin text-purple-600 mb-2" />
+        <p className="text-sm text-muted-foreground">Verifying system metrics...</p>
       </div>
     );
   }
 
-  return (
-    <AdminLayout>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">API System Status</h1>
-        <Button onClick={checkHealth} disabled={refreshing}>
-          <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
-      </div>
+  const LayoutWrapper = user.isAdmin ? AdminLayout : DashboardLayout;
+  const layoutProps = user.isAdmin
+    ? {}
+    : { user, onLogout: handleLogout };
 
-      <Card>
-        <CardHeader>
-          <CardTitle>API Endpoints</CardTitle>
-          <CardDescription>Health status of essential API endpoints</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="space-y-3">
-              {Array(3).fill(0).map((_, i) => (
-                <Skeleton key={i} className="h-12 w-full" />
-              ))}
-            </div>
-          ) : endpointStatus?.endpoints && Object.keys(endpointStatus.endpoints).length > 0 ? (
-            <div className="space-y-4">
-              {Object.entries(endpointStatus.endpoints).map(([name, endpoint], index) => (
-                <div key={index} className="flex justify-between items-center p-3 border rounded-md">
-                  <div className="flex items-center">
-                    {endpoint.status === 'up' ? (
-                      <CheckCircle className="h-4 w-4 mr-2 text-green-600" />
-                    ) : (
-                      <AlertCircle className="h-4 w-4 mr-2 text-red-600" />
-                    )}
-                    <span className="font-medium">{name}</span>
+  return (
+    <LayoutWrapper {...(layoutProps as any)}>
+      <div className="max-w-5xl mx-auto space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">API System Health & Metrics</h1>
+            <p className="text-sm text-muted-foreground">Real-time status monitor of backend microservices and database connectivity</p>
+          </div>
+          <Button onClick={checkHealth} disabled={refreshing} className="w-fit">
+            <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+            Refresh Health Metrics
+          </Button>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Activity className="h-5 w-5 text-purple-500" />
+              Subsystem Endpoint Status
+            </CardTitle>
+            <CardDescription>Monitored services and response latencies</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <div className="space-y-3">
+                {[...Array(5)].map((_, i) => (
+                  <Skeleton key={i} className="h-12 w-full" />
+                ))}
+              </div>
+            ) : endpointStatus?.endpoints && Object.keys(endpointStatus.endpoints).length > 0 ? (
+              <div className="divide-y rounded-xl border">
+                {Object.entries(endpointStatus.endpoints).map(([name, endpoint], index) => (
+                  <div key={index} className="flex justify-between items-center p-4 hover:bg-muted/30 transition-colors">
+                    <div className="flex items-center gap-3">
+                      {endpoint.status === 'up' ? (
+                        <div className="h-8 w-8 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-600">
+                          <CheckCircle className="h-5 w-5" />
+                        </div>
+                      ) : (
+                        <div className="h-8 w-8 rounded-full bg-red-500/10 flex items-center justify-center text-red-600">
+                          <AlertCircle className="h-5 w-5" />
+                        </div>
+                      )}
+                      <div>
+                        <p className="font-semibold text-sm">{name}</p>
+                        <p className="text-xs text-muted-foreground">Status: {endpoint.status.toUpperCase()}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Badge variant={endpoint.status === 'up' ? 'outline' : 'destructive'} className={endpoint.status === 'up' ? 'border-emerald-500 text-emerald-600 bg-emerald-500/10' : ''}>
+                        {endpoint.status === 'up' ? 'OPERATIONAL' : 'OFFLINE'}
+                      </Badge>
+                      {endpoint.responseTime !== undefined && (
+                        <span className="text-xs font-mono font-medium text-muted-foreground bg-muted px-2 py-1 rounded">
+                          {endpoint.responseTime}ms
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <Badge variant={endpoint.status === 'up' ? 'outline' : 'destructive'}>
-                      {endpoint.status === 'up' ? 'Healthy' : 'Unhealthy'}
-                    </Badge>
-                    {endpoint.responseTime && (
-                      <span className="text-sm text-muted-foreground">
-                        {endpoint.responseTime}ms
-                      </span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-4">
-              <p className="text-muted-foreground">No endpoint data available</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </AdminLayout>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">No health data reported by server.</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </LayoutWrapper>
   );
 }
