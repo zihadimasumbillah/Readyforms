@@ -12,7 +12,7 @@
 
     /* Language and Environment */
     "target": "ES2018",                                  /* Set the JavaScript language version for emitted JavaScript and include compatible library declarations. */
-    "lib": ["es2018", "esnext.asynciterable"],           /* Specify a set of bundled library declaration files that describe the target runtime environment. */
+    "lib": ["es2018", "esnext.asynciterable", "dom"],   /* Specify a set of bundled library declaration files that describe the target runtime environment. */
     // "jsx": "preserve",                                /* Specify what JSX code is generated. */
     // "libReplacement": true,                           /* Enable lib replacement. */
     "experimentalDecorators": true,                      /* Enable experimental support for legacy experimental decorators. */
@@ -105,7 +105,10 @@
 
     /* Completeness */
     // "skipDefaultLibCheck": true,                      /* Skip type checking .d.ts files that are included with TypeScript. */
-    "skipLibCheck": true                                 /* Skip type checking all .d.ts files. */
+    "skipLibCheck": true
+  },
+  "ts-node": {
+    "files": true
   },
   "include": [
     "src/**/*"

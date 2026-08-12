@@ -16,13 +16,16 @@ router.get('/users-count', adminController.getUsersCount);
 
 
 router.get('/dashboard-stats', adminController.getDashboardStats);
-router.get('/system-activity', adminController.getSystemActivity);
-router.get('/system-activity/:count', adminController.getSystemActivity);
+
+router.get('/topics', adminController.getAllTopics);
 
 router.get('/templates', adminController.getAllTemplates);
 router.get('/templates/:id', adminController.getTemplateById);
+router.delete('/templates/:id', adminController.deleteTemplate);
 
 router.get('/responses', adminController.getAllResponses);
 router.get('/responses/:id', adminController.getResponseById);
+router.delete('/responses/:id', adminController.deleteResponse);
 
 export default router;
+

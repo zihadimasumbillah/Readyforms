@@ -57,167 +57,128 @@ export const getTemplateById = catchAsync(async (req: Request, res: Response) =>
 });
 
 export const createTemplate = catchAsync(async (req: Request, res: Response) => {
-  try {
-    const { 
-      title, 
-      description, 
-      isPublic, 
-      topicId,
-      tags,
-      customString1State,
-      customString1Question,
-      customString2State,
-      customString2Question,
-      customString3State,
-      customString3Question,
-      customString4State,
-      customString4Question,
-      customText1State,
-      customText1Question,
-      customText2State,
-      customText2Question,
-      customText3State,
-      customText3Question,
-      customText4State,
-      customText4Question,
-      customInt1State,
-      customInt1Question,
-      customInt2State,
-      customInt2Question,
-      customInt3State,
-      customInt3Question,
-      customInt4State,
-      customInt4Question,
-      customCheckbox1State,
-      customCheckbox1Question,
-      customCheckbox2State,
-      customCheckbox2Question,
-      customCheckbox3State,
-      customCheckbox3Question,
-      customCheckbox4State,
-      customCheckbox4Question,
-      questionOrder
-    } = req.body;
+  // Auth FIRST — reject before any DB I/O to prevent timing-based probing
+  if (!req.user) {
+    return res.status(401).json({ message: 'Not authenticated' });
+  }
 
-    console.log('Template creation request:', { title, topicId, tags });
+  const {
+    title,
+    description,
+    isPublic,
+    topicId,
+    tags,
+    customString1State, customString1Question,
+    customString2State, customString2Question,
+    customString3State, customString3Question,
+    customString4State, customString4Question,
+    customText1State,   customText1Question,
+    customText2State,   customText2Question,
+    customText3State,   customText3Question,
+    customText4State,   customText4Question,
+    customInt1State,    customInt1Question,
+    customInt2State,    customInt2Question,
+    customInt3State,    customInt3Question,
+    customInt4State,    customInt4Question,
+    customCheckbox1State, customCheckbox1Question,
+    customCheckbox2State, customCheckbox2Question,
+    customCheckbox3State, customCheckbox3Question,
+    customCheckbox4State, customCheckbox4Question,
+    questionOrder
+  } = req.body;
 
-    if (!title || !topicId) {
-      return res.status(400).json({ message: 'Title and topic are required' });
-    }
+  if (!title || !topicId) {
+    return res.status(400).json({ message: 'Title and topic are required' });
+  }
 
-    // Verify that topicId exists
-    const topic = await Topic.findByPk(topicId);
-    if (!topic) {
-      return res.status(404).json({ message: 'Topic not found' });
-    }
+  // Sanitize title length
+  if (String(title).trim().length > 200) {
+    return res.status(400).json({ message: 'Title must be 200 characters or fewer' });
+  }
 
-    // No need to check for all fields, just make sure at least one is enabled
-    if (!customString1State && !customString2State && !customString3State && !customString4State &&
-        !customText1State && !customText2State && !customText3State && !customText4State &&
-        !customInt1State && !customInt2State && !customInt3State && !customInt4State &&
-        !customCheckbox1State && !customCheckbox2State && !customCheckbox3State && !customCheckbox4State) {
-      return res.status(400).json({ message: 'At least one form field is required' });
-    }
+  if (!customString1State && !customString2State && !customString3State && !customString4State &&
+      !customText1State   && !customText2State   && !customText3State   && !customText4State   &&
+      !customInt1State    && !customInt2State    && !customInt3State    && !customInt4State    &&
+      !customCheckbox1State && !customCheckbox2State && !customCheckbox3State && !customCheckbox4State) {
+    return res.status(400).json({ message: 'At least one form field is required' });
+  }
 
-    if (!req.user) {
-      return res.status(401).json({ message: 'Not authenticated' });
-    }
+  // Verify that topicId exists (DB call AFTER auth)
+  const topic = await Topic.findByPk(topicId);
+  if (!topic) {
+    return res.status(404).json({ message: 'Topic not found' });
+  }
 
-    // Create template with default values
-    const templateData = {
-      title,
-      description: description || '',
-      isPublic: isPublic === undefined ? true : isPublic,
-      topicId,
-      userId: req.user.id,
-      // Default all fields to false unless explicitly set
-      customString1State: customString1State || false,
-      customString1Question: customString1Question || '',
-      customString2State: customString2State || false,
-      customString2Question: customString2Question || '',
-      customString3State: customString3State || false,
-      customString3Question: customString3Question || '',
-      customString4State: customString4State || false,
-      customString4Question: customString4Question || '',
-      customText1State: customText1State || false,
-      customText1Question: customText1Question || '',
-      customText2State: customText2State || false,
-      customText2Question: customText2Question || '',
-      customText3State: customText3State || false,
-      customText3Question: customText3Question || '',
-      customText4State: customText4State || false,
-      customText4Question: customText4Question || '',
-      customInt1State: customInt1State || false,
-      customInt1Question: customInt1Question || '',
-      customInt2State: customInt2State || false,
-      customInt2Question: customInt2Question || '',
-      customInt3State: customInt3State || false,
-      customInt3Question: customInt3Question || '',
-      customInt4State: customInt4State || false,
-      customInt4Question: customInt4Question || '',
-      customCheckbox1State: customCheckbox1State || false,
-      customCheckbox1Question: customCheckbox1Question || '',
-      customCheckbox2State: customCheckbox2State || false,
-      customCheckbox2Question: customCheckbox2Question || '',
-      customCheckbox3State: customCheckbox3State || false,
-      customCheckbox3Question: customCheckbox3Question || '',
-      customCheckbox4State: customCheckbox4State || false,
-      customCheckbox4Question: customCheckbox4Question || '',
-      questionOrder: questionOrder || '[]'
-    };
-    
-    console.log('Creating template with data:', {
-      title: templateData.title,
-      topicId: templateData.topicId,
-      userId: templateData.userId
-    });
+  const templateData = {
+    title: String(title).trim().slice(0, 200),
+    description: description ? String(description).trim().slice(0, 2000) : '',
+    isPublic: isPublic === undefined ? true : Boolean(isPublic),
+    topicId,
+    userId: req.user.id,
+    customString1State: customString1State || false,
+    customString1Question: customString1Question || '',
+    customString2State: customString2State || false,
+    customString2Question: customString2Question || '',
+    customString3State: customString3State || false,
+    customString3Question: customString3Question || '',
+    customString4State: customString4State || false,
+    customString4Question: customString4Question || '',
+    customText1State: customText1State || false,
+    customText1Question: customText1Question || '',
+    customText2State: customText2State || false,
+    customText2Question: customText2Question || '',
+    customText3State: customText3State || false,
+    customText3Question: customText3Question || '',
+    customText4State: customText4State || false,
+    customText4Question: customText4Question || '',
+    customInt1State: customInt1State || false,
+    customInt1Question: customInt1Question || '',
+    customInt2State: customInt2State || false,
+    customInt2Question: customInt2Question || '',
+    customInt3State: customInt3State || false,
+    customInt3Question: customInt3Question || '',
+    customInt4State: customInt4State || false,
+    customInt4Question: customInt4Question || '',
+    customCheckbox1State: customCheckbox1State || false,
+    customCheckbox1Question: customCheckbox1Question || '',
+    customCheckbox2State: customCheckbox2State || false,
+    customCheckbox2Question: customCheckbox2Question || '',
+    customCheckbox3State: customCheckbox3State || false,
+    customCheckbox3Question: customCheckbox3Question || '',
+    customCheckbox4State: customCheckbox4State || false,
+    customCheckbox4Question: customCheckbox4Question || '',
+    questionOrder: questionOrder || '[]'
+  };
 
-    const template = await Template.create(templateData);
-    console.log('Template created:', template.id);
+  const template = await Template.create(templateData);
 
-    // Process tags if provided
-    if (tags && Array.isArray(tags) && tags.length > 0) {
-      console.log('Processing tags:', tags);
-      for (const tagName of tags) {
-        const trimmedTagName = tagName.trim();
-        if (trimmedTagName) {
-          try {
-            console.log('Finding or creating tag:', trimmedTagName);
-            const [tag] = await Tag.findOrCreate({
-              where: { name: trimmedTagName },
-              defaults: { name: trimmedTagName }
-            });
-            
-            console.log('Creating template tag association:', { tagId: tag.id, templateId: template.id });
-            await TemplateTag.create({
-              tagId: tag.id,
-              templateId: template.id
-            });
-          } catch (tagError) {
-            console.error('Error processing tag:', trimmedTagName, tagError);
-            // Continue with other tags even if one fails
-          }
+  // Process tags if provided
+  if (tags && Array.isArray(tags) && tags.length > 0) {
+    for (const tagName of tags) {
+      const trimmedTagName = String(tagName).trim().slice(0, 50);
+      if (trimmedTagName) {
+        try {
+          const [tag] = await Tag.findOrCreate({
+            where: { name: trimmedTagName },
+            defaults: { name: trimmedTagName }
+          });
+          await TemplateTag.create({ tagId: tag.id, templateId: template.id });
+        } catch (tagError) {
+          console.error('[TEMPLATE] Error processing tag:', trimmedTagName, (tagError as Error).message);
         }
       }
     }
-  
-    // Fetch the complete template with associations
-    const completeTemplate = await Template.findByPk(template.id, {
-      include: [
-        { model: User, attributes: ['id', 'name'] },
-        { model: Topic, attributes: ['id', 'name'] },
-        { model: Tag }
-      ]
-    });
-    
-    res.status(201).json(completeTemplate);
-  } catch (error) {
-    console.error('Error creating template:', error);
-    res.status(500).json({ 
-      message: 'Server error while creating template',
-      details: process.env.NODE_ENV === 'development' ? (error as Error).message : undefined
-    });
   }
+
+  const completeTemplate = await Template.findByPk(template.id, {
+    include: [
+      { model: User, attributes: ['id', 'name'] },
+      { model: Topic, attributes: ['id', 'name'] },
+      { model: Tag }
+    ]
+  });
+
+  res.status(201).json(completeTemplate);
 });
 
 export const updateTemplate = catchAsync(async (req: Request, res: Response) => {
@@ -265,30 +226,26 @@ export const updateTemplate = catchAsync(async (req: Request, res: Response) => 
       questionOrder
     } = req.body;
     
+    // Auth first
+    if (!req.user) {
+      return res.status(401).json({ message: 'Not authenticated' });
+    }
+
     if (!isUuid(id)) {
-      return res.status(400).json({ 
-        message: 'Invalid template ID format. Please provide a valid UUID.' 
-      });
+      return res.status(400).json({ message: 'Invalid template ID format. Please provide a valid UUID.' });
     }
 
     if (version === undefined) {
-      return res.status(400).json({ 
-        message: 'Version field is required for optimistic locking' 
-      });
+      return res.status(400).json({ message: 'Version field is required for optimistic locking' });
     }
 
     if (!title || !topicId) {
       return res.status(400).json({ message: 'Title and topic are required' });
     }
-    
+
     const template = await Template.findByPk(id);
-    
     if (!template) {
       return res.status(404).json({ message: 'Template not found' });
-    }
-
-    if (!req.user) {
-      return res.status(401).json({ message: 'Not authenticated' });
     }
 
     const isOwner = template.userId === req.user.id;
@@ -402,14 +359,13 @@ export const updateTemplate = catchAsync(async (req: Request, res: Response) => 
 export const deleteTemplate = catchAsync(async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    let version;
-    if (req.body && req.body.version !== undefined) {
-      version = Number(req.body.version);
-    } else if (req.query && req.query.version !== undefined) {
-      version = Number(req.query.version);
-    } else if (req.headers && req.headers['x-version'] !== undefined) {
-      version = Number(req.headers['x-version']);
+    // Auth first
+    if (!req.user) {
+      return res.status(401).json({ message: 'Not authenticated' });
     }
+
+    // Accept version ONLY from body (not query params or headers to prevent TOCTOU)
+    const version = req.body?.version !== undefined ? Number(req.body.version) : undefined;
 
     if (!isUuid(id)) {
       return res.status(400).json({ 
@@ -459,7 +415,6 @@ export const deleteTemplate = catchAsync(async (req: Request, res: Response) => 
 
 export const searchTemplates = catchAsync(async (req: Request, res: Response) => {
   try {
-    console.log('Template search request:', req.query);
     const { query, tag, topicId, limit = 10, page = 1, sort } = req.query;
     
     const whereConditions: any = {
@@ -520,13 +475,6 @@ export const searchTemplates = catchAsync(async (req: Request, res: Response) =>
     const limitNumber = Math.max(1, Math.min(50, parseInt(limit as string) || 10));
     const offset = (pageNumber - 1) * limitNumber;
     
-    console.log('Executing template search with:', {
-      where: whereConditions,
-      limit: limitNumber,
-      offset,
-      order
-    });
-
     const templates = await Template.findAll({
       where: whereConditions,
       include: includeConditions,
@@ -535,7 +483,6 @@ export const searchTemplates = catchAsync(async (req: Request, res: Response) =>
       offset: offset
     });
     
-    console.log(`Found ${templates.length} templates`);
     res.status(200).json(templates);
   } catch (error) {
     console.error('Error searching templates:', error);

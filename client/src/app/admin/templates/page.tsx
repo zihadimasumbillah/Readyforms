@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { templateService } from '@/lib/api/template-service';
+import { adminService } from '@/lib/api/admin-service';
 import { Template } from '@/types';
 import {
   Card,
@@ -65,10 +66,10 @@ export default function AdminTemplatesPage() {
     const fetchTemplates = async () => {
       try {
         setLoading(true);
-        // Fetch all templates for admin view
-        const allTemplates = await templateService.getTemplates({ limit: 100 });
-        setTemplates(allTemplates);
-        setFilteredTemplates(allTemplates);
+        // Fetch all templates for admin view using adminService
+        const allTemplates = await adminService.getAllTemplates(1, 100);
+        setTemplates(allTemplates || []);
+        setFilteredTemplates(allTemplates || []);
       } catch (error) {
         console.error("Error fetching templates:", error);
         toast({
@@ -112,7 +113,7 @@ export default function AdminTemplatesPage() {
     
     try {
       setProcessingId(templateToDelete.id);
-      await templateService.deleteTemplate(templateToDelete.id, templateToDelete.version);
+      await adminService.deleteTemplate(templateToDelete.id);
       
       setTemplates(templates.filter(t => t.id !== templateToDelete.id));
       setFilteredTemplates(filteredTemplates.filter(t => t.id !== templateToDelete.id));

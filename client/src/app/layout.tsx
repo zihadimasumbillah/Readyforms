@@ -6,54 +6,53 @@ import { Toaster } from "@/components/ui/toaster";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import localFont from 'next/font/local';
-// Import Analytics component properly
-import { type FC } from "react";
-
-// Define a type for the Analytics component
-type AnalyticsComponent = FC<{}>;
-
-// Initialize with a no-op component
-let Analytics: AnalyticsComponent = () => null;
-
-try {
-  // Dynamic import of the Analytics component
-  const VercelAnalytics = require('@vercel/analytics/react');
-  if (VercelAnalytics && VercelAnalytics.Analytics) {
-    Analytics = VercelAnalytics.Analytics;
-  }
-} catch (error) {
-  // Keep using the no-op component if the module is not available
-  console.warn("@vercel/analytics/react not available - analytics disabled");
-}
+import dynamic from 'next/dynamic';
+import type { Metadata } from 'next';
 
 import "./globals.css";
 
-// Use local Europa font files from public directory instead of Google Fonts
+// Analytics: loaded asynchronously so it never blocks the critical render path
+const Analytics = dynamic(
+  () => import('@vercel/analytics/react').then((mod) => ({ default: mod.Analytics })),
+  { ssr: false }
+);
+
+// Use local Europa font files from public directory
 const europa = localFont({
   src: [
-    {
-      path: '../../public/fonts/europa-light-webfont.ttf',
-      weight: '300',
-      style: 'normal',
-    },
-    {
-      path: '../../public/fonts/europa-regular-webfont.ttf',
-      weight: '400',
-      style: 'normal',
-    },
-    {
-      path: '../../public/fonts/europa-bold-webfont.ttf',
-      weight: '700',
-      style: 'normal',
-    },
+    { path: '../../public/fonts/europa-light-webfont.ttf',   weight: '300', style: 'normal' },
+    { path: '../../public/fonts/europa-regular-webfont.ttf', weight: '400', style: 'normal' },
+    { path: '../../public/fonts/europa-bold-webfont.ttf',    weight: '700', style: 'normal' },
   ],
   display: 'swap',
   variable: '--font-europa',
 });
 
-export const metadata = {
-  title: 'ReadyForms - AI-Powered Form Builder',
-  description: 'Build professional forms in seconds with AI. Describe what you need in plain English and let AI create forms instantly. Free to get started.',
+export const metadata: Metadata = {
+  title: {
+    default: 'ReadyForms — AI-Powered Form Builder',
+    template: '%s | ReadyForms',
+  },
+  description:
+    'Build professional forms in seconds with AI. Describe what you need in plain English and let AI create forms instantly. Free to get started.',
+  keywords: ['form builder', 'AI forms', 'survey builder', 'online forms', 'ReadyForms'],
+  openGraph: {
+    type: 'website',
+    locale: 'en_US',
+    url: 'https://readyforms.vercel.app',
+    siteName: 'ReadyForms',
+    title: 'ReadyForms — AI-Powered Form Builder',
+    description: 'Build professional forms in seconds with AI.',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'ReadyForms — AI-Powered Form Builder',
+    description: 'Build professional forms in seconds with AI.',
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 };
 
 export default function RootLayout({
@@ -79,3 +78,4 @@ export default function RootLayout({
     </html>
   );
 }
+

@@ -32,20 +32,14 @@ let initializedSequelize: any = null;
 export const initializeModels = (sequelize: any): any => {
   // If already initialized, return the previously used instance
   if (isInitialized && initializedSequelize) {
-    console.log('Models already initialized, returning existing sequelize instance');
     return initializedSequelize;
   }
   
-  // Check if we have a valid sequelize instance
   if (!sequelize) {
-    const errorMsg = 'No sequelize instance provided for model initialization';
-    console.error(errorMsg);
-    throw new Error(errorMsg);
+    throw new Error('No sequelize instance provided for model initialization');
   }
 
   try {
-    console.log('Initializing models with sequelize instance');
-    
     // Ensure Sequelize constructor is available on the instance
     const Seq = sequelize.Sequelize || require('sequelize').Sequelize;
     
@@ -76,34 +70,19 @@ export const initializeModels = (sequelize: any): any => {
     // Initialize each model explicitly
     Object.entries(models).forEach(([name, model]: [string, any]) => {
       try {
-        console.log(`Initializing model: ${name}`);
-        
-        // Try to initialize with the initialize method if available
         if (typeof model.initialize === 'function') {
           model.initialize(sequelize);
-        }
-        // Fall back to init method if no initialize method
-        else if (typeof model.init === 'function') {
-          console.log(`Using init method for ${name} instead of initialize`);
-          
-          try {
-            // For models without specific initialization,
-            // at least set the sequelize instance directly
-            if (!model.sequelize) {
-              model.sequelize = sequelize;
-            }
-          } catch (initErr) {
-            console.warn(`Setting sequelize for ${name} failed:`, initErr);
+        } else if (typeof model.init === 'function') {
+          if (!model.sequelize) {
+            model.sequelize = sequelize;
           }
         } else {
-          console.warn(`Model ${name} couldn't be initialized - missing initialization methods`);
+          console.warn(`[MODELS] Model ${name} is missing initialization methods — check class definition`);
         }
       } catch (modelError) {
-        console.error(`Error initializing model ${name}:`, modelError);
+        console.error(`[MODELS] Error initializing model ${name}:`, modelError);
       }
     });
-    
-    console.log('Setting up model associations');
     
     // Define associations - use try/catch for each to avoid failing entirely
     try {
@@ -169,7 +148,7 @@ export const initializeModels = (sequelize: any): any => {
     // Mark as initialized and store the sequelize instance
     isInitialized = true;
     initializedSequelize = sequelize;
-    console.log('Models initialized successfully');
+    console.info('[MODELS] All models and associations initialized successfully.');
     
     return sequelize;
   } catch (error) {
@@ -182,9 +161,8 @@ export const initializeModels = (sequelize: any): any => {
 if (process.env.NODE_ENV !== 'test') {
   try {
     initializeModels(sequelizeConnection);
-    console.log('Models initialized with default sequelize instance');
   } catch (error) {
-    console.error('Failed to initialize models with default sequelize instance:', error);
+    console.error('[MODELS] Failed to initialize models with default sequelize instance:', error);
   }
 }
 

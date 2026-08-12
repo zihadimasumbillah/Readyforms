@@ -1,23 +1,35 @@
 import { Request, Response } from 'express';
-import { User, Template, FormResponse, sequelize } from '../models';
+import { User, Template, FormResponse, Topic, Comment, Like, sequelize } from '../models';
 import catchAsync from '../utils/catchAsync';
 import { validate as isUuid } from 'uuid';
-import { Op } from 'sequelize'; 
+import { Op } from 'sequelize';
+
 
 /**
  * @route GET /api/admin/users
  */
 export const getAllUsers = catchAsync(async (req: Request, res: Response) => {
-  const users = await User.findAll({
-    attributes: { exclude: ['password'] }
+  const pageNumber = Math.max(1, parseInt(req.query.page as string) || 1);
+  const limitNumber = Math.max(1, Math.min(100, parseInt(req.query.limit as string) || 20));
+  const offset = (pageNumber - 1) * limitNumber;
+
+  const { count, rows: users } = await User.findAndCountAll({
+    attributes: { exclude: ['password'] },
+    limit: limitNumber,
+    offset,
+    order: [['createdAt', 'DESC']],
   });
-  
+
   res.status(200).json({
     users,
-    count: users.length
+    meta: {
+      total: count,
+      page: pageNumber,
+      limit: limitNumber,
+      totalPages: Math.ceil(count / limitNumber),
+    },
   });
 });
-
 
 export const getUsers = getAllUsers;
 
@@ -120,31 +132,32 @@ export const toggleUserAdmin = catchAsync(async (req: Request, res: Response) =>
  * @route GET /api/admin/dashboard-stats
  */
 export const getDashboardStats = catchAsync(async (req: Request, res: Response) => {
-  const usersCount = await User.count();
-  const templatesCount = await Template.count();
-  const responsesCount = await FormResponse.count();
-  
+  const [usersCount, templatesCount, responsesCount, likesCount, commentsCount, topicsCount] = await Promise.all([
+    User.count(),
+    Template.count(),
+    FormResponse.count(),
+    Like.count(),
+    Comment.count(),
+    Topic.count(),
+  ]);
+
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-  
-  const activeUsers = await User.count({
-    where: {
-      lastLoginAt: {
-        [Op.gte]: thirtyDaysAgo
-      }
-    }
-  });
-  
-  const adminCount = await User.count({
-    where: { isAdmin: true }
-  });
-  
+
+  const [activeUsers, adminCount] = await Promise.all([
+    User.count({ where: { lastLoginAt: { [Op.gte]: thirtyDaysAgo } } }),
+    User.count({ where: { isAdmin: true } }),
+  ]);
+
   res.status(200).json({
     users: usersCount,
     templates: templatesCount,
     responses: responsesCount,
+    likes: likesCount,
+    comments: commentsCount,
+    topicsCount: topicsCount,
     activeUsers: activeUsers,
-    adminCount: adminCount
+    adminCount: adminCount,
   });
 });
 
@@ -152,13 +165,26 @@ export const getDashboardStats = catchAsync(async (req: Request, res: Response) 
  * @route GET /api/admin/templates
  */
 export const getAllTemplates = catchAsync(async (req: Request, res: Response) => {
-  const templates = await Template.findAll({
-    include: [
-      { model: User, attributes: ['id', 'name', 'email'] }
-    ]
+  const pageNumber = Math.max(1, parseInt(req.query.page as string) || 1);
+  const limitNumber = Math.max(1, Math.min(100, parseInt(req.query.limit as string) || 20));
+  const offset = (pageNumber - 1) * limitNumber;
+
+  const { count, rows: templates } = await Template.findAndCountAll({
+    include: [{ model: User, attributes: ['id', 'name', 'email'] }],
+    limit: limitNumber,
+    offset,
+    order: [['createdAt', 'DESC']],
   });
-  
-  res.status(200).json(templates);
+
+  res.status(200).json({
+    templates,
+    meta: {
+      total: count,
+      page: pageNumber,
+      limit: limitNumber,
+      totalPages: Math.ceil(count / limitNumber),
+    },
+  });
 });
 
 
@@ -191,14 +217,29 @@ export const getTemplateById = catchAsync(async (req: Request, res: Response) =>
  * @route GET /api/admin/responses
  */
 export const getAllResponses = catchAsync(async (req: Request, res: Response) => {
-  const responses = await FormResponse.findAll({
+  const pageNumber = Math.max(1, parseInt(req.query.page as string) || 1);
+  const limitNumber = Math.max(1, Math.min(100, parseInt(req.query.limit as string) || 20));
+  const offset = (pageNumber - 1) * limitNumber;
+
+  const { count, rows: responses } = await FormResponse.findAndCountAll({
     include: [
       { model: User, attributes: ['id', 'name', 'email'] },
-      { model: Template, attributes: ['id', 'title'] }
-    ]
+      { model: Template, attributes: ['id', 'title'] },
+    ],
+    limit: limitNumber,
+    offset,
+    order: [['createdAt', 'DESC']],
   });
-  
-  res.status(200).json(responses);
+
+  res.status(200).json({
+    responses,
+    meta: {
+      total: count,
+      page: pageNumber,
+      limit: limitNumber,
+      totalPages: Math.ceil(count / limitNumber),
+    },
+  });
 });
 
 export const getResponses = getAllResponses;
@@ -228,50 +269,52 @@ export const getResponseById = catchAsync(async (req: Request, res: Response) =>
 });
 
 /**
- * @route GET /api/admin/system-activity/:count?
+ * @route DELETE /api/admin/responses/:id
  */
-export const getSystemActivity = catchAsync(async (req: Request, res: Response) => {
-  const count = req.params.count ? parseInt(req.params.count) : 10;
-  
-  const mockActivity = [
-    {
-      id: '1',
-      type: 'user',
-      action: 'created',
-      user: 'John Doe',
-      timestamp: new Date(Date.now() - 15 * 60000).toISOString()
-    },
-    {
-      id: '2',
-      type: 'template',
-      action: 'updated',
-      user: 'Admin User',
-      title: 'Customer Survey',
-      timestamp: new Date(Date.now() - 2 * 60 * 60000).toISOString()
-    },
-    {
-      id: '3',
-      type: 'response',
-      action: 'submitted',
-      user: 'Alice Smith',
-      timestamp: new Date(Date.now() - 3 * 60 * 60000).toISOString()
-    },
-    {
-      id: '4',
-      type: 'user',
-      action: 'blocked',
-      user: 'Admin User',
-      timestamp: new Date(Date.now() - 5 * 60 * 60000).toISOString()
-    },
-    {
-      id: '5',
-      type: 'template',
-      action: 'created',
-      user: 'Bob Johnson',
-      title: 'Feedback Form',
-      timestamp: new Date(Date.now() - 12 * 60 * 60000).toISOString()
-    }
-  ];
-  
-  res.status(200).json(mockActivity.slice(0, count));
+export const deleteResponse = catchAsync(async (req: Request, res: Response) => {
+  const { id } = req.params;
+  if (!isUuid(id)) {
+    return res.status(400).json({ message: 'Invalid response ID format' });
+  }
+
+  const response = await FormResponse.findByPk(id);
+  if (!response) {
+    return res.status(404).json({ message: 'Response not found' });
+  }
+
+  await response.destroy();
+  res.status(200).json({ message: 'Response deleted successfully' });
 });
+
+/**
+ * @route DELETE /api/admin/templates/:id
+ */
+export const deleteTemplate = catchAsync(async (req: Request, res: Response) => {
+  const { id } = req.params;
+  if (!isUuid(id)) {
+    return res.status(400).json({ message: 'Invalid template ID format' });
+  }
+
+  const template = await Template.findByPk(id);
+  if (!template) {
+    return res.status(404).json({ message: 'Template not found' });
+  }
+
+  await Comment.destroy({ where: { templateId: id } });
+  await Like.destroy({ where: { templateId: id } });
+  await FormResponse.destroy({ where: { templateId: id } });
+  await template.destroy();
+
+  res.status(200).json({ message: 'Template deleted successfully' });
+});
+
+/**
+ * @route GET /api/admin/topics
+ */
+export const getAllTopics = catchAsync(async (req: Request, res: Response) => {
+  const topics = await Topic.findAll({
+    order: [['name', 'ASC']],
+  });
+  res.status(200).json(topics);
+});
+

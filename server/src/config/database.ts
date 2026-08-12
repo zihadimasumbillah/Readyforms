@@ -16,18 +16,7 @@ const DATABASE_URL = process.env.DATABASE_URL || process.env.POSTGRES_URL;
 const DIRECT_URL = process.env.DATABASE_URL_UNPOOLED || process.env.POSTGRES_URL_NON_POOLING;
 const USE_DIRECT_URL = Boolean(process.env.USE_DIRECT_URL === 'true' || process.env.USE_DIRECT_CONNECTION === 'true');
 
-// Debug database connection info
-console.log('Database connection environment:', {
-  isCloudEnv,
-  isProd,
-  hasDbUrl: !!DATABASE_URL,
-  dbUrlFirstChars: DATABASE_URL ? DATABASE_URL.substring(0, 15) + '...' : undefined,
-  nodeEnv: process.env.NODE_ENV
-});
-
-// Choose the appropriate connection URL based on configuration
 const connectionUrl = USE_DIRECT_URL && DIRECT_URL ? DIRECT_URL : DATABASE_URL;
-console.log(`Using ${USE_DIRECT_URL ? 'direct' : 'pooled'} database connection URL`);
 
 // Function to create a placeholder Sequelize instance for error cases
 function createPlaceholderSequelize(errorMessage: string): Sequelize {
@@ -47,15 +36,13 @@ function createPlaceholderSequelize(errorMessage: string): Sequelize {
 // Create Sequelize instance - initialize with a placeholder
 let sequelize: Sequelize = createPlaceholderSequelize('Database connection not initialized');
 
-// Check if pg package is available
 let pgAvailable = false;
 try {
   require('pg');
   pgAvailable = true;
 } catch (err) {
   const error = err as Error;
-  console.error('PostgreSQL driver not available:', error.message);
-  console.warn('Using fallback database configuration with delayed initialization');
+  console.error('[DB] PostgreSQL driver (pg) not available:', error.message);
   sequelize = createPlaceholderSequelize('Database connection not initialized - pg package missing');
 }
 
@@ -70,7 +57,9 @@ if (pgAvailable) {
         dialectOptions: {
           ssl: needsSsl ? {
             require: true,
-            rejectUnauthorized: false
+            // Verify the TLS certificate in production.
+            // rejectUnauthorized:false disables cert verification and allows MITM attacks.
+            rejectUnauthorized: isProd,
           } : false,
           keepAlive: true,
           connectTimeout: 30000,
@@ -105,7 +94,8 @@ if (pgAvailable) {
         dialectOptions: {
           ssl: host.includes('.neon.tech') ? {
             require: true,
-            rejectUnauthorized: false
+            // Verify cert in production; allow self-signed in dev
+            rejectUnauthorized: isProd,
           } : undefined,
           keepAlive: true
         },

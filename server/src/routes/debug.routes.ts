@@ -1,44 +1,45 @@
-import { Router, Request, Response, NextFunction } from 'express';
-// import { User, Template, Topic, Tag } from '../models';
-// import bcrypt from 'bcryptjs';
+import express, { Router, Request, Response, NextFunction } from 'express';
 
 const router = Router();
 
-// Always allow basic test endpoints regardless of environment
-router.get('/test', (req, res) => {
+const isProd = process.env.NODE_ENV === 'production';
+
+// In production, all debug endpoints return 404 to avoid revealing implementation details.
+// Never expose request headers, environment info, or internal state in production.
+router.use(((_req: Request, res: Response, next: NextFunction) => {
+  if (isProd) {
+    return res.status(404).json({ message: 'Not found' });
+  }
+  return next();
+}) as express.RequestHandler);
+
+// Development-only: basic connectivity test (strips headers to avoid leaking in shared envs)
+router.get('/test', (_req: Request, res: Response) => {
   res.status(200).json({
     message: 'Debug test endpoint is working',
     environment: process.env.NODE_ENV || 'development',
     timestamp: new Date().toISOString(),
-    headers: req.headers
   });
 });
 
-router.get('/env-check', (req, res) => {
+// Development-only: check which env vars are present (never reveals values)
+router.get('/env-check', (_req: Request, res: Response) => {
   res.status(200).json({
     environment: process.env.NODE_ENV || 'development',
     hasDbUrl: !!process.env.DATABASE_URL,
+    hasJwtSecret: !!process.env.JWT_SECRET,
     hasClientUrl: !!process.env.CLIENT_URL,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   });
 });
 
-// Allow all debug routes in all environments for now
-// Production restrictions can be added later if needed
-
-// Temporarily disable database-dependent routes
-router.post('/ensure-test-users', async (req: Request, res: Response) => {
-  res.status(501).json({
-    message: 'Database-dependent routes temporarily disabled',
-    reason: 'Testing route loading without database dependencies'
-  });
+router.post('/ensure-test-users', (_req: Request, res: Response) => {
+  res.status(501).json({ message: 'Not implemented' });
 });
 
-router.get('/info', async (req: Request, res: Response) => {
-  res.status(501).json({
-    message: 'Database-dependent routes temporarily disabled', 
-    reason: 'Testing route loading without database dependencies'
-  });
+router.get('/info', (_req: Request, res: Response) => {
+  res.status(501).json({ message: 'Not implemented' });
 });
 
 export default router;
+

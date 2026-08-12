@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
-import { Template, FormResponse, Like, Comment } from '../models';
+import { Template, FormResponse, Like, Comment, sequelize } from '../models';
+import { Op } from 'sequelize';
 import catchAsync from '../utils/catchAsync';
 
 /**
@@ -12,39 +13,38 @@ export const getDashboardStats = catchAsync(async (req: Request, res: Response) 
 
   const userId = req.user.id;
 
-  const templatesCount = await Template.count({ where: { userId } });
+  const [templatesCount, responsesSubmittedCount] = await Promise.all([
+    Template.count({ where: { userId } }),
+    FormResponse.count({ where: { userId } }),
+  ]);
 
-  const responsesSubmittedCount = await FormResponse.count({ where: { userId } });
-
-  const templatesCreatedByUser = await Template.findAll({ 
+  const userTemplates = await Template.findAll({
+    where: { userId },
     attributes: ['id'],
-    where: { userId } 
   });
-  
-  const templateIds = templatesCreatedByUser.map(template => template.id);
-  
-  const responsesReceivedCount = templateIds.length > 0 ?
-    await FormResponse.count({ where: { templateId: templateIds } }) : 
-    0;
 
-  const likesCount = templateIds.length > 0 ?
-    await Like.count({ where: { templateId: templateIds } }) :
-    0;
+  const templateIds = userTemplates.map((t) => t.id);
 
-  const commentsCount = templateIds.length > 0 ? 
-    await Comment.count({ where: { templateId: templateIds } }) :
-    0;
+  let responsesReceivedCount = 0;
+  let likesCount = 0;
+  let commentsCount = 0;
+
+  if (templateIds.length > 0) {
+    const whereTemplates = { templateId: { [Op.in]: templateIds } };
+    [responsesReceivedCount, likesCount, commentsCount] = await Promise.all([
+      FormResponse.count({ where: whereTemplates }),
+      Like.count({ where: whereTemplates }),
+      Comment.count({ where: whereTemplates }),
+    ]);
+  }
 
   res.status(200).json({
     templates: templatesCount,
-    responses: {
-      submitted: responsesSubmittedCount,
-      received: responsesReceivedCount
-    },
-    social: {
-      likes: likesCount,
-      comments: commentsCount
-    }
+    responses: responsesSubmittedCount + responsesReceivedCount,
+    responsesSubmitted: responsesSubmittedCount,
+    responsesReceived: responsesReceivedCount,
+    likes: likesCount,
+    comments: commentsCount,
   });
 });
 

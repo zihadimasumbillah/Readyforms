@@ -5,10 +5,10 @@ const errorHandler = (err: any, req: Request, res: Response, next: NextFunction)
 
   if (err.message && err.message.includes('Not allowed by CORS')) {
     res.status(403).json({
-      message: 'CORS error - Origin not allowed',
-      error: process.env.NODE_ENV === 'development' ? err.message : undefined,
-      origin: req.headers.origin || 'Unknown origin',
+      message: 'Access denied',
       time: new Date().toISOString()
+      // SECURITY: Do NOT echo req.headers.origin — it is attacker-controlled
+      // and leaks information about CORS configuration
     });
     return;
   }
@@ -67,10 +67,11 @@ const errorHandler = (err: any, req: Request, res: Response, next: NextFunction)
     return;
   }
 
-  // Default error response
+  // Default error response — never expose error internals in production
   res.status(500).json({
     message: 'Internal server error',
-    error: process.env.NODE_ENV === 'development' ? err.message : undefined,
+    error: process.env.NODE_ENV !== 'production' ? err.message : undefined,
+    requestId: (req as any).requestId,
     time: new Date().toISOString()
   });
 };

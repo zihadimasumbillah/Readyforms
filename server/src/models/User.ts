@@ -1,5 +1,4 @@
-import { Model, DataTypes, Sequelize } from 'sequelize';
-import bcrypt from 'bcryptjs';
+import { Model, DataTypes } from 'sequelize';
 
 class User extends Model {
   declare id: string;
@@ -20,14 +19,10 @@ class User extends Model {
    * Works with both Sequelize and SequelizeTS instances
    */
   static initialize(sequelize: any) {
-    try {
-      console.log('Initializing User model');
-      
-      // Get DataTypes from sequelize or require it directly
-      const DataTypes = sequelize.Sequelize ? sequelize.Sequelize.DataTypes : require('sequelize').DataTypes;
-      
-      // Initialize the model with sequelize
-      User.init({
+    // Get DataTypes from sequelize or require it directly
+    const DT = sequelize.Sequelize ? sequelize.Sequelize.DataTypes : require('sequelize').DataTypes;
+
+    User.init({
         id: {
           type: DataTypes.UUID,
           defaultValue: DataTypes.UUIDV4,
@@ -73,27 +68,9 @@ class User extends Model {
           type: DataTypes.INTEGER,
           defaultValue: 0,
         }
-      }, {
-        sequelize,
-        tableName: 'users',
-        timestamps: true,
-      });
-      
-      // DON'T assign to the read-only sequelize property
-      // Instead, use static properties defined on the model
-      // The sequelize property will be available on the model via the init() call
-    } catch (error) {
-      console.error('Error initializing User model:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Compare password with hashed password stored in database
-   * @param candidatePassword The plain password to compare
-   */
-  async comparePassword(candidatePassword: string): Promise<boolean> {
-    return bcrypt.compare(candidatePassword, this.password);
+      },
+      { sequelize, tableName: 'users', timestamps: true }
+    );
   }
 }
 

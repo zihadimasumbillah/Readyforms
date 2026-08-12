@@ -1,5 +1,13 @@
+/// <reference path="./types/express.d.ts" />
+import bufferModule from 'buffer';
+if (!(bufferModule as any).SlowBuffer) {
+  (bufferModule as any).SlowBuffer = bufferModule.Buffer;
+}
+
 import express from 'express';
 import cors from 'cors';
+
+
 import helmet from 'helmet';
 import dotenv from 'dotenv';
 import routes from './routes';
@@ -12,12 +20,11 @@ import rateLimit from 'express-rate-limit';
 dotenv.config();
 
 const app = express();
-const PORT = 5000;
-const NEXT_PORT = 3000;
+const PORT = process.env.PORT || 3001;
 
 const allowedOrigins = process.env.CLIENT_URL ? 
   process.env.CLIENT_URL.split(',').map(origin => origin.trim()) : 
-  ['http://localhost:3000'];
+  ['http://localhost:3000', 'http://localhost:5000', 'http://127.0.0.1:3000', 'http://127.0.0.1:5000'];
 
 const corsOptions = {
   origin: function (origin, callback) {
@@ -81,31 +88,32 @@ app.use('/api', routes);
 
 app.use(errorHandler);
 
-app.use(
-  createProxyMiddleware({
-    target: `http://localhost:${NEXT_PORT}`,
-    changeOrigin: true,
-    ws: true,
-    logger: console,
-  })
-);
-
 
 const server = app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log(`Environment: ${process.env.NODE_ENV}`);
-  console.log(`Allowed origins: ${process.env.ALLOW_ALL_ORIGINS === 'true' ? 'All origins' : allowedOrigins.join(', ')}`);
+  console.info(`[STARTUP] Server running on port ${PORT}`);
+  console.info(`[STARTUP] Environment: ${process.env.NODE_ENV}`);
+  console.info(
+    `[STARTUP] CORS allowed origins: ${
+      process.env.ALLOW_ALL_ORIGINS === 'true' ? 'ALL (WARNING: insecure)' : allowedOrigins.join(', ')
+    }`
+  );
 
-  sequelize.authenticate()
-    .then(() => {
-      console.log('Database connection has been established successfully.');
-      return sequelize.sync({ alter: true });
+  sequelize
+    .authenticate()
+    .then(async () => {
+      console.info('[DB] Connection established successfully.');
+
+      if (process.env.NODE_ENV !== 'production') {
+        // Development only: sync schema automatically for convenience.
+        // In production, run migrations via `npx sequelize-cli db:migrate` instead.
+        await sequelize.sync({ alter: true });
+        console.info('[DB] Development schema sync completed.');
+      } else {
+        console.info('[DB] Production mode: skipping auto-sync. Run migrations manually.');
+      }
     })
-    .then(() => {
-      console.log('Database tables synced successfully.');
-    })
-    .catch(error => {
-      console.error('Unable to connect to the database:', error);
+    .catch((error) => {
+      console.error('[DB] Unable to connect to the database:', error.message);
     });
 });
 

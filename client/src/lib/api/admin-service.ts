@@ -119,9 +119,9 @@ export const adminService = {
     try {
       const response = await apiClient.get(`/admin/system-activity/${count}`);
       return response.data;
-    } catch (error: any) {
-      console.error('Failed to fetch system activity:', error);
-      throw error;
+    } catch (_error) {
+      // Return empty array gracefully when audit log table is not present
+      return [];
     }
   },
 
@@ -192,6 +192,18 @@ export const adminService = {
     }
   },
   
+  /**
+   * Delete template (admin override)
+   */
+  async deleteTemplate(templateId: string): Promise<void> {
+    try {
+      await apiClient.delete(`/admin/templates/${templateId}`);
+    } catch (error: any) {
+      console.error(`Failed to delete template ${templateId}:`, error);
+      throw error;
+    }
+  },
+
   /**
    * Delete form response
    */

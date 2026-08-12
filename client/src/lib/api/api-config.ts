@@ -1,8 +1,5 @@
 const getApiUrl = (): string => {
-  if (typeof window === 'undefined') {
-    return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
-  }
-  return '/api';
+  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 };
 
 export const ApiConfig = {
