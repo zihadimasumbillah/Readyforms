@@ -254,11 +254,17 @@ export const updateTemplate = catchAsync(async (req: Request, res: Response) => 
       });
     }
 
+    let resolvedTopicId = template.topicId;
+    if (topicId) {
+      const topicObj = isUuid(topicId) ? await Topic.findByPk(topicId) : await Topic.findOne();
+      if (topicObj) resolvedTopicId = topicObj.id;
+    }
+
     const updateData = {
-      title,
-      description: description || '',
+      title: title || template.title,
+      description: description !== undefined ? description : template.description,
       isPublic: isPublic === undefined ? template.isPublic : isPublic,
-      topicId,
+      topicId: resolvedTopicId,
       customString1State: customString1State || false,
       customString1Question: customString1Question || '',
       customString2State: customString2State || false,
@@ -295,9 +301,9 @@ export const updateTemplate = catchAsync(async (req: Request, res: Response) => 
     };
 
     const updatedTemplate = await optimisticUpdate<Template>(
-      Template as any,
+      Template,
       id,
-      version,
+      targetVersion,
       updateData
     );
 
