@@ -46,17 +46,24 @@ export default function AdminUsersPage() {
   const router = useRouter();
 
   useEffect(() => {
-    const fetchUsers = async () => {
-      if (!user?.isAdmin) {
-        router.push('/dashboard');
-        return;
-      }
+    if (auth?.status === "loading") return;
 
+    if (!user) {
+      router.push('/auth/login');
+      return;
+    }
+
+    if (!user.isAdmin) {
+      router.push('/dashboard');
+      return;
+    }
+
+    const fetchUsers = async () => {
       try {
         setLoading(true);
         const data = await adminService.getAllUsers();
-        setUsers(data);
-        setFilteredUsers(data);
+        setUsers(data || []);
+        setFilteredUsers(data || []);
       } catch (error) {
         console.error("Error fetching users:", error);
         toast({
@@ -70,7 +77,7 @@ export default function AdminUsersPage() {
     };
 
     fetchUsers();
-  }, [user, router]);
+  }, [user, auth?.status, router]);
 
   useEffect(() => {
     let filtered = [...users];

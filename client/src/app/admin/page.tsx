@@ -64,6 +64,7 @@ export default function AdminDashboardPage() {
   const router = useRouter();
   const auth = useAuth();
   const user = auth?.user;
+  const status = auth?.status;
   const logout = auth?.logout;
 
   const handleLogout = () => {
@@ -74,33 +75,41 @@ export default function AdminDashboardPage() {
   };
 
   useEffect(() => {
+    if (status === "loading") return;
+
+    if (!user) {
+      router.push('/auth/login');
+      return;
+    }
+
+    if (!user.isAdmin) {
+      toast({
+        title: "Access denied",
+        description: "You don't have permission to access the admin dashboard",
+        variant: "destructive"
+      });
+      router.push('/dashboard');
+      return;
+    }
+
     const fetchDashboardData = async () => {
       try {
         setState(prev => ({ ...prev, loading: true, error: null }));
         
-        if (!user?.isAdmin) {
-          toast({
-            title: "Access denied",
-            description: "You don't have permission to access the admin dashboard",
-            variant: "destructive"
-          });
-          router.push('/dashboard');
-          return;
-        }
         const dashboardStats = await adminService.getDashboardStats();
         const activity = await adminService.getSystemActivity(5); 
 
         const activitySummaries = {
           users: { 
-            count: dashboardStats.activeUsers, 
+            count: dashboardStats.activeUsers || 0, 
             change: Math.floor(Math.random() * 20) - 5
           },
           templates: { 
-            count: dashboardStats.templates, 
+            count: dashboardStats.templates || 0, 
             change: Math.floor(Math.random() * 20) - 5
           },
           responses: { 
-            count: dashboardStats.responses, 
+            count: dashboardStats.responses || 0, 
             change: Math.floor(Math.random() * 30)
           }
         };
@@ -108,7 +117,7 @@ export default function AdminDashboardPage() {
         setState({
           stats: dashboardStats,
           activitySummaries,
-          recentActivity: activity,
+          recentActivity: activity || [],
           loading: false,
           error: null
         });
@@ -127,12 +136,8 @@ export default function AdminDashboardPage() {
       }
     };
 
-    if (user) {
-      fetchDashboardData();
-    } else {
-      router.push('/auth/login');
-    }
-  }, [user, router]);
+    fetchDashboardData();
+  }, [user, status, router]);
 
   const getTimeAgo = (timestamp: string) => {
     const now = new Date();

@@ -28,6 +28,13 @@ export default function AdminResponsesPage() {
   const auth = useAuth();
 
   useEffect(() => {
+    if (auth?.status === "loading") return;
+
+    if (!auth?.user) {
+      router.push("/auth/login");
+      return;
+    }
+
     if (!auth?.user?.isAdmin) {
       router.push("/dashboard");
       return;
@@ -52,7 +59,7 @@ export default function AdminResponsesPage() {
     };
 
     fetchResponses();
-  }, [router, auth]);
+  }, [router, auth?.status, auth?.user]);
 
   useEffect(() => {
     if (searchTerm.trim() === "") {

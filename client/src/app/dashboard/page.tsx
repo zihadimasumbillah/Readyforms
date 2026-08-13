@@ -25,14 +25,9 @@ export default function DashboardPage() {
   const [recentTemplates, setRecentTemplates] = useState<Template[]>([]);
   const auth = useAuth();
   const user = auth?.user;
+  const status = auth?.status;
   const logout = auth?.logout;
   const router = useRouter();
-
-  useEffect(() => {
-    if (user && user.isAdmin) {
-      router.replace("/admin");
-    }
-  }, [user, router]);
 
   const handleLogout = () => {
     if (logout) {
@@ -42,6 +37,18 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
+    if (status === "loading") return;
+
+    if (!user) {
+      router.push('/auth/login');
+      return;
+    }
+
+    if (user.isAdmin) {
+      router.replace("/admin");
+      return;
+    }
+
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
@@ -50,7 +57,7 @@ export default function DashboardPage() {
 
         const templates = await dashboardService.getUserTemplates();
 
-        const filteredTemplates = templates.filter(template => {
+        const filteredTemplates = (templates || []).filter(template => {
           const title = template?.title?.toLowerCase() || '';
           const desc = template?.description?.toLowerCase() || '';
           return !(
@@ -74,12 +81,8 @@ export default function DashboardPage() {
       }
     };
 
-    if (user) {
-      fetchDashboardData();
-    } else {
-      router.push('/auth/login');
-    }
-  }, [user, router]);
+    fetchDashboardData();
+  }, [user, status, router]);
 
   if (!user) {
     return (

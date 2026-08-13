@@ -59,15 +59,21 @@ export default function AdminTemplatesPage() {
   const auth = useAuth();
   
   useEffect(() => {
-    if (!auth?.user?.isAdmin) {
+    if (auth?.status === "loading") return;
+
+    if (!auth?.user) {
       router.push("/auth/login");
+      return;
+    }
+
+    if (!auth?.user?.isAdmin) {
+      router.push("/dashboard");
       return;
     }
     
     const fetchTemplates = async () => {
       try {
         setLoading(true);
-        // Fetch all templates for admin view using adminService
         const allTemplates = await adminService.getAllTemplates(1, 100);
         setTemplates(allTemplates || []);
         setFilteredTemplates(allTemplates || []);
@@ -84,7 +90,7 @@ export default function AdminTemplatesPage() {
     };
     
     fetchTemplates();
-  }, [router, auth]);
+  }, [router, auth?.status, auth?.user]);
   
   useEffect(() => {
     if (searchTerm.trim() === "") {

@@ -53,12 +53,19 @@ export default function TemplatesPage() {
   };
 
   useEffect(() => {
+    if (auth?.status === "loading") return;
+
+    if (!user) {
+      router.push('/auth/login');
+      return;
+    }
+
     const fetchTemplates = async () => {
       try {
         setLoading(true);
         const data = await dashboardService.getUserTemplates();
-        setTemplates(data);
-        setFilteredTemplates(data);
+        setTemplates(data || []);
+        setFilteredTemplates(data || []);
       } catch (error) {
         console.error("Error fetching templates:", error);
         setTemplates([]);
@@ -73,12 +80,8 @@ export default function TemplatesPage() {
       }
     };
 
-    if (user) {
-      fetchTemplates();
-    } else {
-      router.push('/auth/login');
-    }
-  }, [user, router]);
+    fetchTemplates();
+  }, [user, auth?.status, router]);
 
   useEffect(() => {
     if (searchQuery.trim() === '') {

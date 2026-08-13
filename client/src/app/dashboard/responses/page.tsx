@@ -47,6 +47,13 @@ export default function UserResponsesPage() {
   };
 
   useEffect(() => {
+    if (auth?.status === "loading") return;
+
+    if (!user) {
+      router.push('/auth/login');
+      return;
+    }
+
     const fetchResponses = async () => {
       try {
         setLoading(true);
@@ -67,12 +74,8 @@ export default function UserResponsesPage() {
       }
     };
 
-    if (user) {
-      fetchResponses();
-    } else {
-      router.push('/auth/login');
-    }
-  }, [user, router]);
+    fetchResponses();
+  }, [user, auth?.status, router]);
 
   useEffect(() => {
     if (searchQuery.trim() === '') {
