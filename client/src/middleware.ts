@@ -9,10 +9,22 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  const token = await getToken({
+  const secret = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || "5562ddd89f11888122e29b1254e98b2247e4fffa8ae77acaa7a043833ffb6e85";
+  const isHttps = req.nextUrl.protocol === "https:" || req.headers.get("x-forwarded-proto") === "https" || process.env.NODE_ENV === "production";
+
+  let token = await getToken({
     req,
-    secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || "5562ddd89f11888122e29b1254e98b2247e4fffa8ae77acaa7a043833ffb6e85",
+    secret,
+    secureCookie: isHttps,
   });
+
+  if (!token) {
+    token = await getToken({
+      req,
+      secret,
+      secureCookie: false,
+    });
+  }
 
   // If user is logged in and visits login or register, redirect them to appropriate home
   if (token && (pathname === "/auth/login" || pathname === "/auth/register")) {

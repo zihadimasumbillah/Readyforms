@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/use-toast";
-import { signIn } from "next-auth/react";
+import { signIn, getSession } from "next-auth/react";
 import { Mail, Lock, ShieldCheck, Chrome } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQueryParams } from "@/hooks/use-query-params";
@@ -112,9 +112,12 @@ export default function LoginPage() {
 
       // Check session to determine if user is admin
       try {
-        const sessionRes = await fetch("/api/auth/session");
-        const sessionData = await sessionRes.json();
-        const isAdmin = sessionData?.user?.isAdmin;
+        const session = await getSession();
+        const isAdmin = session?.user && (session.user as any).isAdmin;
+        const backendToken = session?.user && (session.user as any).backendToken;
+        if (backendToken && typeof window !== "undefined") {
+          localStorage.setItem("auth_token", backendToken);
+        }
         const targetPath = isAdmin ? "/admin" : (redirect === "/dashboard" ? "/dashboard" : redirect);
         window.location.href = targetPath;
       } catch (e) {
