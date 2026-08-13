@@ -58,9 +58,21 @@ export const getTemplateById = catchAsync(async (req: Request, res: Response) =>
     return res.status(404).json({ message: 'Template not found' });
   }
 
-  if (!template.isPublic && 
-      (!req.user || (template.userId !== req.user.id && !req.user.isAdmin))) {
-    return res.status(403).json({ message: 'Access denied to this template' });
+  if (!template.isPublic) {
+    if (!req.user) {
+      return res.status(403).json({ message: 'Access denied. Please log in to view this private form.' });
+    }
+    const isAuthor = template.userId === req.user.id;
+    const isAdmin = !!req.user.isAdmin;
+    const userEmail = (req.user.email || '').toLowerCase().trim();
+    let isAllowedByEmail = false;
+    if (template.allowedUsers) {
+      const allowedList = template.allowedUsers.toLowerCase().split(',').map(e => e.trim());
+      isAllowedByEmail = allowedList.includes(userEmail);
+    }
+    if (!isAuthor && !isAdmin && !isAllowedByEmail) {
+      return res.status(403).json({ message: 'Access denied. This private form is restricted to specific email addresses.' });
+    }
   }
   
   res.status(200).json(template);
@@ -77,6 +89,7 @@ export const createTemplate = catchAsync(async (req: Request, res: Response) => 
     description,
     isPublic,
     topicId,
+    allowedUsers,
     tags,
     customString1State, customString1Question,
     customString2State, customString2Question,
@@ -126,6 +139,7 @@ export const createTemplate = catchAsync(async (req: Request, res: Response) => 
     title: String(title).trim().slice(0, 200),
     description: description ? String(description).trim().slice(0, 2000) : '',
     isPublic: isPublic === undefined ? true : Boolean(isPublic),
+    allowedUsers: allowedUsers ? String(allowedUsers).trim() : '',
     topicId: resolvedTopicId,
     userId: req.user.id,
     customString1State: customString1State || false,

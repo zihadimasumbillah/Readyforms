@@ -186,6 +186,7 @@ export default function CreateTemplatePage() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [isPublic, setIsPublic] = useState(true);
+  const [allowedUsers, setAllowedUsers] = useState('');
   const [topicId, setTopicId] = useState('');
   const [topics, setTopics] = useState<Topic[]>([]);
   const [tagInput, setTagInput] = useState('');
@@ -317,6 +318,7 @@ export default function CreateTemplatePage() {
       title,
       description,
       isPublic,
+      allowedUsers,
       topicId,
       tags,
       isQuiz: isQuizMode,
@@ -777,9 +779,27 @@ export default function CreateTemplatePage() {
                 </div>
                 <p className="text-sm text-muted-foreground">
                   {isPublic
-                    ? "Anyone can view and use this template."
-                    : "Only you can view and use this template."}
+                    ? "Anyone can view and fill out this template."
+                    : "Only authorized email addresses (and you as the author) can access and fill out this template."}
                 </p>
+
+                {!isPublic && (
+                  <div className="pt-2 space-y-2 border-t border-neutral-200 dark:border-neutral-800">
+                    <Label htmlFor="allowed-users" className="text-sm font-semibold text-black dark:text-white">
+                      Allowed User Email Addresses
+                    </Label>
+                    <Input
+                      id="allowed-users"
+                      placeholder="e.g. user1@company.com, user2@domain.org"
+                      value={allowedUsers}
+                      onChange={(e) => setAllowedUsers(e.target.value)}
+                      className="font-mono text-sm bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800"
+                    />
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      Separate multiple email addresses with commas. Only users logged in with these specific emails (plus system admins and you) will be allowed to view and submit this private form.
+                    </p>
+                  </div>
+                )}
               </CardContent>
               <CardFooter className="flex justify-between">
                 <Button
