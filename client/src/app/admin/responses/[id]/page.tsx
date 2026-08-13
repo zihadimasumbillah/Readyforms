@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { formResponseService, FormResponseData } from "@/lib/api/form-response-service";
+import { adminService } from "@/lib/api/admin-service";
+import { FormResponse } from "@/types";
 import { AdminLayout } from "@/components/layouts/admin-layout";
 import { useAuth } from "@/contexts/auth-context";
 import { ChevronLeft, Download } from "lucide-react";
@@ -19,7 +20,7 @@ export default function ResponseDetailPage() {
   const auth = useAuth();
   const user = auth?.user;
   const [loading, setLoading] = useState(true);
-  const [response, setResponse] = useState<FormResponseData | null>(null);
+  const [response, setResponse] = useState<FormResponse | null>(null);
   const [template, setTemplate] = useState<any>(null);
   const [questionOrder, setQuestionOrder] = useState<string[]>([]);
 
@@ -46,7 +47,7 @@ export default function ResponseDetailPage() {
     const fetchResponse = async () => {
       try {
         setLoading(true);
-        const data = await formResponseService.getResponseById(id);
+        const data = await adminService.getFormResponseById(id);
         setResponse(data);
         
         if (data.template) {
@@ -94,7 +95,7 @@ export default function ResponseDetailPage() {
 
   const renderAnswer = (fieldType: string, questionNumber: number) => {
     const answerKey = `${fieldType}${questionNumber}Answer`;
-    const answer = response?.[answerKey as keyof FormResponseData];
+    const answer = response?.[answerKey as keyof FormResponse];
     
     if (answer === undefined || answer === null) return <span className="text-muted-foreground">No answer provided</span>;
     

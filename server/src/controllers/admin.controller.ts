@@ -257,7 +257,7 @@ export const getResponseById = catchAsync(async (req: Request, res: Response) =>
   const response = await FormResponse.findByPk(id, {
     include: [
       { model: User, attributes: ['id', 'name', 'email'] },
-      { model: Template, attributes: ['id', 'title'] }
+      { model: Template }
     ]
   });
   
