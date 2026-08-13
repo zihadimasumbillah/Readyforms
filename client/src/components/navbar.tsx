@@ -76,10 +76,10 @@ export function Navbar() {
         {/* Logo */}
         <div className="flex items-center gap-2">
           <Link href="/" className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white">
+            <div className="h-8 w-8 rounded-lg bg-black text-white dark:bg-white dark:text-black flex items-center justify-center shadow-sm">
               <BookOpen className="h-4 w-4" />
             </div>
-            <span className="font-bold text-lg tracking-tight">ReadyForms</span>
+            <span className="font-bold text-lg tracking-tight text-black dark:text-white">ReadyForms</span>
           </Link>
         </div>
 

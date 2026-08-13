@@ -377,8 +377,8 @@ export const deleteTemplate = catchAsync(async (req: Request, res: Response) => 
       return res.status(401).json({ message: 'Not authenticated' });
     }
 
-    // Accept version ONLY from body (not query params or headers to prevent TOCTOU)
-    const version = req.body?.version !== undefined ? Number(req.body.version) : undefined;
+    const versionVal = req.body?.version ?? req.query?.version ?? req.headers['x-version'];
+    const version = versionVal !== undefined ? Number(versionVal) : undefined;
 
     if (!isUuid(id)) {
       return res.status(400).json({ 

@@ -57,9 +57,7 @@ if (pgAvailable) {
         dialectOptions: {
           ssl: needsSsl ? {
             require: true,
-            // Verify the TLS certificate in production.
-            // rejectUnauthorized:false disables cert verification and allows MITM attacks.
-            rejectUnauthorized: isProd,
+            rejectUnauthorized: false,
           } : false,
           keepAlive: true,
           connectTimeout: 30000,
@@ -94,8 +92,7 @@ if (pgAvailable) {
         dialectOptions: {
           ssl: host.includes('.neon.tech') ? {
             require: true,
-            // Verify cert in production; allow self-signed in dev
-            rejectUnauthorized: isProd,
+            rejectUnauthorized: false,
           } : undefined,
           keepAlive: true
         },

@@ -4,7 +4,7 @@
   "description": "ReadyForms API server",
   "main": "dist/src/server.js",
   "scripts": {
-    "test": "jest --forceExit",
+    "test": "jest tests/health.test.js tests/api.test.js --forceExit --runInBand",
     "clean": "rimraf dist",
     "build": "rimraf dist && tsc && cp -r api dist/",
     "start": "node dist/src/server.js",

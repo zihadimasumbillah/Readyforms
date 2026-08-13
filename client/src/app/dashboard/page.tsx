@@ -28,6 +28,12 @@ export default function DashboardPage() {
   const logout = auth?.logout;
   const router = useRouter();
 
+  useEffect(() => {
+    if (user && user.isAdmin) {
+      router.replace("/admin");
+    }
+  }, [user, router]);
+
   const handleLogout = () => {
     if (logout) {
       logout();
@@ -118,6 +124,21 @@ export default function DashboardPage() {
           Create Template
         </Button>
       </div>
+
+      {user.isAdmin && (
+        <div className="mb-6 p-4 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <ShieldAlert className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+            <div>
+              <span className="font-semibold text-indigo-900 dark:text-indigo-200">Administrator Access</span>
+              <p className="text-xs text-indigo-700 dark:text-indigo-300">You are currently viewing the user dashboard. Switch to system-wide administration controls at any time.</p>
+            </div>
+          </div>
+          <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700" onClick={() => router.push("/admin")}>
+            Admin Control Panel <ArrowRight className="ml-1 h-3.5 w-3.5" />
+          </Button>
+        </div>
+      )}
 
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">

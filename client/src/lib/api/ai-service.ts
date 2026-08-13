@@ -19,8 +19,8 @@ export const aiService = {
     return response.data;
   },
 
-  async improveForm(formData: GeneratedFormData): Promise<GeneratedFormData> {
-    const response = await apiClient.post<GeneratedFormData>('/ai/improve-form', formData);
+  async improveForm(formData: GeneratedFormData, instructions?: string): Promise<GeneratedFormData> {
+    const response = await apiClient.post<GeneratedFormData>('/ai/improve-form', { formData, instructions });
     return response.data;
   },
 };

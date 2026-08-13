@@ -225,7 +225,7 @@ export const sendOTP = catchAsync(async (req: Request, res: Response) => {
     message: `OTP sent successfully to ${normalizedEmail}`,
     email: normalizedEmail,
     expiresInSeconds: 600,
-    devOtp: process.env.NODE_ENV === 'development' ? otpCode : undefined,
+    devOtp: process.env.NODE_ENV !== 'production' ? otpCode : undefined,
   });
 });
 
@@ -356,6 +356,61 @@ export const forgotPassword = catchAsync(async (req: Request, res: Response) => 
   return res.status(200).json({
     message: 'If an account exists with this email, an OTP code has been generated.',
     devOtp: process.env.NODE_ENV === 'development' && user ? otpCode : undefined,
+  });
+});
+
+/**
+ * @route POST /api/auth/google-callback
+ */
+export const googleCallback = catchAsync(async (req: Request, res: Response) => {
+  const { email, name } = req.body;
+
+  if (!email) {
+    return res.status(400).json({ message: 'Email is required from Google profile' });
+  }
+
+  const normalizedEmail = String(email).toLowerCase().trim();
+  let user = await User.findOne({ where: { email: { [Op.iLike]: normalizedEmail } } });
+
+  if (!user) {
+    const randomPassword = await bcrypt.hash(Math.random().toString(36).slice(-10), 10);
+    user = await User.create({
+      name: name || normalizedEmail.split('@')[0],
+      email: normalizedEmail,
+      password: randomPassword,
+      isAdmin: false,
+      blocked: false,
+      language: 'en',
+      theme: 'light',
+    });
+  }
+
+  if (user.blocked) {
+    return res.status(403).json({ message: 'Your account has been blocked by an administrator.' });
+  }
+
+  const token = jwt.sign(
+    {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      isAdmin: user.isAdmin,
+    },
+    jwtConfig.secret,
+    { expiresIn: jwtConfig.expiresIn as any }
+  );
+
+  return res.status(200).json({
+    message: 'Google login successful',
+    token,
+    user: {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      isAdmin: user.isAdmin,
+      language: user.language,
+      theme: user.theme,
+    },
   });
 });
 

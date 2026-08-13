@@ -11,7 +11,7 @@ router.get('/template/:templateId', verifyToken, getFormResponsesByTemplate);
 router.get('/user', verifyToken, getFormResponsesByUser);
 router.get('/user/:userId', verifyToken, getFormResponsesByUser);
 
-router.get('/aggregate/:templateId', getAggregateData);
+router.get('/aggregate/:templateId', verifyToken, getAggregateData);
 
 router.get('/:id', verifyToken, getFormResponseById);
 

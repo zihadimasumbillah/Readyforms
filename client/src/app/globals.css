@@ -2,92 +2,83 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Configure font variables */
 :root {
-  /* Define font family */
   --font-sans: var(--font-europa);
 }
 
 @layer base {
   :root {
     --background: 0 0% 100%;
-    --foreground: 240 10% 3.9%;
+    --foreground: 0 0% 5%;
  
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 3.9%;
+    --card-foreground: 0 0% 5%;
  
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 3.9%;
+    --popover-foreground: 0 0% 5%;
  
-    --primary: 0 0% 9%;
-    --primary-foreground: 0 0% 98%;
+    --primary: 0 0% 0%;
+    --primary-foreground: 0 0% 100%;
  
-    --secondary: 0 0% 96.1%;
-    --secondary-foreground: 0 0% 9%;
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 0 0% 0%;
  
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 40%;
  
-    --accent: 0 0% 96.1%;
-    --accent-foreground: 0 0% 9%;
+    --accent: 0 0% 96%;
+    --accent-foreground: 0 0% 0%;
  
-    --destructive: 0 84.2% 60.2%;
+    --destructive: 0 0% 9%;
     --destructive-foreground: 0 0% 98%;
  
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
-    --ring: 0 0% 3.9%;
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 0 0% 0%;
  
-    --radius: 0.5rem;
- 
-    --chart-1: 221 83% 53%;
+    --radius: 0.625rem;
 
-    --chart-2: 212 95% 43%;
-
-    --chart-3: 216 92% 60%;
-
-    --chart-4: 199 89% 48%;
-
-    --chart-5: 224 64% 33%;
+    --chart-1: 0 0% 20%;
+    --chart-2: 0 0% 40%;
+    --chart-3: 0 0% 60%;
+    --chart-4: 0 0% 80%;
+    --chart-5: 0 0% 90%;
   }
  
   .dark {
-    --background: 0 0% 3.9%;
+    --background: 0 0% 0%;
     --foreground: 0 0% 98%;
  
-    --card: 0 0% 3.9%;
+    --card: 0 0% 4%;
     --card-foreground: 0 0% 98%;
  
-    --popover: 0 0% 3.9%;
+    --popover: 0 0% 4%;
     --popover-foreground: 0 0% 98%;
  
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
+    --primary: 0 0% 100%;
+    --primary-foreground: 0 0% 0%;
  
-    --secondary: 0 0% 14.9%;
+    --secondary: 0 0% 12%;
     --secondary-foreground: 0 0% 98%;
  
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
+    --muted: 0 0% 12%;
+    --muted-foreground: 0 0% 60%;
  
-    --accent: 0 0% 14.9%;
+    --accent: 0 0% 12%;
     --accent-foreground: 0 0% 98%;
  
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
+    --destructive: 0 0% 90%;
+    --destructive-foreground: 0 0% 0%;
  
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 0 0% 83.1%;
-    --chart-1: 220 70% 50%;
+    --border: 0 0% 16%;
+    --input: 0 0% 16%;
+    --ring: 0 0% 100%;
 
-    --chart-2: 199 89% 48%;
-
-    --chart-3: 216 92% 60%;
-
-    --chart-4: 224 64% 33%;
-
-    --chart-5: 212 95% 43%;
+    --chart-1: 0 0% 90%;
+    --chart-2: 0 0% 70%;
+    --chart-3: 0 0% 50%;
+    --chart-4: 0 0% 30%;
+    --chart-5: 0 0% 10%;
   }
 }
  
@@ -96,6 +87,15 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground transition-colors duration-200 antialiased selection:bg-neutral-900 selection:text-white dark:selection:bg-white dark:selection:text-black;
   }
+}
+
+/* Glassmorphism & custom utility classes */
+.glass-panel {
+  @apply bg-white/70 dark:bg-black/70 backdrop-blur-md border border-neutral-200 dark:border-neutral-800;
+}
+
+.mono-card {
+  @apply rounded-xl border border-neutral-200 dark:border-neutral-800 bg-card text-card-foreground shadow-sm transition-all duration-200 hover:border-neutral-400 dark:hover:border-neutral-600;
 }

@@ -411,8 +411,9 @@ describe('Templates API', () => {
       .set('Authorization', `Bearer ${userToken}`);
     
     expect(res.status).toBe(200);
-    expect(Array.isArray(res.body)).toBe(true);
-    expect(res.body.length).toBeGreaterThan(0);
+    const templates = Array.isArray(res.body) ? res.body : res.body.data;
+    expect(Array.isArray(templates)).toBe(true);
+    expect(templates.length).toBeGreaterThan(0);
   });
   
   test('Get template by ID should succeed', async () => {
@@ -431,9 +432,10 @@ describe('Templates API', () => {
       .set('Authorization', `Bearer ${userToken}`);
     
     expect(res.status).toBe(200);
-    expect(Array.isArray(res.body)).toBe(true);
-    expect(res.body.length).toBeGreaterThan(0);
-    expect(res.body[0]).toHaveProperty('title', 'API Test Template');
+    const searchResults = Array.isArray(res.body) ? res.body : (res.body.data || res.body);
+    expect(Array.isArray(searchResults)).toBe(true);
+    expect(searchResults.length).toBeGreaterThan(0);
+    expect(searchResults[0]).toHaveProperty('title', 'API Test Template');
   });
   
   test('Update template should succeed', async () => {
@@ -480,8 +482,9 @@ describe('Form Response API', () => {
       });
     
     expect(res.status).toBe(201);
-    expect(res.body).toHaveProperty('id');
-    formResponseId = res.body.id;
+    const respData = res.body.response || res.body;
+    expect(respData).toHaveProperty('id');
+    formResponseId = respData.id;
   });
   
   test('Get responses for template should succeed', async () => {

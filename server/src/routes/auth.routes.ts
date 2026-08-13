@@ -8,7 +8,8 @@ import {
   forgotPassword, 
   sendOTP, 
   verifyOTP, 
-  updateProfile 
+  updateProfile,
+  googleCallback
 } from '../controllers/auth.controller';
 import verifyToken from '../middleware/auth.middleware';
 
@@ -24,6 +25,7 @@ export const otpRateLimiter = rateLimit({
 
 router.post('/register', register);
 router.post('/login', login);
+router.post('/google-callback', googleCallback);
 router.post('/send-otp', otpRateLimiter, sendOTP);
 router.post('/verify-otp', otpRateLimiter, verifyOTP);
 router.post('/forgot-password', forgotPassword);

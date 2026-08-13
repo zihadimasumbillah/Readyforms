@@ -29,7 +29,7 @@ export function useAuth() {
 
   const token = useMemo(() => (session?.user as any)?.backendToken || null, [session]);
 
-  const login = useCallback(async (provider?: "google" | "github", _token?: string, _user?: User) => {
+  const login = useCallback(async (provider?: "google", _token?: string, _user?: User) => {
     if (provider) {
       window.location.href = `/api/auth/signin/${provider}`;
     }
@@ -39,7 +39,7 @@ export function useAuth() {
     await nextAuthSignOut({ redirect: false });
   }, []);
 
-  const isAuthenticated = !!user && !!token;
+  const isAuthenticated = !!user;
 
   return {
     user,

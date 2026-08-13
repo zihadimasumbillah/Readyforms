@@ -89,48 +89,58 @@ app.use('/api', routes);
 app.use(errorHandler);
 
 
-const server = app.listen(PORT, () => {
-  console.info(`[STARTUP] Server running on port ${PORT}`);
-  console.info(`[STARTUP] Environment: ${process.env.NODE_ENV}`);
-  console.info(
-    `[STARTUP] CORS allowed origins: ${
-      process.env.ALLOW_ALL_ORIGINS === 'true' ? 'ALL (WARNING: insecure)' : allowedOrigins.join(', ')
-    }`
-  );
+let server: any = null;
 
-  sequelize
-    .authenticate()
-    .then(async () => {
-      console.info('[DB] Connection established successfully.');
+if (process.env.VERCEL !== '1') {
+  server = app.listen(PORT, () => {
+    console.info(`[STARTUP] Server running on port ${PORT}`);
+    console.info(`[STARTUP] Environment: ${process.env.NODE_ENV}`);
+    console.info(
+      `[STARTUP] CORS allowed origins: ${
+        process.env.ALLOW_ALL_ORIGINS === 'true' ? 'ALL (WARNING: insecure)' : allowedOrigins.join(', ')
+      }`
+    );
 
-      if (process.env.NODE_ENV !== 'production') {
-        // Development only: sync schema automatically for convenience.
-        // In production, run migrations via `npx sequelize-cli db:migrate` instead.
-        await sequelize.sync({ alter: true });
-        console.info('[DB] Development schema sync completed.');
-      } else {
-        console.info('[DB] Production mode: skipping auto-sync. Run migrations manually.');
-      }
-    })
-    .catch((error) => {
-      console.error('[DB] Unable to connect to the database:', error.message);
-    });
-});
+    sequelize
+      .authenticate()
+      .then(async () => {
+        console.info('[DB] Connection established successfully.');
 
-process.on('SIGTERM', () => {
-  console.log('SIGTERM signal received: closing server');
-  server.close(() => {
-    console.log('HTTP server closed');
-    sequelize.close()
-      .then(() => {
-        console.log('Database connection closed');
-        process.exit(0);
+        if (process.env.NODE_ENV !== 'production') {
+          await sequelize.sync({ alter: true });
+          console.info('[DB] Development schema sync completed.');
+        } else {
+          console.info('[DB] Production mode: skipping auto-sync.');
+        }
       })
-      .catch(error => {
-        console.error('Error closing database connection:', error);
-        process.exit(1);
+      .catch((error) => {
+        console.error('[DB] Unable to connect to the database:', error.message);
       });
   });
-});
 
-export default server;
+  process.on('SIGTERM', () => {
+    console.log('SIGTERM signal received: closing server');
+    if (server) {
+      server.close(() => {
+        console.log('HTTP server closed');
+        sequelize.close()
+          .then(() => {
+            console.log('Database connection closed');
+            process.exit(0);
+          })
+          .catch(error => {
+            console.error('Error closing database connection:', error);
+            process.exit(1);
+          });
+      });
+    }
+  });
+} else {
+  // On Vercel serverless environment, trigger background DB authentication
+  sequelize.authenticate()
+    .then(() => console.info('[DB Serverless] Connection established successfully.'))
+    .catch((err) => console.error('[DB Serverless] Connection failed:', err.message));
+}
+
+export { app, server };
+export default app;

@@ -1,10 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getToken } from "next-auth/jwt";
 
-export function middleware(req: NextRequest) {
+export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   if (pathname.startsWith("/api/auth")) {
     return NextResponse.next();
+  }
+
+  const token = await getToken({
+    req,
+    secret: process.env.AUTH_SECRET,
+  });
+
+  // If user is logged in and visits login or register, redirect them to appropriate home
+  if (token && (pathname === "/auth/login" || pathname === "/auth/register")) {
+    if (token.isAdmin) {
+      return NextResponse.redirect(new URL("/admin", req.url));
+    }
+    return NextResponse.redirect(new URL("/dashboard", req.url));
+  }
+
+  // Strict Admin Isolation: Admin users accessing /dashboard are redirected to /admin
+  if (token && token.isAdmin && pathname.startsWith("/dashboard")) {
+    return NextResponse.redirect(new URL("/admin", req.url));
   }
 
   const publicRoutes = [
@@ -33,22 +52,14 @@ export function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  const session = req.cookies.get("next-auth.session-token")?.value || 
-                  req.cookies.get("__Secure-next-auth.session-token")?.value;
-
-  if (!session) {
+  if (!token) {
     const loginUrl = new URL("/auth/login", req.url);
     loginUrl.searchParams.set("redirect", pathname);
     return NextResponse.redirect(loginUrl);
   }
 
   if (pathname.startsWith("/admin")) {
-    try {
-      const token = JSON.parse(atob(session.split(".")[1]));
-      if (!token?.isAdmin) {
-        return NextResponse.redirect(new URL("/dashboard", req.url));
-      }
-    } catch {
+    if (!token?.isAdmin) {
       return NextResponse.redirect(new URL("/dashboard", req.url));
     }
   }

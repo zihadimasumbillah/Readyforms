@@ -25,16 +25,20 @@ const nextConfig = {
   async rewrites() {
     const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
     const backendHost = backendUrl.replace(/\/api\/?$/, '');
-    return [
-      {
-        source: '/api/:path*',
-        destination: `${backendUrl}/:path*`,
-      },
-      {
-        source: '/health',
-        destination: `${backendHost}/health`,
-      },
-    ];
+    return {
+      beforeFiles: [],
+      afterFiles: [],
+      fallback: [
+        {
+          source: '/api/:path*',
+          destination: `${backendUrl}/:path*`,
+        },
+        {
+          source: '/health',
+          destination: `${backendHost}/health`,
+        },
+      ],
+    };
   },
   webpack(config) {
     config.module.rules.push({

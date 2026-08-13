@@ -1,3 +1,9 @@
+// Polyfill legacy SlowBuffer for Node v25 compatibility with buffer-equal-constant-time
+const bufferModule = require('buffer');
+if (!bufferModule.SlowBuffer) {
+  bufferModule.SlowBuffer = bufferModule.Buffer;
+}
+
 // Load environment variables for testing
 require('dotenv').config({ path: '.env.test' });
 
