@@ -49,12 +49,39 @@ export function useAuth() {
   }, []);
 
   const logout = useCallback(async (callbackUrl = "/auth/login") => {
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("auth_token");
-      initializeAuthClient(() => null);
-      window.location.href = callbackUrl;
+    try {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("auth_token");
+        const cookieNames = [
+          "authjs.session-token",
+          "__Secure-authjs.session-token",
+          "next-auth.session-token",
+          "__Secure-next-auth.session-token",
+          "authjs.csrf-token",
+          "__Host-authjs.csrf-token",
+          "next-auth.csrf-token",
+          "__Host-next-auth.csrf-token",
+          "authjs.callback-url",
+          "__Secure-authjs.callback-url",
+          "next-auth.callback-url",
+          "__Secure-next-auth.callback-url",
+        ];
+        cookieNames.forEach((name) => {
+          document.cookie = `${name}=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;`;
+        });
+        initializeAuthClient(() => null);
+      }
+      await nextAuthSignOut({
+        redirectTo: callbackUrl,
+        callbackUrl,
+        redirect: true,
+      });
+    } catch (error) {
+      console.error("Logout error:", error);
+      if (typeof window !== "undefined") {
+        window.location.href = callbackUrl;
+      }
     }
-    await nextAuthSignOut({ callbackUrl, redirect: false });
   }, []);
 
   const isAuthenticated = !!user;

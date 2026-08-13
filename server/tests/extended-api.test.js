@@ -42,7 +42,6 @@ beforeAll(async () => {
       { expiresIn: '1h' }
     );
 
-    // Create topic via API
     const topicRes = await request(app)
       .post('/api/topics')
       .set('Authorization', `Bearer ${adminToken}`)

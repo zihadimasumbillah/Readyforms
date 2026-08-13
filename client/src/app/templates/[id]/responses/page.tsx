@@ -40,9 +40,10 @@ export default function TemplateResponsesPage({ params }: ResponsesPageProps) {
   
   const templateId = use(params).id;
 
-  const handleLogout = () => {
-    auth?.logout();
-    router.push('/auth/login');
+  const handleLogout = async () => {
+    if (auth?.logout) {
+      await auth.logout();
+    }
   };
 
   useEffect(() => {

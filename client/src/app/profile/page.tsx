@@ -34,10 +34,9 @@ export default function ProfilePage() {
     }
   }, [user, router]);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     if (logout) {
-      logout();
-      router.push('/auth/login');
+      await logout();
     }
   };
 

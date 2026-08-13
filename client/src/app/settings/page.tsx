@@ -26,10 +26,9 @@ export default function SettingsPage() {
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [otpSecurity, setOtpSecurity] = useState(true);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     if (logout) {
-      logout();
-      router.push('/auth/login');
+      await logout();
     }
   };
 

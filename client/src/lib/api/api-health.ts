@@ -4,9 +4,7 @@ import apiClient from './api-client';
  * API health check functions for checking backend connectivity
  */
 export const apiHealth = {
-  /**
-   * Check if the API server is responding
-   */
+ 
   async ping(): Promise<boolean> {
     try {
       const response = await apiClient.get('/health/ping');

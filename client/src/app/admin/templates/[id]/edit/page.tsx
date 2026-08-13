@@ -25,10 +25,9 @@ export default function EditTemplatePage({ params }: { params: Promise<{ id: str
   const [loading, setLoading] = useState(true);
   const [template, setTemplate] = useState<any>(null);
   
-  const handleLogout = () => {
+  const handleLogout = async () => {
     if (logout) {
-      logout();
-      router.push('/auth/login');
+      await logout();
     }
   };
   

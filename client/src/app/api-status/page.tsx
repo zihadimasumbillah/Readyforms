@@ -22,10 +22,9 @@ export default function ApiStatusPage() {
   const user = auth?.user;
   const logout = auth?.logout;
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     if (logout) {
-      logout();
-      router.push('/auth/login');
+      await logout();
     }
   };
 

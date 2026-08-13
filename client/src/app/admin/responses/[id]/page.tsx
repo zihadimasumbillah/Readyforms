@@ -24,10 +24,9 @@ export default function ResponseDetailPage() {
   const [template, setTemplate] = useState<any>(null);
   const [questionOrder, setQuestionOrder] = useState<string[]>([]);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     if (auth?.logout) {
-      auth.logout();
-      router.push('/auth/login');
+      await auth.logout();
     }
   };
 

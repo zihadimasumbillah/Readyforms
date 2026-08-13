@@ -97,7 +97,10 @@ export const authService = {
   },
 
   async logout(): Promise<void> {
-    // NextAuth handles logout via signOut()
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('auth_token');
+    }
+    setTokenGetter(null);
   },
 
   async getCurrentUser() {

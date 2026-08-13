@@ -102,7 +102,6 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   const handleLogout = async () => {
     if (logout) {
       await logout();
-      router.push("/auth/login");
     }
   };
 

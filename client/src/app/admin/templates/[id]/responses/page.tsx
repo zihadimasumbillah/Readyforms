@@ -104,10 +104,9 @@ export default function TemplateResponsesPage() {
     }
   }, [user, id, router]);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     if (logout) {
-      logout();
-      router.push('/auth/login');
+      await logout();
     }
   };
 

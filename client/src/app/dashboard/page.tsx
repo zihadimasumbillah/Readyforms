@@ -29,10 +29,9 @@ export default function DashboardPage() {
   const logout = auth?.logout;
   const router = useRouter();
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     if (logout) {
-      logout();
-      router.push('/auth/login');
+      await logout();
     }
   };
 

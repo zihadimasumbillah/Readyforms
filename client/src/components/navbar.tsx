@@ -341,9 +341,9 @@ export function Navbar() {
                 <Button
                   variant="destructive"
                   className="w-full min-h-[48px] rounded-xl font-bold"
-                  onClick={() => {
-                    auth.logout();
+                  onClick={async () => {
                     closeMobileMenu();
+                    await auth.logout();
                   }}
                 >
                   Log out
