@@ -5,6 +5,10 @@ export default auth((req) => {
   const isAuthenticated = !!req.auth;
   const { pathname } = req.nextUrl;
 
+  if (pathname.startsWith("/api/auth")) {
+    return NextResponse.next();
+  }
+
   const publicRoutes = [
     "/",
     "/templates",
@@ -16,7 +20,6 @@ export default auth((req) => {
     "/api-status",
     "/auth/login",
     "/auth/register",
-    "/api/auth",
   ];
 
   const isPublicRoute = publicRoutes.some((route) => {
@@ -46,5 +49,5 @@ export default auth((req) => {
 });
 
 export const config = {
-  matcher: ["/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|*.png|*.jpg|*.jpeg|*.svg|*.webp).*)"],
 };
