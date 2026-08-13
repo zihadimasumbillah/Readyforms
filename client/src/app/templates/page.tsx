@@ -89,7 +89,7 @@ export default function TemplatesPage() {
           <p className="text-muted-foreground mt-1">Browse and use community-created form templates</p>
         </div>
         
-        <Button asChild className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white">
+        <Button asChild className="bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white">
           <Link href="/templates/create">
             <Sparkles className="h-4 w-4 mr-2" />
             Create with AI

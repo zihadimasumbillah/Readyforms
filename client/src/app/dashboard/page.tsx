@@ -279,7 +279,7 @@ export default function DashboardPage() {
             <CardDescription>Common tasks and actions</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4">
-            <Button className="justify-start text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700" asChild>
+            <Button className="justify-start text-white bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700" asChild>
               <Link href="/templates/create">
                 <Sparkles className="h-4 w-4 mr-2" />
                 <span>Create with AI</span>

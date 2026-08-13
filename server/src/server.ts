@@ -24,7 +24,7 @@ const PORT = process.env.PORT || 3001;
 
 const allowedOrigins = process.env.CLIENT_URL ? 
   process.env.CLIENT_URL.split(',').map(origin => origin.trim()) : 
-  ['http://localhost:3000', 'http://localhost:5000', 'http://127.0.0.1:3000', 'http://127.0.0.1:5000'];
+  ['http://localhost:3000', 'http://localhost:5000', 'http://localhost:8000', 'http://127.0.0.1:3000', 'http://127.0.0.1:5000', 'http://127.0.0.1:8000'];
 
 const corsOptions = {
   origin: function (origin, callback) {
