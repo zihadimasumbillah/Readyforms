@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { User } from '../models';
 import catchAsync from '../utils/catchAsync';
-import { validate as isUuid } from 'uuid';
+import { isUuid } from '../utils/uuid';
 
 interface AuthenticatedRequest extends Request {
   user: User;
@@ -21,7 +21,7 @@ export const getAllUsers = catchAsync(async (_req: Request, res: Response) => {
 });
 
 export const toggleUserBlock = catchAsync(async (req: AuthenticatedRequest, res: Response) => {
-  const { id } = req.params;
+  const id = req.params.id as string;
 
   try {
 
@@ -73,7 +73,7 @@ export const toggleUserBlock = catchAsync(async (req: AuthenticatedRequest, res:
 
 // Toggle user admin status
 export const toggleUserAdmin = catchAsync(async (req: AuthenticatedRequest, res: Response) => {
-  const { id } = req.params;
+  const id = req.params.id as string;
 
   try {
 

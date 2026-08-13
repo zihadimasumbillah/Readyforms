@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import Like from '../models/Like';
 import Template from '../models/Template';
 import catchAsync from '../utils/catchAsync';
-import { validate as isUuid } from 'uuid';
+import { isUuid } from '../utils/uuid';
 
 /**
  * @route POST|DELETE /api/likes/template/:templateId
@@ -12,7 +12,7 @@ export const toggleLike = catchAsync(async (req: Request, res: Response) => {
     return res.status(401).json({ message: 'Authentication required' });
   }
 
-  const { templateId } = req.params;
+  const templateId = req.params.templateId as string;
   
   if (!templateId) {
     return res.status(400).json({ message: 'Template ID is required' });
@@ -63,7 +63,7 @@ export const checkLike = catchAsync(async (req: Request, res: Response) => {
     return res.status(401).json({ message: 'Authentication required' });
   }
   
-  const { templateId } = req.params;
+  const templateId = req.params.templateId as string;
   
   if (!isUuid(templateId)) {
     return res.status(400).json({ message: 'Invalid template ID format' });
@@ -91,7 +91,7 @@ export const checkLike = catchAsync(async (req: Request, res: Response) => {
  * @route GET /api/likes/count/:templateId
  */
 export const countLikes = catchAsync(async (req: Request, res: Response) => {
-  const { templateId } = req.params;
+  const templateId = req.params.templateId as string;
   
   if (!isUuid(templateId)) {
     return res.status(400).json({ message: 'Invalid template ID format' });
@@ -118,7 +118,7 @@ export const countLikes = catchAsync(async (req: Request, res: Response) => {
  * @route GET /api/likes/template/:templateId
  */
 export const getLikesByTemplate = catchAsync(async (req: Request, res: Response) => {
-  const { templateId } = req.params;
+  const templateId = req.params.templateId as string;
 
   if (!isUuid(templateId)) {
     return res.status(400).json({ message: 'Invalid template ID format' });

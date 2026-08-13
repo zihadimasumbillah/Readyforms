@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { FormResponse, Template, User, sequelize } from '../models';
 import catchAsync from '../utils/catchAsync';
-import { validate as isUuid } from 'uuid';
+import { isUuid } from '../utils/uuid';
 import { QueryTypes } from 'sequelize';
 
 /**
@@ -85,7 +85,7 @@ export const getFormResponsesByTemplate = catchAsync(async (req: Request, res: R
     return res.status(401).json({ message: 'Authentication required' });
   }
 
-  const { templateId } = req.params;
+  const templateId = req.params.templateId as string;
 
   if (!templateId || !isUuid(templateId)) {
     return res.status(400).json({ message: 'Valid template ID is required' });
@@ -116,7 +116,7 @@ export const getFormResponseById = catchAsync(async (req: Request, res: Response
     return res.status(401).json({ message: 'Authentication required' });
   }
 
-  const { id } = req.params;
+  const id = req.params.id as string;
 
   if (!id || !isUuid(id)) {
     return res.status(400).json({ message: 'Valid response ID is required' });
@@ -149,7 +149,7 @@ export const getFormResponsesByUser = catchAsync(async (req: Request, res: Respo
     return res.status(401).json({ message: 'Authentication required' });
   }
 
-  const { userId } = req.params;
+  const userId = req.params.userId as string;
   const targetUserId = userId || req.user.id;
 
   if (targetUserId !== req.user.id && !req.user.isAdmin) {
@@ -175,7 +175,7 @@ export const getAggregateData = catchAsync(async (req: Request, res: Response) =
     return res.status(401).json({ message: 'Authentication required' });
   }
 
-  const { templateId } = req.params;
+  const templateId = req.params.templateId as string;
 
   if (!templateId || !isUuid(templateId)) {
     return res.status(400).json({ message: 'Valid template ID is required' });

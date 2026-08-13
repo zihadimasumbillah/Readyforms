@@ -87,6 +87,7 @@
     "postcss": "^8.5.23",
     "minimatch": "^9.0.7",
     "picomatch": "^2.3.2",
-    "@typescript-eslint/typescript-estree": "^7.5.0"
+    "@typescript-eslint/typescript-estree": "^7.5.0",
+    "sharp": "^0.35.0"
   }
 }

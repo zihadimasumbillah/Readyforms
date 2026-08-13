@@ -3,14 +3,14 @@ import Comment from '../models/Comment';
 import Template from '../models/Template';
 import User from '../models/User';
 import catchAsync from '../utils/catchAsync';
-import { validate as isUuid } from 'uuid';
+import { isUuid } from '../utils/uuid';
 import { optimisticDelete, handleOptimisticLockError } from '../utils/optimistic-locking';
 
 /**
  * @route GET /api/comments/template/:templateId
  */
 export const getCommentsByTemplate = catchAsync(async (req: Request, res: Response): Promise<void> => {
-  const { templateId } = req.params;
+  const templateId = req.params.templateId as string;
 
   if (!templateId || !isUuid(templateId)) {
     res.status(400).json({ message: 'Valid template ID is required' });
@@ -66,7 +66,7 @@ export const deleteComment = catchAsync(async (req: Request, res: Response): Pro
     return;
   }
 
-  const { id } = req.params;
+  const id = req.params.id as string;
   const version = req.body?.version !== undefined ? Number(req.body.version) : undefined;
 
   if (!id || !isUuid(id)) {

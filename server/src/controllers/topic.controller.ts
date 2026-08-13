@@ -26,7 +26,7 @@ export const getAllTopics = catchAsync(async (_req: Request, res: Response) => {
  * @route GET /api/topics/:id
  */
 export const getTopicById = catchAsync(async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const id = req.params.id as string;
   
   const topic = await Topic.findByPk(id);
   
@@ -76,7 +76,7 @@ export const createTopic = async (req: Request, res: Response): Promise<void> =>
  */
 export const updateTopic = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const { name, description, version } = req.body;
     
     if (!name) {
@@ -121,7 +121,7 @@ export const updateTopic = async (req: Request, res: Response): Promise<void> =>
  */
 export const deleteTopic = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const { version } = req.body;
     
     if (version === undefined) {

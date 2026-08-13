@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { User, Template, FormResponse, Topic, Comment, Like, sequelize } from '../models';
 import catchAsync from '../utils/catchAsync';
-import { validate as isUuid } from 'uuid';
+import { isUuid } from '../utils/uuid';
 import { Op } from 'sequelize';
 
 
@@ -45,7 +45,7 @@ export const getUsersCount = catchAsync(async (req: Request, res: Response) => {
  * @route GET /api/admin/users/:id
  */
 export const getUserById = catchAsync(async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const id = req.params.id as string;
   
   if (!isUuid(id)) {
     return res.status(400).json({ message: 'Invalid user ID format' });
@@ -66,7 +66,7 @@ export const getUserById = catchAsync(async (req: Request, res: Response) => {
  * @route PUT /api/admin/users/:id/block
  */
 export const toggleUserBlock = catchAsync(async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const id = req.params.id as string;
   
   if (!isUuid(id)) {
     return res.status(400).json({ message: 'Invalid user ID format' });
@@ -99,7 +99,7 @@ export const toggleUserBlock = catchAsync(async (req: Request, res: Response) =>
  * @route PUT /api/admin/users/:id/admin
  */
 export const toggleUserAdmin = catchAsync(async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const id = req.params.id as string;
   
   if (!isUuid(id)) {
     return res.status(400).json({ message: 'Invalid user ID format' });
@@ -194,7 +194,7 @@ export const getTemplates = getAllTemplates;
  * @route GET /api/admin/templates/:id
  */
 export const getTemplateById = catchAsync(async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const id = req.params.id as string;
   
   if (!isUuid(id)) {
     return res.status(400).json({ message: 'Invalid template ID format' });
@@ -248,7 +248,7 @@ export const getResponses = getAllResponses;
  * @route GET /api/admin/responses/:id
  */
 export const getResponseById = catchAsync(async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const id = req.params.id as string;
   
   if (!isUuid(id)) {
     return res.status(400).json({ message: 'Invalid response ID format' });
@@ -272,7 +272,7 @@ export const getResponseById = catchAsync(async (req: Request, res: Response) =>
  * @route DELETE /api/admin/responses/:id
  */
 export const deleteResponse = catchAsync(async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const id = req.params.id as string;
   if (!isUuid(id)) {
     return res.status(400).json({ message: 'Invalid response ID format' });
   }
@@ -290,7 +290,7 @@ export const deleteResponse = catchAsync(async (req: Request, res: Response) => 
  * @route DELETE /api/admin/templates/:id
  */
 export const deleteTemplate = catchAsync(async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const id = req.params.id as string;
   if (!isUuid(id)) {
     return res.status(400).json({ message: 'Invalid template ID format' });
   }

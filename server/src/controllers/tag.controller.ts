@@ -20,7 +20,7 @@ export const getTags = getAllTags;
  */
 export const getTagById = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     
     const tag = await Tag.findByPk(id);
     
@@ -73,7 +73,7 @@ export const createTag = async (req: Request, res: Response): Promise<void> => {
  */
 export const updateTag = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const { name, description, version } = req.body;
     
     if (!name) {
@@ -118,7 +118,7 @@ export const updateTag = async (req: Request, res: Response): Promise<void> => {
  */
 export const deleteTag = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const { version } = req.body;
     
     if (version === undefined) {

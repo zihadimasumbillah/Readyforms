@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { Template, User, Topic, FormResponse, Comment, Like, Tag, TemplateTag } from '../models';
 import { Op } from 'sequelize';
 import catchAsync from '../utils/catchAsync';
-import { validate as isUuid } from 'uuid';
+import { isUuid } from '../utils/uuid';
 import { optimisticUpdate, optimisticDelete, handleOptimisticLockError } from '../utils/optimistic-locking';
 
 export const getAllTemplates = catchAsync(async (req: Request, res: Response) => {
@@ -67,7 +67,7 @@ export const getAllTemplates = catchAsync(async (req: Request, res: Response) =>
 });
 
 export const getTemplateById = catchAsync(async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const id = req.params.id as string;
 
   if (!isUuid(id)) {
     return res.status(400).json({ 
@@ -239,7 +239,7 @@ export const createTemplate = catchAsync(async (req: Request, res: Response) => 
 
 export const updateTemplate = catchAsync(async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const { 
       title, 
       description, 
@@ -414,7 +414,7 @@ export const updateTemplate = catchAsync(async (req: Request, res: Response) => 
 
 export const deleteTemplate = catchAsync(async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     // Auth first
     if (!req.user) {
       return res.status(401).json({ message: 'Not authenticated' });
