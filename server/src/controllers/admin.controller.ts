@@ -132,19 +132,16 @@ export const toggleUserAdmin = catchAsync(async (req: Request, res: Response) =>
  * @route GET /api/admin/dashboard-stats
  */
 export const getDashboardStats = catchAsync(async (req: Request, res: Response) => {
-  const [usersCount, templatesCount, responsesCount, likesCount, commentsCount, topicsCount] = await Promise.all([
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+  const [usersCount, templatesCount, responsesCount, likesCount, commentsCount, topicsCount, activeUsers, adminCount] = await Promise.all([
     User.count(),
     Template.count(),
     FormResponse.count(),
     Like.count(),
     Comment.count(),
     Topic.count(),
-  ]);
-
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-  const [activeUsers, adminCount] = await Promise.all([
     User.count({ where: { lastLoginAt: { [Op.gte]: thirtyDaysAgo } } }),
     User.count({ where: { isAdmin: true } }),
   ]);

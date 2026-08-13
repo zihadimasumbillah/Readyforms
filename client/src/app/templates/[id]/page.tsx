@@ -234,7 +234,7 @@ export default function TemplateDetailsPage({ params }: TemplateDetailsProps) {
     return null;
   }
 
-  const isOwner = user && template.userId === user.id;
+  const isOwner = user && (template.userId === user.id || user.isAdmin);
   const questionsData = (template.questionOrder && typeof template.questionOrder === 'string') 
     ? JSON.parse(template.questionOrder) 
     : [];

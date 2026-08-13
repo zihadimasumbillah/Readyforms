@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { FormResponse, Template, User, sequelize } from '../models';
 import catchAsync from '../utils/catchAsync';
 import { isUuid } from '../utils/uuid';
-import { QueryTypes } from 'sequelize';
+import { QueryTypes, Op } from 'sequelize';
 
 /**
  * @route POST /api/responses
@@ -96,7 +96,19 @@ export const getFormResponsesByTemplate = catchAsync(async (req: Request, res: R
     return res.status(404).json({ message: 'Template not found' });
   }
 
-  if (template.userId !== req.user.id && !req.user.isAdmin) {
+  const userIds = [req.user.id];
+  if (req.user.email) {
+    const matchingUsers = await User.findAll({
+      attributes: ['id'],
+      where: { email: { [Op.iLike]: req.user.email } },
+    });
+    matchingUsers.forEach((u) => {
+      if (!userIds.includes(u.id)) userIds.push(u.id);
+    });
+  }
+
+  const isOwner = userIds.includes(template.userId);
+  if (!isOwner && !req.user.isAdmin) {
     return res.status(403).json({ message: 'Not authorized to view these responses' });
   }
 

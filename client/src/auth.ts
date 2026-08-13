@@ -94,6 +94,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           }
         } catch (err: any) {
           console.error("Google OAuth backend sync error in signIn callback:", err?.response?.data || err.message);
+          if (err?.response?.status === 403) {
+            return false;
+          }
         }
       }
       return true;

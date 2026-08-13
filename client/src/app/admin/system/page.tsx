@@ -66,7 +66,7 @@ export default function AdminSystemPage() {
       const latency = Math.round(performance.now() - startTime);
       return {
         ...service,
-        status: latency > 2500 ? 'degraded' : 'healthy',
+        status: latency > 5000 ? 'degraded' : 'healthy',
         latencyMs: latency,
         message: 'Operational',
       };

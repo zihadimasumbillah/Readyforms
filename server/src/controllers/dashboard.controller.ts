@@ -147,10 +147,25 @@ export const getUserResponses = catchAsync(async (req: Request, res: Response) =
 
   const userIds = await resolveUserIds(req.user);
 
+  // Get templates created by user
+  const userTemplates = await Template.findAll({
+    attributes: ['id'],
+    where: { userId: { [Op.in]: userIds } }
+  });
+  const ownedTemplateIds = userTemplates.map(t => t.id);
+
   const responses = await FormResponse.findAll({
-    where: { userId: { [Op.in]: userIds } },
+    where: {
+      [Op.or]: [
+        { userId: { [Op.in]: userIds } },
+        ...(ownedTemplateIds.length > 0 ? [{ templateId: { [Op.in]: ownedTemplateIds } }] : [])
+      ]
+    },
     order: [['createdAt', 'DESC']],
-    include: [{ model: Template, attributes: ['id', 'title', 'description'] }]
+    include: [
+      { model: Template, attributes: ['id', 'title', 'description'], required: false },
+      { model: User, attributes: ['id', 'name', 'email'], required: false }
+    ]
   });
 
   res.status(200).json(responses);

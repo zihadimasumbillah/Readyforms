@@ -69,6 +69,14 @@ class ApiClient {
             console.warn('Authentication required. Redirecting to login...');
           }
         }
+
+        if (error.response.status === 403) {
+          const msg = String((error.response.data as any)?.message || '').toLowerCase();
+          if (msg.includes('blocked') && typeof window !== 'undefined') {
+            localStorage.removeItem('auth_token');
+            window.location.href = '/auth/login?error=AccountBlocked';
+          }
+        }
         
         return Promise.reject(error);
       }
