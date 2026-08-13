@@ -1,4 +1,7 @@
 import { Resend } from 'resend';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 export class EmailService {
   private static getResendClient(): Resend | null {
