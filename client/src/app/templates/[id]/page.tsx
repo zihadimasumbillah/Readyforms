@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,13 +19,13 @@ import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface TemplateDetailsProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 export default function TemplateDetailsPage({ params }: TemplateDetailsProps) {
-  const { id } = params;
+  const { id } = use(params);
   const [template, setTemplate] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

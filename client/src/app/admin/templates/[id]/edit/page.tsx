@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { use } from "react";
 import { useRouter } from "next/navigation";
 import { DashboardLayout } from "@/components/layouts/dashboard-layout";
 import { Button } from "@/components/ui/button";
@@ -13,7 +14,8 @@ import { useAuth } from "@/contexts/auth-context";
 import { adminService } from "@/lib/api/admin-service";
 import { toast } from "@/components/ui/use-toast";
 
-export default function EditTemplatePage({ params }: { params: { id: string } }) {
+export default function EditTemplatePage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
   const auth = useAuth();
   const user = auth?.user;
   const logout = auth?.logout;
@@ -34,7 +36,7 @@ export default function EditTemplatePage({ params }: { params: { id: string } })
     const fetchTemplate = async () => {
       try {
         setLoading(true);
-        const data = await adminService.getTemplateById(params.id);
+        const data = await adminService.getTemplateById(id);
         setTemplate(data);
       } catch (error) {
         console.error("Error fetching template:", error);
@@ -53,7 +55,7 @@ export default function EditTemplatePage({ params }: { params: { id: string } })
     } else {
       router.push('/auth/login');
     }
-  }, [params.id, user, router]);
+  }, [id, user, router]);
 
   const addNewQuestion = (type: string) => {
     // Implementation for adding a new question

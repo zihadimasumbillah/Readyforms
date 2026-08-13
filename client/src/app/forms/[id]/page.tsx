@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -34,9 +34,9 @@ import { useAuth } from '@/contexts/auth-context';
 import { toast } from '@/components/ui/use-toast';
 
 interface FormPageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 interface TemplateData {
@@ -57,7 +57,7 @@ interface QuestionItem {
 }
 
 export default function PublicFormPage({ params }: FormPageProps) {
-  const { id } = params;
+  const { id } = use(params);
   const router = useRouter();
   const auth = useAuth();
   const user = auth?.user;
