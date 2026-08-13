@@ -46,7 +46,23 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
-export const dynamic = 'force-dynamic';
+function validateRedirect(input: string | null): string | null {
+  if (!input) return null;
+  const trimmed = input.trim();
+  if (!trimmed.startsWith('/')) return null;
+  if (trimmed.startsWith('//')) return null;
+  if (/^https?:\/\//i.test(trimmed)) return null;
+  if (trimmed.includes('\0')) return null;
+  const allowlist = ['/dashboard', '/admin', '/templates', '/auth/login'];
+  if (allowlist.some(p => trimmed === p || trimmed.startsWith(p + '/'))) {
+    return trimmed;
+  }
+  return null;
+}
+
+function escapeHtml(str: string): string {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+}
 
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -60,7 +76,7 @@ export default function LoginPage() {
 
   const router = useRouter();
   const queryParams = useQueryParams();
-  const redirect = queryParams.get("redirect") || "/dashboard";
+  const redirect = validateRedirect(queryParams.get("redirect")) || "/dashboard";
   const auth = useAuth();
 
   const form = useForm<FormData>({
@@ -133,9 +149,9 @@ export default function LoginPage() {
         setDevOtpHint(res.devOtp);
         setOtpCode(res.devOtp);
       }
-      toast({
-        title: "OTP Sent!",
-        description: `Check your email (${otpEmail}) for your 6-digit verification code.`,
+        toast({
+          title: "OTP Sent!",
+          description: `Check your email (${escapeHtml(otpEmail)}) for your 6-digit verification code.`,
       });
     } catch (err: any) {
       toast({

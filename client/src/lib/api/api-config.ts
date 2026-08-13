@@ -1,5 +1,9 @@
 const getApiUrl = (): string => {
-  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+  const url = process.env.NEXT_PUBLIC_API_URL;
+  if (!url) {
+    throw new Error('NEXT_PUBLIC_API_URL is not defined. Set it in your environment variables.');
+  }
+  return url.replace(/\/$/, '');
 };
 
 export const ApiConfig = {

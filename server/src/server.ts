@@ -15,12 +15,35 @@ const allowedOrigins = (process.env.CLIENT_URL || '')
   .map((origin) => origin.trim())
   .filter(Boolean);
 
+const defaultLocalOrigins = [
+  'http://localhost:8000',
+  'http://localhost:3000',
+  'http://localhost:3001',
+  'http://127.0.0.1:8000',
+  'http://127.0.0.1:3000',
+  'http://127.0.0.1:3001',
+];
+
+const effectiveAllowedOrigins = [...new Set([...defaultLocalOrigins, ...allowedOrigins])];
+
 const corsOptions: cors.CorsOptions = {
   origin: (origin, callback) => {
-    if (!origin || process.env.ALLOW_ALL_ORIGINS === 'true' || process.env.NODE_ENV === 'development') {
+    if (!origin) {
       return callback(null, true);
     }
-    if (allowedOrigins.includes(origin)) {
+    if (process.env.ALLOW_ALL_ORIGINS === 'true') {
+      return callback(null, true);
+    }
+    if (process.env.NODE_ENV === 'development') {
+      return callback(null, true);
+    }
+    if (process.env.NODE_ENV === 'production') {
+      if (effectiveAllowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      return callback(new Error(`CORS: Origin ${origin} not allowed`));
+    }
+    if (effectiveAllowedOrigins.includes(origin)) {
       return callback(null, true);
     }
     callback(new Error(`CORS: Origin ${origin} not allowed`));
@@ -31,15 +54,42 @@ const corsOptions: cors.CorsOptions = {
 };
 
 app.use(cors(corsOptions));
-app.use(helmet({ contentSecurityPolicy: false }));
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: ["'self'", "https://readyforms-api.vercel.app"],
+      fontSrc: ["'self'", "data:"],
+      objectSrc: ["'none'"],
+      frameAncestors: ["'none'"],
+      upgradeInsecureRequests: [],
+    },
+  },
+  crossOriginEmbedderPolicy: true,
+  crossOriginOpenerPolicy: true,
+  crossOriginResourcePolicy: { policy: "same-site" },
+  hsts: { maxAge: 31536000, includeSubDomains: true },
+  referrerPolicy: { policy: "strict-origin-when-cross-origin" },
+}));
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 app.use(morgan('tiny'));
 
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  message: { message: 'Too many requests. Please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 20,
-  message: { message: 'Too many attempts. Please try again later.' },
+  max: 10,
+  message: { message: 'Too many authentication attempts. Please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
 });
@@ -52,8 +102,20 @@ const aiLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+const otpRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { message: 'Too many OTP requests. Please try again after 15 minutes.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+app.use('/api', apiLimiter);
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
+app.use('/api/auth/forgot-password', authLimiter);
+app.use('/api/auth/send-otp', otpRateLimiter);
+app.use('/api/auth/verify-otp', otpRateLimiter);
 app.use('/api/ai', aiLimiter);
 
 // Root information endpoint

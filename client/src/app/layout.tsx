@@ -6,17 +6,11 @@ import { Toaster } from "@/components/ui/toaster";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { AuthClientInitializer } from "@/components/auth-client-initializer";
+import Analytics from "@/components/analytics";
 import localFont from 'next/font/local';
-import dynamic from 'next/dynamic';
 import type { Metadata } from 'next';
 
 import "./globals.css";
-
-// Analytics: loaded asynchronously so it never blocks the critical render path
-const Analytics = dynamic(
-  () => import('@vercel/analytics/react').then((mod) => ({ default: mod.Analytics })),
-  { ssr: false }
-);
 
 // Use local Europa font files from public directory
 const europa = localFont({
@@ -63,7 +57,7 @@ export default function RootLayout({
 }): JSX.Element {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={cn("font-sans antialiased", europa.variable)}>
+      <body className={cn("font-sans antialiased", europa.variable)} suppressHydrationWarning>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <QueryProvider>
             <AuthProvider>

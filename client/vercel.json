@@ -1,16 +1,52 @@
 {
   "rewrites": [
     {
-      "source": "/api/:path*",
-      "destination": "https://readyforms-api.vercel.app/api/:path*"
+      "source": "/api/templates/:path*",
+      "destination": "https://readyforms-api.vercel.app/api/templates/:path*"
+    },
+    {
+      "source": "/api/topics/:path*",
+      "destination": "https://readyforms-api.vercel.app/api/topics/:path*"
+    },
+    {
+      "source": "/api/responses/:path*",
+      "destination": "https://readyforms-api.vercel.app/api/responses/:path*"
+    },
+    {
+      "source": "/api/forms/:path*",
+      "destination": "https://readyforms-api.vercel.app/api/forms/:path*"
+    },
+    {
+      "source": "/api/admin/:path*",
+      "destination": "https://readyforms-api.vercel.app/api/admin/:path*"
+    },
+    {
+      "source": "/api/users/:path*",
+      "destination": "https://readyforms-api.vercel.app/api/users/:path*"
+    },
+    {
+      "source": "/api/comments/:path*",
+      "destination": "https://readyforms-api.vercel.app/api/comments/:path*"
+    },
+    {
+      "source": "/api/likes/:path*",
+      "destination": "https://readyforms-api.vercel.app/api/likes/:path*"
+    },
+    {
+      "source": "/api/ai/:path*",
+      "destination": "https://readyforms-api.vercel.app/api/ai/:path*"
+    },
+    {
+      "source": "/api/tags/:path*",
+      "destination": "https://readyforms-api.vercel.app/api/tags/:path*"
+    },
+    {
+      "source": "/api/dashboard/:path*",
+      "destination": "https://readyforms-api.vercel.app/api/dashboard/:path*"
     },
     {
       "source": "/health",
       "destination": "https://readyforms-api.vercel.app/health"
-    },
-    {
-      "source": "/health/:path*",
-      "destination": "https://readyforms-api.vercel.app/health/:path*"
     },
     {
       "source": "/ping",

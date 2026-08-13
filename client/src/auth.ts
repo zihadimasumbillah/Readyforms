@@ -23,7 +23,10 @@ providers.push(
     },
     async authorize(credentials) {
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api";
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+        if (!apiUrl) {
+          throw new Error('NEXT_PUBLIC_API_URL is not defined.');
+        }
         const response = await axios.post(`${apiUrl}/auth/login`, {
           email: credentials?.email,
           password: credentials?.password,
@@ -50,12 +53,15 @@ providers.push(
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers,
-  trustHost: true,
+  trustHost: process.env.AUTH_TRUST_HOST === 'true' ? true : process.env.NODE_ENV !== 'production',
   callbacks: {
     async signIn({ user, account }) {
       if (account?.provider === "google") {
         try {
-          const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api";
+          const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+          if (!apiUrl) {
+            throw new Error('NEXT_PUBLIC_API_URL is not defined.');
+          }
           const response = await axios.post(`${apiUrl}/auth/google-callback`, {
             email: user.email,
             name: user.name,

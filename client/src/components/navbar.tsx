@@ -89,24 +89,20 @@ export function Navbar() {
             <NavigationMenuList>
               {navItems.map((item) => (
                 <NavigationMenuItem key={item.href}>
-                  <Link href={item.href} legacyBehavior passHref>
-                    <NavigationMenuLink className={cn(
-                      "group inline-flex h-9 w-max items-center justify-center rounded-md bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none disabled:pointer-events-none disabled:opacity-50",
-                      pathname === item.href && "bg-accent text-accent-foreground"
-                    )}>
-                      {item.label}
-                    </NavigationMenuLink>
-                  </Link>
+                  <NavigationMenuLink asChild className={cn(
+                    "group inline-flex h-9 w-max items-center justify-center rounded-md bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none disabled:pointer-events-none disabled:opacity-50",
+                    pathname === item.href && "bg-accent text-accent-foreground"
+                  )}>
+                    <Link href={item.href}>{item.label}</Link>
+                  </NavigationMenuLink>
                 </NavigationMenuItem>
               ))}
 
               {auth?.user && auth.user.isAdmin && (
                 <NavigationMenuItem>
-                  <Link href="/admin" legacyBehavior passHref>
-                    <NavigationMenuLink className="group inline-flex h-9 w-max items-center justify-center rounded-md bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground">
-                      Admin
-                    </NavigationMenuLink>
-                  </Link>
+                  <NavigationMenuLink asChild className="group inline-flex h-9 w-max items-center justify-center rounded-md bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground">
+                    <Link href="/admin">Admin</Link>
+                  </NavigationMenuLink>
                 </NavigationMenuItem>
               )}
             </NavigationMenuList>

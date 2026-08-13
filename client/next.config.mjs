@@ -58,8 +58,36 @@ const nextConfig = {
       afterFiles: [],
       fallback: [
         {
-          source: '/api/:path*',
-          destination: `${backendUrl}/:path*`,
+          source: '/api/templates/:path*',
+          destination: `${backendUrl}/templates/:path*`,
+        },
+        {
+          source: '/api/topics/:path*',
+          destination: `${backendUrl}/topics/:path*`,
+        },
+        {
+          source: '/api/responses/:path*',
+          destination: `${backendUrl}/responses/:path*`,
+        },
+        {
+          source: '/api/admin/:path*',
+          destination: `${backendUrl}/admin/:path*`,
+        },
+        {
+          source: '/api/users/:path*',
+          destination: `${backendUrl}/users/:path*`,
+        },
+        {
+          source: '/api/comments/:path*',
+          destination: `${backendUrl}/comments/:path*`,
+        },
+        {
+          source: '/api/likes/:path*',
+          destination: `${backendUrl}/likes/:path*`,
+        },
+        {
+          source: '/api/dashboard/:path*',
+          destination: `${backendUrl}/dashboard/:path*`,
         },
         {
           source: '/health',
