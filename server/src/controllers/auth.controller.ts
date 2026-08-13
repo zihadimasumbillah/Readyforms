@@ -24,7 +24,6 @@ function isValidEmail(email: string): boolean {
 export const register = catchAsync(async (req: Request, res: Response) => {
   const { name, email, password, language = 'en', theme = 'light' } = req.body;
 
-  // ─── Input validation ───────────────────────────────────────────────────────
   if (!name || !email || !password) {
     return res.status(400).json({ message: 'Name, email and password are required' });
   }
