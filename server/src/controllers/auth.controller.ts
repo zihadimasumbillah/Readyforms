@@ -210,6 +210,7 @@ export const updatePreferences = catchAsync(async (req: Request, res: Response) 
 });
 
 import { OTPService } from '../services/otp.service';
+import { EmailService } from '../services/email.service';
 
 /**
  * @route POST /api/auth/send-otp
@@ -228,6 +229,10 @@ export const sendOTP = catchAsync(async (req: Request, res: Response) => {
   const otpCode = OTPService.setOTP(normalizedEmail, 10 * 60 * 1000);
 
   console.log(`[OTP SYSTEM] Generated OTP for ${normalizedEmail} (${purpose}): ${otpCode}`);
+
+  EmailService.sendOTPEmail(normalizedEmail, otpCode, purpose).catch((err) => {
+    console.error('[OTP EMAIL ERROR]', err);
+  });
 
   return res.status(200).json({
     message: `OTP sent successfully to ${normalizedEmail}`,
@@ -360,6 +365,10 @@ export const forgotPassword = catchAsync(async (req: Request, res: Response) => 
   const otpCode = OTPService.setOTP(normalizedEmail, 10 * 60 * 1000);
 
   console.log(`[PASSWORD RESET OTP] For ${normalizedEmail}: ${otpCode}`);
+
+  EmailService.sendOTPEmail(normalizedEmail, otpCode, 'password reset').catch((err) => {
+    console.error('[RESET EMAIL ERROR]', err);
+  });
 
   return res.status(200).json({
     message: 'If an account exists with this email, an OTP code has been generated.',
