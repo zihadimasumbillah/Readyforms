@@ -7,8 +7,19 @@ import { optimisticUpdate, optimisticDelete, handleOptimisticLockError } from '.
  * @route GET /api/topics
  */
 export const getAllTopics = catchAsync(async (_req: Request, res: Response) => {
-  const topics = await Topic.findAll();
-  res.status(200).json(topics);
+  try {
+    const topics = await Topic.findAll();
+    res.status(200).json(topics);
+  } catch (error: any) {
+    if (error.name === 'SequelizeDatabaseError' && error.parent?.code === '42P01') {
+      console.warn('[AUTO-HEAL] Relation missing in Neon DB. Synchronizing schema and seeding...');
+      const { ensureDatabaseInitialized } = require('../utils/seed');
+      await ensureDatabaseInitialized();
+      const topics = await Topic.findAll();
+      return res.status(200).json(topics);
+    }
+    throw error;
+  }
 });
 
 /**

@@ -12,29 +12,58 @@ export const getAllTemplates = catchAsync(async (req: Request, res: Response) =>
   const limitNumber = Math.max(1, Math.min(50, parseInt(limit as string) || 10)); 
   const offset = (pageNumber - 1) * limitNumber;
   
-  const { count, rows: templates } = await Template.findAndCountAll({
-    where: { isPublic: true },
-    include: [
-      { model: User, attributes: ['id', 'name'] },
-      { model: Topic, attributes: ['id', 'name'] },
-      { model: Tag }
-    ],
-    order: [['createdAt', 'DESC']],
-    limit: limitNumber,
-    offset: offset,
-    distinct: true,
-  });
-  
-  // Return structured response with metadata while maintaining array compatibility if needed
-  res.status(200).json({
-    data: templates,
-    meta: {
-      total: count,
-      page: pageNumber,
+  try {
+    const { count, rows: templates } = await Template.findAndCountAll({
+      where: { isPublic: true },
+      include: [
+        { model: User, attributes: ['id', 'name'] },
+        { model: Topic, attributes: ['id', 'name'] },
+        { model: Tag }
+      ],
+      order: [['createdAt', 'DESC']],
       limit: limitNumber,
-      totalPages: Math.ceil(count / limitNumber)
+      offset: offset,
+      distinct: true,
+    });
+    
+    res.status(200).json({
+      data: templates,
+      meta: {
+        total: count,
+        page: pageNumber,
+        limit: limitNumber,
+        totalPages: Math.ceil(count / limitNumber)
+      }
+    });
+  } catch (error: any) {
+    if (error.name === 'SequelizeDatabaseError' && error.parent?.code === '42P01') {
+      console.warn('[AUTO-HEAL] Templates relation missing in Neon DB. Synchronizing schema and seeding...');
+      const { ensureDatabaseInitialized } = require('../utils/seed');
+      await ensureDatabaseInitialized();
+      const { count, rows: templates } = await Template.findAndCountAll({
+        where: { isPublic: true },
+        include: [
+          { model: User, attributes: ['id', 'name'] },
+          { model: Topic, attributes: ['id', 'name'] },
+          { model: Tag }
+        ],
+        order: [['createdAt', 'DESC']],
+        limit: limitNumber,
+        offset: offset,
+        distinct: true,
+      });
+      return res.status(200).json({
+        data: templates,
+        meta: {
+          total: count,
+          page: pageNumber,
+          limit: limitNumber,
+          totalPages: Math.ceil(count / limitNumber)
+        }
+      });
     }
-  });
+    throw error;
+  }
 });
 
 export const getTemplateById = catchAsync(async (req: Request, res: Response) => {
