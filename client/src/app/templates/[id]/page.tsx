@@ -304,6 +304,21 @@ export default function TemplateDetailsPage({ params }: TemplateDetailsProps) {
               <Badge>Quiz</Badge>
             )}
           </div>
+
+          <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground pt-3 border-t mt-3">
+            <div className="flex items-center gap-1.5 font-medium text-foreground">
+              <Avatar className="h-5 w-5">
+                <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
+                  {(template.user?.name || (template as any).User?.name || 'U')[0].toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <span>By {template.user?.name || (template as any).User?.name || template.user?.email?.split('@')[0] || 'Community Author'}</span>
+            </div>
+            <span>•</span>
+            <span>{formatDate(template.createdAt)}</span>
+            <span>•</span>
+            <span className="font-medium text-foreground">{template.responsesCount ?? (template as any).responseCount ?? ((template as any).FormResponses?.length) ?? 0} responses</span>
+          </div>
         </CardHeader>
 
         {template.imageUrl && (

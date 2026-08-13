@@ -16,18 +16,36 @@ export const getAllTemplates = catchAsync(async (req: Request, res: Response) =>
     const { count, rows: templates } = await Template.findAndCountAll({
       where: { isPublic: true },
       include: [
-        { model: User, attributes: ['id', 'name'] },
-        { model: Topic, attributes: ['id', 'name'] },
-        { model: Tag }
+        { model: User, attributes: ['id', 'name', 'email'], required: false },
+        { model: Topic, attributes: ['id', 'name'], required: false },
+        { model: FormResponse, attributes: ['id'], required: false },
+        { model: Tag, required: false }
       ],
       order: [['createdAt', 'DESC']],
       limit: limitNumber,
       offset: offset,
       distinct: true,
     });
+
+    const formattedTemplates = templates.map((t: any) => {
+      const json = t.toJSON();
+      const authorUser = json.User || json.user || null;
+      const topicObj = json.Topic || json.topic || null;
+      const formResponses = json.FormResponses || json.formResponses || [];
+      return {
+        ...json,
+        user: authorUser,
+        User: authorUser,
+        author: authorUser,
+        topic: topicObj,
+        Topic: topicObj,
+        responsesCount: formResponses.length,
+        responseCount: formResponses.length,
+      };
+    });
     
     res.status(200).json({
-      data: templates,
+      data: formattedTemplates,
       meta: {
         total: count,
         page: pageNumber,
@@ -43,17 +61,34 @@ export const getAllTemplates = catchAsync(async (req: Request, res: Response) =>
       const { count, rows: templates } = await Template.findAndCountAll({
         where: { isPublic: true },
         include: [
-          { model: User, attributes: ['id', 'name'] },
-          { model: Topic, attributes: ['id', 'name'] },
-          { model: Tag }
+          { model: User, attributes: ['id', 'name', 'email'], required: false },
+          { model: Topic, attributes: ['id', 'name'], required: false },
+          { model: FormResponse, attributes: ['id'], required: false },
+          { model: Tag, required: false }
         ],
         order: [['createdAt', 'DESC']],
         limit: limitNumber,
         offset: offset,
         distinct: true,
       });
+      const formattedTemplates = templates.map((t: any) => {
+        const json = t.toJSON();
+        const authorUser = json.User || json.user || null;
+        const topicObj = json.Topic || json.topic || null;
+        const formResponses = json.FormResponses || json.formResponses || [];
+        return {
+          ...json,
+          user: authorUser,
+          User: authorUser,
+          author: authorUser,
+          topic: topicObj,
+          Topic: topicObj,
+          responsesCount: formResponses.length,
+          responseCount: formResponses.length,
+        };
+      });
       return res.status(200).json({
-        data: templates,
+        data: formattedTemplates,
         meta: {
           total: count,
           page: pageNumber,
@@ -77,9 +112,10 @@ export const getTemplateById = catchAsync(async (req: Request, res: Response) =>
   
   const template = await Template.findByPk(id, {
     include: [
-      { model: User, attributes: ['id', 'name'] },
-      { model: Topic, attributes: ['id', 'name'] },
-      { model: Tag }
+      { model: User, attributes: ['id', 'name', 'email'], required: false },
+      { model: Topic, attributes: ['id', 'name'], required: false },
+      { model: FormResponse, attributes: ['id'], required: false },
+      { model: Tag, required: false }
     ]
   });
   
@@ -104,7 +140,21 @@ export const getTemplateById = catchAsync(async (req: Request, res: Response) =>
     }
   }
   
-  res.status(200).json(template);
+  const json = template.toJSON();
+  const authorUser = json.User || json.user || null;
+  const topicObj = json.Topic || json.topic || null;
+  const formResponses = json.FormResponses || json.formResponses || [];
+
+  res.status(200).json({
+    ...json,
+    user: authorUser,
+    User: authorUser,
+    author: authorUser,
+    topic: topicObj,
+    Topic: topicObj,
+    responsesCount: formResponses.length,
+    responseCount: formResponses.length,
+  });
 });
 
 export const createTemplate = catchAsync(async (req: Request, res: Response) => {

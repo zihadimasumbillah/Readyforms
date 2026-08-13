@@ -19,6 +19,7 @@ router.get('/users-count', adminController.getUsersCount);
 router.get('/dashboard-stats', adminController.getDashboardStats);
 router.get('/system-activity', adminController.getSystemActivity);
 router.get('/system-activity/:count', adminController.getSystemActivity);
+router.post('/enrich-data', adminController.enrichProductionData);
 
 router.get('/topics', adminController.getAllTopics);
 

@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { User, Template, FormResponse, Topic, Comment, Like, sequelize } from '../models';
+import { User, Template, FormResponse, Topic, Comment, Like, Tag, sequelize } from '../models';
 import catchAsync from '../utils/catchAsync';
 import { isUuid } from '../utils/uuid';
 import { Op } from 'sequelize';
@@ -167,14 +167,37 @@ export const getAllTemplates = catchAsync(async (req: Request, res: Response) =>
   const offset = (pageNumber - 1) * limitNumber;
 
   const { count, rows: templates } = await Template.findAndCountAll({
-    include: [{ model: User, attributes: ['id', 'name', 'email'], required: false }],
+    include: [
+      { model: User, attributes: ['id', 'name', 'email'], required: false },
+      { model: Topic, attributes: ['id', 'name'], required: false },
+      { model: FormResponse, attributes: ['id'], required: false },
+      { model: Tag, required: false }
+    ],
     limit: limitNumber,
     offset,
     order: [['createdAt', 'DESC']],
+    distinct: true,
+  });
+
+  const formattedTemplates = templates.map((t: any) => {
+    const json = t.toJSON();
+    const authorUser = json.User || json.user || null;
+    const topicObj = json.Topic || json.topic || null;
+    const formResponses = json.FormResponses || json.formResponses || [];
+    return {
+      ...json,
+      user: authorUser,
+      User: authorUser,
+      author: authorUser,
+      topic: topicObj,
+      Topic: topicObj,
+      responsesCount: formResponses.length,
+      responseCount: formResponses.length,
+    };
   });
 
   res.status(200).json({
-    templates,
+    templates: formattedTemplates,
     meta: {
       total: count,
       page: pageNumber,
@@ -199,7 +222,10 @@ export const getTemplateById = catchAsync(async (req: Request, res: Response) =>
   
   const template = await Template.findByPk(id, {
     include: [
-      { model: User, attributes: ['id', 'name', 'email'], required: false }
+      { model: User, attributes: ['id', 'name', 'email'], required: false },
+      { model: Topic, attributes: ['id', 'name'], required: false },
+      { model: FormResponse, attributes: ['id'], required: false },
+      { model: Tag, required: false }
     ]
   });
   
@@ -207,7 +233,21 @@ export const getTemplateById = catchAsync(async (req: Request, res: Response) =>
     return res.status(404).json({ message: 'Template not found' });
   }
   
-  res.status(200).json(template);
+  const json = template.toJSON();
+  const authorUser = json.User || json.user || null;
+  const topicObj = json.Topic || json.topic || null;
+  const formResponses = json.FormResponses || json.formResponses || [];
+
+  res.status(200).json({
+    ...json,
+    user: authorUser,
+    User: authorUser,
+    author: authorUser,
+    topic: topicObj,
+    Topic: topicObj,
+    responsesCount: formResponses.length,
+    responseCount: formResponses.length,
+  });
 });
 
 /**
@@ -392,7 +432,7 @@ export const getSystemActivity = catchAsync(async (req: Request, res: Response) 
       limit: count,
     }).catch(() => []),
     Comment.findAll({
-      attributes: ['id', 'text', 'templateId', 'userId', 'createdAt'],
+      attributes: ['id', 'content', 'templateId', 'userId', 'createdAt'],
       include: [
         { model: User, attributes: ['id', 'name', 'email'] },
         { model: Template, attributes: ['id', 'title'] },
@@ -424,49 +464,68 @@ export const getSystemActivity = catchAsync(async (req: Request, res: Response) 
   }
 
   for (const t of recentTemplates as any[]) {
+    const tUser = t.User || t.user || { name: 'Community Author' };
     activities.push({
       id: `template-${t.id}`,
       type: 'template',
       description: `New template created: "${t.title}"`,
       timestamp: t.createdAt,
-      user: t.user,
+      user: tUser,
       meta: { templateId: t.id, title: t.title },
     });
   }
 
   for (const r of recentResponses as any[]) {
+    const rUser = r.User || r.user || { name: 'Respondent' };
+    const rTmpl = r.Template || r.template || { title: 'Form' };
     activities.push({
       id: `response-${r.id}`,
       type: 'response',
-      description: `Form response submitted for "${r.template?.title || 'Form'}"`,
+      description: `Form response submitted for "${rTmpl.title || 'Form'}"`,
       timestamp: r.createdAt,
-      user: r.user,
+      user: rUser,
       meta: { responseId: r.id, templateId: r.templateId, score: r.score },
     });
   }
 
   for (const c of recentComments as any[]) {
+    const cUser = c.User || c.user || { name: 'Community Member' };
+    const cTmpl = c.Template || c.template || { title: 'Form' };
     activities.push({
       id: `comment-${c.id}`,
       type: 'comment',
-      description: `New comment on "${c.template?.title || 'Form'}": "${(c.text || '').slice(0, 40)}"`,
+      description: `New comment on "${cTmpl.title || 'Form'}": "${(c.content || '').slice(0, 40)}"`,
       timestamp: c.createdAt,
-      user: c.user,
+      user: cUser,
     });
   }
 
   for (const l of recentLikes as any[]) {
+    const lUser = l.User || l.user || { name: 'Community Member' };
+    const lTmpl = l.Template || l.template || { title: 'Form' };
     activities.push({
       id: `like-${l.id}`,
       type: 'like',
-      description: `Liked form template "${l.template?.title || 'Form'}"`,
+      description: `Liked form template "${lTmpl.title || 'Form'}"`,
       timestamp: l.createdAt,
-      user: l.user,
+      user: lUser,
     });
   }
 
   activities.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
   res.status(200).json(activities.slice(0, count));
+});
+
+/**
+ * @route POST /api/admin/enrich-data
+ */
+export const enrichProductionData = catchAsync(async (req: Request, res: Response) => {
+  const { enrichProductionData: runEnrichment } = require('../utils/seed');
+  const result = await runEnrichment();
+  res.status(200).json({
+    message: 'Production data enriched successfully with verified accounts, responses, and activity.',
+    ...result,
+  });
 });
 

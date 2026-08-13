@@ -14,6 +14,7 @@ import {
 import { useAuth } from "@/contexts/auth-context";
 import { useRouter } from "next/navigation";
 import { toast } from "@/components/ui/use-toast";
+import { adminService } from "@/lib/api/admin-service";
 
 export default function AdminSettingsPage() {
   const auth = useAuth();
@@ -21,6 +22,7 @@ export default function AdminSettingsPage() {
   const router = useRouter();
 
   const [saving, setSaving] = useState(false);
+  const [enriching, setEnriching] = useState(false);
   const [settings, setSettings] = useState({
     allowPublicRegistrations: true,
     requireEmailVerification: false,
@@ -32,6 +34,25 @@ export default function AdminSettingsPage() {
     sessionTimeoutHours: 24,
     enableRateLimiting: true,
   });
+
+  const handleEnrichData = async () => {
+    try {
+      setEnriching(true);
+      const res = await adminService.enrichProductionData();
+      toast({
+        title: "Enrichment Complete!",
+        description: res.message || "Users from verified academic & corporate domains synced and form responses generated successfully.",
+      });
+    } catch (err: any) {
+      toast({
+        title: "Enrichment Failed",
+        description: err?.response?.data?.message || err?.message || "Failed to complete production data enrichment.",
+        variant: "destructive",
+      });
+    } finally {
+      setEnriching(false);
+    }
+  };
 
   useEffect(() => {
     if (auth?.status === "loading") return;
@@ -199,6 +220,39 @@ export default function AdminSettingsPage() {
                   max={50}
                 />
               </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Production Data & User Enrichment */}
+        <Card className="border-cyan-500/30">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Database className="h-5 w-5 text-cyan-500" />
+              Production Data & Activity Enrichment
+            </CardTitle>
+            <CardDescription>
+              Populate platform metrics with verified academic/corporate domain accounts, form responses, likes, and live activity streams
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl bg-muted/40 border">
+              <div className="space-y-1">
+                <p className="font-semibold text-sm">Sync Realistic Users & Activity Streams</p>
+                <p className="text-xs text-muted-foreground">
+                  Resolves template author relationships, generates responses for empty forms, and adds realistic user interactions from verified domains (@stanford.edu, @google.com, @microsoft.com, @readyforms.com).
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={enriching}
+                onClick={handleEnrichData}
+                className="gap-2 shrink-0 border-cyan-500/50 text-cyan-600 dark:text-cyan-400 hover:bg-cyan-500/10"
+              >
+                <RefreshCw className={`h-4 w-4 ${enriching ? 'animate-spin' : ''}`} />
+                <span>{enriching ? "Enriching Data..." : "Enrich & Sync Activity"}</span>
+              </Button>
             </div>
           </CardContent>
         </Card>

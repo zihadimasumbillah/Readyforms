@@ -284,7 +284,14 @@ export default function AdminTemplatesPage() {
                           </div>
                         </TableCell>
                         <TableCell className="hidden md:table-cell">
-                          {template.user?.name || 'Unknown'}
+                          <div className="flex items-center gap-2">
+                            <div className="h-6 w-6 rounded-full bg-primary/10 text-primary text-xs flex items-center justify-center font-bold shrink-0">
+                              {(template.user?.name || (template as any).User?.name || (template as any).author?.name || 'U')[0].toUpperCase()}
+                            </div>
+                            <span className="truncate max-w-[140px]" title={template.user?.email || (template as any).User?.email || ''}>
+                              {template.user?.name || (template as any).User?.name || (template as any).author?.name || template.user?.email?.split('@')[0] || (template as any).User?.email?.split('@')[0] || 'Community User'}
+                            </span>
+                          </div>
                         </TableCell>
                         <TableCell className="hidden md:table-cell">
                           {formatDate(template.createdAt)}
@@ -294,8 +301,8 @@ export default function AdminTemplatesPage() {
                             {template.isPublic ? "Public" : "Private"}
                           </Badge>
                         </TableCell>
-                        <TableCell className="hidden lg:table-cell">
-                          {template.responsesCount || 0}
+                        <TableCell className="hidden lg:table-cell font-mono font-medium">
+                          {template.responsesCount ?? (template as any).responseCount ?? ((template as any).FormResponses?.length) ?? 0}
                         </TableCell>
                         <TableCell className="text-right">
                           <DropdownMenu>

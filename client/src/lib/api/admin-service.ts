@@ -129,6 +129,19 @@ export const adminService = {
   },
 
   /**
+   * Enrich production data with verified domains, form responses, and user activities
+   */
+  async enrichProductionData(): Promise<any> {
+    try {
+      const response = await apiClient.post('/admin/enrich-data');
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to enrich production data:', error);
+      throw error;
+    }
+  },
+
+  /**
    * Get all templates
    */
   async getAllTemplates(page = 1, limit = 10): Promise<Template[]> {

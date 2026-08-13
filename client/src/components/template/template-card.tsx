@@ -69,6 +69,12 @@ export function TemplateCard({ template }: TemplateCardProps) {
             <CardDescription className="line-clamp-2 mt-1">
               {template.description || 'No description provided'}
             </CardDescription>
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-2">
+              <span>By</span>
+              <span className="font-medium text-foreground truncate max-w-[150px]">
+                {template.user?.name || (template as any).User?.name || (template as any).author?.name || template.user?.email?.split('@')[0] || 'Community Member'}
+              </span>
+            </div>
           </div>
           {template.isQuiz && (
             <Badge>Quiz</Badge>
@@ -111,8 +117,8 @@ export function TemplateCard({ template }: TemplateCardProps) {
             <MessageSquare className="h-4 w-4 mr-1" />
             {commentsCount}
           </div>
-          <div>
-            {formatDate(template.createdAt)}
+          <div className="text-xs font-mono font-medium hidden sm:block">
+            {template.responsesCount ?? (template as any).responseCount ?? ((template as any).FormResponses?.length) ?? 0} res
           </div>
         </div>
         
