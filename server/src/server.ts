@@ -1,42 +1,33 @@
-/// <reference path="./types/express.d.ts" />
-import bufferModule from 'buffer';
-if (!(bufferModule as any).SlowBuffer) {
-  (bufferModule as any).SlowBuffer = bufferModule.Buffer;
-}
-
 import express from 'express';
 import cors from 'cors';
-
-
 import helmet from 'helmet';
-import dotenv from 'dotenv';
+import morgan from 'morgan';
+import rateLimit from 'express-rate-limit';
+import sequelize from './config/database';
 import routes from './routes';
 import errorHandler from './middleware/error.middleware';
-import { sequelize } from './models';
-import morgan from 'morgan';
-import { createProxyMiddleware } from 'http-proxy-middleware';
-import rateLimit from 'express-rate-limit';
-
-dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-const allowedOrigins = process.env.CLIENT_URL ? 
-  process.env.CLIENT_URL.split(',').map(origin => origin.trim()) : 
-  ['http://localhost:3000', 'http://localhost:5000', 'http://localhost:8000', 'http://127.0.0.1:3000', 'http://127.0.0.1:5000', 'http://127.0.0.1:8000'];
+const allowedOrigins = (process.env.CLIENT_URL || '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
 
-const corsOptions = {
-  origin: function (origin, callback) {
-    if (!origin || allowedOrigins.includes(origin) || process.env.ALLOW_ALL_ORIGINS === 'true') {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
+const corsOptions: cors.CorsOptions = {
+  origin: (origin, callback) => {
+    if (!origin || process.env.ALLOW_ALL_ORIGINS === 'true' || process.env.NODE_ENV === 'development') {
+      return callback(null, true);
     }
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    callback(new Error(`CORS: Origin ${origin} not allowed`));
   },
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  credentials: false,
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Version']
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Version', 'X-Requested-With'],
 };
 
 app.use(cors(corsOptions));
@@ -65,11 +56,36 @@ app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
 app.use('/api/ai', aiLimiter);
 
+// Root information endpoint
+app.get('/', (req, res) => {
+  res.status(200).json({
+    name: 'ReadyForms API Server',
+    version: '1.0.0',
+    status: 'online',
+    message: 'Welcome to ReadyForms backend API service',
+    documentation: 'https://readyforms.vercel.app',
+    environment: process.env.NODE_ENV || 'production',
+    endpoints: {
+      root: '/',
+      health: '/health',
+      ping: '/ping',
+      topics: '/api/topics',
+      templates: '/api/templates',
+      auth: '/api/auth',
+      forms: '/api/forms',
+      likes: '/api/likes',
+      comments: '/api/comments',
+      admin: '/api/admin',
+    },
+    timestamp: new Date().toISOString()
+  });
+});
+
 app.get('/health', (req, res) => {
   res.status(200).json({ 
     status: 'ok',
     message: 'Server is responding',
-    env: process.env.NODE_ENV,
+    env: process.env.NODE_ENV || 'production',
     timestamp: new Date().toISOString() 
   });
 });
@@ -78,16 +94,19 @@ app.get('/ping', (req, res) => {
   res.status(200).json({ 
     message: 'pong', 
     server: 'ReadyForms API',
-    env: process.env.NODE_ENV,
+    env: process.env.NODE_ENV || 'production',
     origin: req.headers.origin || 'No origin',
     timestamp: new Date().toISOString() 
   });
 });
 
+// Primary API Router
 app.use('/api', routes);
 
-app.use(errorHandler);
+// Alias Router for direct un-prefixed paths (e.g. /templates, /topics)
+app.use('/', routes);
 
+app.use(errorHandler);
 
 let server: any = null;
 
