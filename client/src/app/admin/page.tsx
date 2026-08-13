@@ -448,7 +448,7 @@ export default function AdminDashboardPage() {
                           </div>
                           <div className="flex-1">
                             <p className="text-sm font-medium">
-                              {activity.user} {activity.action} a {activity.type}
+                              {activity.description || `${typeof activity.user === 'object' ? (activity.user?.name || activity.user?.email || 'User') : (activity.user || 'User')} ${activity.action || 'performed action'} on ${activity.type || 'item'}`}
                               {activity.title && <span className="font-normal"> - {activity.title}</span>}
                             </p>
                             <p className="text-xs text-muted-foreground mt-1">

@@ -1,10 +1,7 @@
 import axios from 'axios';
 
 // Define the API base URL
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
-if (!API_URL) {
-  throw new Error('NEXT_PUBLIC_API_URL is not defined. Set it in your environment variables.');
-}
+const API_URL = process.env.NEXT_PUBLIC_API_URL || process.env.API_BASE_URL || 'https://readyforms-api.vercel.app/api';
 
 // Create an axios instance for API calls
 const apiClient = axios.create({
@@ -17,7 +14,7 @@ const apiClient = axios.create({
 // Add auth token to requests if available
 apiClient.interceptors.request.use((config) => {
   if (typeof window !== 'undefined') {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('auth_token') || localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }

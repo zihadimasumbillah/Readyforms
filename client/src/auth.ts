@@ -120,6 +120,22 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.id = (user as any).id || user.id || token.sub;
         token.backendToken = (user as any).backendToken || token.backendToken;
         token.isAdmin = Boolean((user as any).isAdmin);
+      } else if ((!token.backendToken || typeof token.backendToken !== 'string' || token.backendToken.startsWith('oauth-token-')) && token.email) {
+        // Auto-heal existing session cookies with backend JWT & UUID
+        try {
+          const apiUrl = process.env.NEXT_PUBLIC_API_URL || process.env.API_BASE_URL || "https://readyforms-api.vercel.app/api";
+          const response = await axios.post(`${apiUrl}/auth/google-callback`, {
+            email: token.email,
+            name: token.name || token.email.split('@')[0],
+          });
+          if (response.data && response.data.token && response.data.user) {
+            token.id = response.data.user.id;
+            token.backendToken = response.data.token;
+            token.isAdmin = Boolean(response.data.user.isAdmin);
+          }
+        } catch (err: any) {
+          console.error("Auto-heal backend sync error in jwt callback:", err?.response?.data || err.message);
+        }
       }
       return token;
     },

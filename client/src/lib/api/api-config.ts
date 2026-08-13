@@ -1,8 +1,5 @@
 const getApiUrl = (): string => {
-  const url = process.env.NEXT_PUBLIC_API_URL;
-  if (!url) {
-    throw new Error('NEXT_PUBLIC_API_URL is not defined. Set it in your environment variables.');
-  }
+  const url = process.env.NEXT_PUBLIC_API_URL || process.env.API_BASE_URL || 'https://readyforms-api.vercel.app/api';
   return url.replace(/\/$/, '');
 };
 
