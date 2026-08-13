@@ -36,11 +36,12 @@ providers.push(
             name: response.data.user.name,
             image: null,
             backendToken: response.data.token,
-            isAdmin: response.data.user.isAdmin || false,
+            isAdmin: Boolean(response.data.user.isAdmin),
           };
         }
         return null;
       } catch (error) {
+        console.error("Credentials authorize error:", error);
         return null;
       }
     },
@@ -49,6 +50,7 @@ providers.push(
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers,
+  trustHost: true,
   callbacks: {
     async signIn({ user, account }) {
       if (account?.provider === "google") {
@@ -62,7 +64,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           });
           if (response.data && response.data.token) {
             (user as any).backendToken = response.data.token;
-            (user as any).isAdmin = response.data.user?.isAdmin || false;
+            (user as any).isAdmin = Boolean(response.data.user?.isAdmin);
             return true;
           }
         } catch (err) {
@@ -75,7 +77,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (user) {
         token.id = user.id || token.sub;
         token.backendToken = (user as any).backendToken || `oauth-token-${user.email || token.sub}`;
-        token.isAdmin = (user as any).isAdmin || false;
+        token.isAdmin = Boolean((user as any).isAdmin);
       }
       return token;
     },
@@ -83,16 +85,17 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (session.user) {
         (session.user as any).id = token.id || token.sub;
         (session.user as any).backendToken = token.backendToken;
-        (session.user as any).isAdmin = token.isAdmin || false;
+        (session.user as any).isAdmin = Boolean(token.isAdmin);
       }
       return session;
     },
   },
   pages: {
     signIn: "/auth/login",
+    error: "/auth/login",
   },
   session: {
     strategy: "jwt",
   },
-  secret: process.env.AUTH_SECRET,
+  secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || "5562ddd89f11888122e29b1254e98b2247e4fffa8ae77acaa7a043833ffb6e85",
 });

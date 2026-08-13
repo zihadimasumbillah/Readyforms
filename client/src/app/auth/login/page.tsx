@@ -94,8 +94,16 @@ export default function LoginPage() {
         description: `Welcome back!`,
       });
 
-      router.push(redirect);
-      router.refresh();
+      // Check session to determine if user is admin
+      try {
+        const sessionRes = await fetch("/api/auth/session");
+        const sessionData = await sessionRes.json();
+        const isAdmin = sessionData?.user?.isAdmin;
+        const targetPath = isAdmin ? "/admin" : (redirect === "/dashboard" ? "/dashboard" : redirect);
+        window.location.href = targetPath;
+      } catch (e) {
+        window.location.href = redirect;
+      }
     } catch (error: any) {
       toast({
         title: "Authentication Failed",
