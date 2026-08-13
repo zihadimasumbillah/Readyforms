@@ -194,7 +194,7 @@ export function DashboardLayout({
       <div className="flex-1 flex">
         {/* Mobile Sidebar */}
         {sidebarOpen && (
-          <div className="fixed inset-0 z-40 lg:hidden">
+          <div className="fixed inset-0 z-40 md:hidden">
             <div
               className="fixed inset-0 bg-black/50"
               onClick={closeSidebar}

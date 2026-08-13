@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { BookOpen, Menu, X, LogIn, LayoutDashboard, UserCheck, Settings, Shield, FileText } from "lucide-react";
+import { BookOpen, Menu, X, LogIn, LayoutDashboard, UserCheck, Settings, Shield, FileText, ChevronRight } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/lib/utils";
@@ -34,17 +34,22 @@ export function Navbar() {
     setMounted(true);
   }, []);
 
+  // Lock body scroll when mobile menu drawer is open
   useEffect(() => {
     if (mobileMenuOpen) {
       document.body.style.overflow = "hidden";
+      document.body.style.touchAction = "none";
     } else {
       document.body.style.overflow = "";
+      document.body.style.touchAction = "";
     }
     return () => {
       document.body.style.overflow = "";
+      document.body.style.touchAction = "";
     };
   }, [mobileMenuOpen]);
 
+  // Hide main header on full dashboard/admin views that render their own top headers
   if (
     pathname?.startsWith("/dashboard") ||
     pathname?.startsWith("/admin") ||
@@ -82,7 +87,7 @@ export function Navbar() {
   }
 
   return (
-    <header className="sticky top-0 z-40 w-full bg-white/90 dark:bg-black/90 backdrop-blur-md border-b border-neutral-200 dark:border-neutral-800 transition-colors">
+    <header className="sticky top-0 z-40 w-full bg-white/95 dark:bg-black/95 backdrop-blur-md border-b border-neutral-200 dark:border-neutral-800 transition-colors">
       <div className="container mx-auto px-4 sm:px-6 flex h-16 items-center justify-between">
         {/* Brand Logo */}
         <div className="flex items-center gap-2">
@@ -139,10 +144,10 @@ export function Navbar() {
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="ghost"
-                    className="relative h-9 w-9 rounded-full ring-2 ring-neutral-200 dark:ring-neutral-800"
+                    className="relative h-9 w-9 rounded-full ring-2 ring-neutral-200 dark:ring-neutral-800 p-0"
                   >
                     <Avatar className="h-9 w-9">
-                      <AvatarFallback className="bg-black text-white dark:bg-white dark:text-black font-bold">
+                      <AvatarFallback className="bg-black text-white dark:bg-white dark:text-black font-bold text-xs">
                         {auth.user.name
                           .split(" ")
                           .map((n: string) => n[0])
@@ -152,7 +157,7 @@ export function Navbar() {
                     </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56 rounded-xl shadow-xl">
+                <DropdownMenuContent align="end" className="w-56 rounded-xl shadow-xl border-neutral-200 dark:border-neutral-800">
                   <DropdownMenuLabel className="font-normal p-3">
                     <div className="flex flex-col space-y-1">
                       <p className="text-sm font-semibold leading-none">{auth.user.name}</p>
@@ -197,11 +202,11 @@ export function Navbar() {
           </div>
         </div>
 
-        {/* Mobile Menu Toggle Button */}
+        {/* Mobile Header Controls */}
         <div className="flex items-center gap-2 md:hidden">
           <ThemeToggle />
           <button
-            className="p-2.5 rounded-xl border border-neutral-200 dark:border-neutral-800 text-neutral-800 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-900 transition-all active:scale-95"
+            className="flex items-center justify-center h-10 w-10 rounded-xl border border-neutral-200 dark:border-neutral-800 text-neutral-800 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-900 transition-all active:scale-95"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
             aria-expanded={mobileMenuOpen}
@@ -211,65 +216,74 @@ export function Navbar() {
         </div>
       </div>
 
-      {/* Mobile Navigation Drawer */}
+      {/* Mobile Navigation Drawer Modal */}
       {mobileMenuOpen && (
         <div className="fixed inset-0 z-50 md:hidden">
+          {/* Backdrop Overlay */}
           <div
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
             onClick={closeMobileMenu}
           />
-          <div className="fixed right-0 top-0 h-full w-4/5 max-w-sm bg-white dark:bg-neutral-950 border-l border-neutral-200 dark:border-neutral-800 p-6 shadow-2xl animate-in slide-in-from-right duration-300 flex flex-col justify-between overflow-y-auto">
+
+          {/* Drawer Container */}
+          <div className="fixed right-0 top-0 bottom-0 z-50 w-[85%] max-w-sm bg-white dark:bg-neutral-950 border-l border-neutral-200 dark:border-neutral-800 p-6 shadow-2xl flex flex-col justify-between overflow-y-auto min-h-[100dvh]">
             <div>
               {/* Drawer Brand Header */}
-              <div className="flex items-center justify-between pb-6 border-b border-neutral-200 dark:border-neutral-800 mb-6">
-                <Link href="/" onClick={closeMobileMenu} className="flex items-center gap-2">
-                  <div className="h-8 w-8 rounded-lg bg-black text-white dark:bg-white dark:text-black flex items-center justify-center shadow-sm">
-                    <BookOpen className="h-4 w-4" />
+              <div className="flex items-center justify-between pb-5 border-b border-neutral-200 dark:border-neutral-800 mb-6">
+                <Link href="/" onClick={closeMobileMenu} className="flex items-center gap-2.5">
+                  <div className="h-9 w-9 rounded-xl bg-black text-white dark:bg-white dark:text-black flex items-center justify-center shadow-sm">
+                    <BookOpen className="h-5 w-5" />
                   </div>
-                  <span className="font-extrabold text-lg tracking-tight text-black dark:text-white">
+                  <span className="font-extrabold text-xl tracking-tight text-black dark:text-white">
                     ReadyForms
                   </span>
                 </Link>
-                <Button
-                  variant="ghost"
-                  size="icon"
+                <button
                   onClick={closeMobileMenu}
                   aria-label="Close menu"
-                  className="rounded-xl"
+                  className="p-2 rounded-xl border border-neutral-200 dark:border-neutral-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-900 transition-all"
                 >
                   <X className="h-5 w-5" />
-                </Button>
+                </button>
               </div>
 
-              {/* Navigation Items */}
+              {/* Main Navigation Links */}
               <div className="space-y-1">
+                <div className="px-3 mb-2 text-xs font-bold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
+                  Navigation
+                </div>
                 {navItems.map((item) => (
                   <Link
                     key={item.href}
                     href={item.href}
                     className={cn(
-                      "flex items-center py-3 px-4 rounded-xl text-base font-medium transition-colors text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-900 hover:text-black dark:hover:text-white",
+                      "flex items-center justify-between min-h-[44px] py-3 px-4 rounded-xl text-base font-medium transition-colors text-neutral-800 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-900 hover:text-black dark:hover:text-white",
                       pathname === item.href &&
-                        "bg-neutral-100 dark:bg-neutral-900 text-black dark:text-white font-bold"
+                        "bg-black text-white dark:bg-white dark:text-black font-bold shadow-sm"
                     )}
                     onClick={closeMobileMenu}
                   >
-                    {item.label}
+                    <span>{item.label}</span>
+                    <ChevronRight className="h-4 w-4 opacity-40" />
                   </Link>
                 ))}
               </div>
 
-              {/* User Account / Navigation */}
-              {auth?.user ? (
+              {/* User Account Section */}
+              {auth?.user && (
                 <div className="mt-6 pt-6 border-t border-neutral-200 dark:border-neutral-800 space-y-4">
-                  <div className="flex items-center gap-3 p-3 bg-neutral-50 dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-800">
+                  <div className="px-3 text-xs font-bold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
+                    Account Profile
+                  </div>
+
+                  <div className="flex items-center gap-3 p-3.5 bg-neutral-100 dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-800">
                     <Avatar className="h-10 w-10">
                       <AvatarFallback className="bg-black text-white dark:bg-white dark:text-black font-bold">
                         {auth.user.name.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
-                    <div className="truncate">
-                      <div className="font-semibold text-sm text-neutral-900 dark:text-neutral-100 truncate">
+                    <div className="truncate min-w-0 flex-1">
+                      <div className="font-bold text-sm text-neutral-900 dark:text-neutral-100 truncate">
                         {auth.user.name}
                       </div>
                       <div className="text-xs text-neutral-500 dark:text-neutral-400 truncate">
@@ -285,7 +299,7 @@ export function Navbar() {
                         <Link
                           key={item.href}
                           href={item.href}
-                          className="flex items-center gap-3 py-2.5 px-4 rounded-xl text-sm font-medium text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-900"
+                          className="flex items-center gap-3 min-h-[44px] py-2.5 px-4 rounded-xl text-sm font-medium text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-900"
                           onClick={closeMobileMenu}
                         >
                           <ItemIcon className="h-4 w-4 text-neutral-500" />
@@ -297,7 +311,7 @@ export function Navbar() {
                     {auth?.user?.isAdmin && (
                       <Link
                         href="/admin"
-                        className="flex items-center gap-3 py-2.5 px-4 rounded-xl text-sm font-medium text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40"
+                        className="flex items-center gap-3 min-h-[44px] py-2.5 px-4 rounded-xl text-sm font-bold text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40"
                         onClick={closeMobileMenu}
                       >
                         <Shield className="h-4 w-4" />
@@ -306,15 +320,15 @@ export function Navbar() {
                     )}
                   </div>
                 </div>
-              ) : null}
+              )}
             </div>
 
             {/* Mobile Footer Actions */}
-            <div className="pt-6 border-t border-neutral-200 dark:border-neutral-800 space-y-3">
+            <div className="pt-6 border-t border-neutral-200 dark:border-neutral-800 space-y-3 mt-6">
               {!auth?.user && (
                 <Button
                   asChild
-                  className="w-full bg-black hover:bg-neutral-800 text-white dark:bg-white dark:hover:bg-neutral-200 dark:text-black font-bold py-5 rounded-xl shadow-md"
+                  className="w-full min-h-[48px] bg-black hover:bg-neutral-800 text-white dark:bg-white dark:hover:bg-neutral-200 dark:text-black font-bold rounded-xl shadow-md"
                 >
                   <Link href="/auth/login" onClick={closeMobileMenu} className="flex items-center justify-center gap-2">
                     <LogIn className="h-4 w-4" />
@@ -326,7 +340,7 @@ export function Navbar() {
               {auth?.user && (
                 <Button
                   variant="destructive"
-                  className="w-full py-5 rounded-xl font-bold"
+                  className="w-full min-h-[48px] rounded-xl font-bold"
                   onClick={() => {
                     auth.logout();
                     closeMobileMenu();
