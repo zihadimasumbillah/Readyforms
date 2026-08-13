@@ -23,10 +23,7 @@ providers.push(
     },
     async authorize(credentials) {
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-        if (!apiUrl) {
-          throw new Error('NEXT_PUBLIC_API_URL is not defined.');
-        }
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || process.env.API_BASE_URL || "https://readyforms-api.vercel.app/api";
         const response = await axios.post(`${apiUrl}/auth/login`, {
           email: credentials?.email,
           password: credentials?.password,
@@ -43,8 +40,8 @@ providers.push(
           };
         }
         return null;
-      } catch (error) {
-        console.error("Credentials authorize error:", error);
+      } catch (error: any) {
+        console.error("Credentials authorize error:", error?.response?.data || error.message);
         return null;
       }
     },
@@ -53,15 +50,12 @@ providers.push(
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers,
-  trustHost: process.env.AUTH_TRUST_HOST === 'true' ? true : process.env.NODE_ENV !== 'production',
+  trustHost: true,
   callbacks: {
     async signIn({ user, account }) {
       if (account?.provider === "google") {
         try {
-          const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-          if (!apiUrl) {
-            throw new Error('NEXT_PUBLIC_API_URL is not defined.');
-          }
+          const apiUrl = process.env.NEXT_PUBLIC_API_URL || process.env.API_BASE_URL || "https://readyforms-api.vercel.app/api";
           const response = await axios.post(`${apiUrl}/auth/google-callback`, {
             email: user.email,
             name: user.name,
@@ -73,8 +67,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             (user as any).isAdmin = Boolean(response.data.user?.isAdmin);
             return true;
           }
-        } catch (err) {
-          console.error("Google OAuth backend sync error:", err);
+        } catch (err: any) {
+          console.error("Google OAuth backend sync error:", err?.response?.data || err.message);
         }
       }
       return true;
@@ -98,7 +92,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   },
   pages: {
     signIn: "/auth/login",
-    error: "/auth/login",
+    error: "/auth/error",
   },
   session: {
     strategy: "jwt",
