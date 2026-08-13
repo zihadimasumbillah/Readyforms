@@ -145,6 +145,11 @@ export function AdminLayout({ children }: AdminLayoutProps) {
       label: "System Diagnostics",
     },
     {
+      href: "/admin/settings",
+      icon: <Settings className="h-4 w-4 text-black dark:text-white" />,
+      label: "Platform Settings",
+    },
+    {
       href: "/api-status",
       icon: <Activity className="h-4 w-4 text-black dark:text-white" />,
       label: "API Status",
@@ -213,9 +218,9 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link href="/settings">
+                <Link href="/admin/settings">
                   <Settings className="mr-2 h-4 w-4" />
-                  <span>Settings</span>
+                  <span>Platform Settings</span>
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator className="bg-neutral-200 dark:bg-neutral-800" />
