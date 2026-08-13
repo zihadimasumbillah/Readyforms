@@ -8,11 +8,12 @@ export function AuthClientInitializer() {
   const { data: session } = useSession();
 
   useEffect(() => {
-    if (session?.user) {
-      const token = (session.user as any).backendToken;
+    if (session?.user?.backendToken) {
+      const token = session.user.backendToken;
+      if (typeof window !== "undefined") {
+        localStorage.setItem("auth_token", token);
+      }
       initializeAuthClient(() => token);
-    } else {
-      initializeAuthClient(() => null);
     }
   }, [session]);
 

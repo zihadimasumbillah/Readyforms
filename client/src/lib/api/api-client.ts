@@ -33,7 +33,9 @@ class ApiClient {
   private setupInterceptors(): void {
     this.client.interceptors.request.use(
       (config) => {
-        const token = tokenGetter ? tokenGetter() : (typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null);
+        const dynamicToken = tokenGetter ? tokenGetter() : null;
+        const storedToken = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+        const token = dynamicToken || storedToken;
         
         if (token) {
           config.headers['Authorization'] = `Bearer ${token}`;

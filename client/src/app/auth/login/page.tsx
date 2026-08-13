@@ -9,14 +9,6 @@ import { useForm } from "react-hook-form";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -29,10 +21,18 @@ import {
 import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/use-toast";
 import { signIn, getSession } from "next-auth/react";
-import { Mail, Lock, ShieldCheck, Chrome } from "lucide-react";
-import { useAuth } from "@/hooks/use-auth";
+import { Mail, Lock, ShieldCheck } from "lucide-react";
 import { useQueryParams } from "@/hooks/use-query-params";
-import { authService } from "@/lib/api/auth-service";
+import { authService, initializeAuthClient } from "@/lib/api/auth-service";
+
+const ROUTES = {
+  DASHBOARD: "/dashboard",
+  ADMIN: "/admin",
+  FORGOT_PASSWORD: "/auth/forgot-password",
+  REGISTER: "/auth/register",
+} as const;
+
+const ALLOWED_REDIRECT_PREFIXES = ["/dashboard", "/admin", "/templates", "/auth/login"];
 
 const formSchema = z.object({
   email: z
@@ -46,38 +46,41 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
-function validateRedirect(input: string | null): string | null {
-  if (!input) return null;
+function validateRedirect(input: string | null): string {
+  const DEFAULT_REDIRECT = ROUTES.DASHBOARD;
+  if (!input) return DEFAULT_REDIRECT;
   const trimmed = input.trim();
-  if (!trimmed.startsWith('/')) return null;
-  if (trimmed.startsWith('//')) return null;
-  if (/^https?:\/\//i.test(trimmed)) return null;
-  if (trimmed.includes('\0')) return null;
-  const allowlist = ['/dashboard', '/admin', '/templates', '/auth/login'];
-  if (allowlist.some(p => trimmed === p || trimmed.startsWith(p + '/'))) {
-    return trimmed;
+  if (!trimmed.startsWith("/") || trimmed.startsWith("//") || trimmed.includes("\0")) {
+    return DEFAULT_REDIRECT;
   }
-  return null;
+  if (/^https?:\/\//i.test(trimmed)) {
+    return DEFAULT_REDIRECT;
+  }
+  const isAllowed = ALLOWED_REDIRECT_PREFIXES.some(
+    (prefix) => trimmed === prefix || trimmed.startsWith(`${prefix}/`)
+  );
+  return isAllowed ? trimmed : DEFAULT_REDIRECT;
 }
 
 function escapeHtml(str: string): string {
-  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
 
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
-  const [otpMode, setOtpMode] = useState(false);
   const [otpEmail, setOtpEmail] = useState("");
   const [otpCode, setOtpCode] = useState("");
   const [otpSent, setOtpSent] = useState(false);
   const [sendingOtp, setSendingOtp] = useState(false);
-  const [devOtpHint, setDevOtpHint] = useState<string | null>(null);
-  const [googleModalOpen, setGoogleModalOpen] = useState(false);
 
   const router = useRouter();
   const queryParams = useQueryParams();
-  const redirect = validateRedirect(queryParams.get("redirect")) || "/dashboard";
-  const auth = useAuth();
+  const redirect = validateRedirect(queryParams.get("redirect"));
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -107,26 +110,32 @@ export default function LoginPage() {
 
       toast({
         title: "Sign in successful",
-        description: `Welcome back!`,
+        description: "Welcome back!",
       });
 
-      // Check session to determine if user is admin
       try {
         const session = await getSession();
-        const isAdmin = session?.user && (session.user as any).isAdmin;
-        const backendToken = session?.user && (session.user as any).backendToken;
+        const isAdmin = session?.user?.isAdmin;
+        const backendToken = session?.user?.backendToken;
         if (backendToken && typeof window !== "undefined") {
           localStorage.setItem("auth_token", backendToken);
+          initializeAuthClient(() => backendToken);
         }
-        const targetPath = isAdmin ? "/admin" : (redirect === "/dashboard" ? "/dashboard" : redirect);
-        window.location.href = targetPath;
-      } catch (e) {
-        window.location.href = redirect;
+        const targetPath = isAdmin
+          ? ROUTES.ADMIN
+          : redirect === ROUTES.DASHBOARD
+          ? ROUTES.DASHBOARD
+          : redirect;
+        router.push(targetPath);
+        router.refresh();
+      } catch {
+        router.push(redirect);
+        router.refresh();
       }
-    } catch (error: any) {
+    } catch {
       toast({
         title: "Authentication Failed",
-        description: error.message || "Please check your credentials and try again",
+        description: "An unexpected error occurred during sign in. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -135,10 +144,11 @@ export default function LoginPage() {
   };
 
   const handleSendOtp = async () => {
-    if (!otpEmail || !otpEmail.includes("@")) {
+    const emailValidation = z.string().email().safeParse(otpEmail);
+    if (!emailValidation.success) {
       toast({
         title: "Invalid Email",
-        description: "Please enter a valid email address to receive OTP code.",
+        description: "Please enter a valid email address to receive your verification code.",
         variant: "destructive",
       });
       return;
@@ -146,20 +156,17 @@ export default function LoginPage() {
 
     try {
       setSendingOtp(true);
-      const res = await authService.sendOTP(otpEmail, "login");
+      await authService.sendOTP(otpEmail, "login");
       setOtpSent(true);
-      if (res.devOtp) {
-        setDevOtpHint(res.devOtp);
-        setOtpCode(res.devOtp);
-      }
-        toast({
-          title: "OTP Sent!",
-          description: `Check your email (${escapeHtml(otpEmail)}) for your 6-digit verification code.`,
+      toast({
+        title: "OTP Sent!",
+        description: `Check your email (${escapeHtml(otpEmail)}) for your 6-digit verification code.`,
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to send verification code.";
       toast({
         title: "OTP Generation Failed",
-        description: err.message || "Failed to send OTP code.",
+        description: message,
         variant: "destructive",
       });
     } finally {
@@ -169,23 +176,28 @@ export default function LoginPage() {
 
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!otpCode || otpCode.length < 4) return;
+    if (!otpCode || otpCode.length < 6) return;
 
     try {
       setIsLoading(true);
       const response = await authService.verifyOTP(otpEmail, otpCode);
       if (response && response.token) {
+        if (typeof window !== "undefined") {
+          localStorage.setItem("auth_token", response.token);
+          initializeAuthClient(() => response.token);
+        }
         toast({
           title: "OTP Verified!",
-          description: `Welcome back!`,
+          description: "Welcome back!",
         });
         router.push(redirect);
         router.refresh();
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Invalid or expired verification code.";
       toast({
         title: "Verification Failed",
-        description: err.message || "Invalid or expired OTP code.",
+        description: message,
         variant: "destructive",
       });
     } finally {
@@ -197,10 +209,10 @@ export default function LoginPage() {
     try {
       setIsLoading(true);
       await signIn(provider, { callbackUrl: redirect });
-    } catch (err: any) {
+    } catch {
       toast({
         title: "Authentication Failed",
-        description: err.message || "OAuth authentication failed",
+        description: "OAuth authentication failed. Please try again.",
         variant: "destructive",
       });
       setIsLoading(false);
@@ -312,7 +324,7 @@ export default function LoginPage() {
                         <div className="flex items-center justify-between">
                           <FormLabel className="text-xs font-medium text-neutral-700 dark:text-neutral-300">Password</FormLabel>
                           <Link
-                            href="/auth/forgot-password"
+                            href={ROUTES.FORGOT_PASSWORD}
                             className="text-xs text-neutral-600 dark:text-neutral-400 hover:text-black dark:hover:text-white transition-colors underline"
                           >
                             Forgot?
@@ -376,9 +388,6 @@ export default function LoginPage() {
                     <div className="space-y-2">
                       <div className="flex justify-between items-center text-xs">
                         <span className="text-neutral-700 dark:text-neutral-300">Enter 6-Digit Code</span>
-                        {devOtpHint && (
-                          <span className="text-neutral-600 dark:text-neutral-400 font-mono text-[11px]">Dev Code: {devOtpHint}</span>
-                        )}
                       </div>
                       <Input
                         type="text"
@@ -405,7 +414,7 @@ export default function LoginPage() {
 
           <div className="text-center text-xs text-neutral-500 dark:text-neutral-400">
             Don't have an account?{" "}
-            <Link href="/auth/register" className="font-semibold text-black dark:text-white hover:underline underline-offset-4">
+            <Link href={ROUTES.REGISTER} className="font-semibold text-black dark:text-white hover:underline underline-offset-4">
               Create an Account
             </Link>
           </div>
