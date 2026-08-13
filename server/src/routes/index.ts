@@ -27,6 +27,7 @@ router.use('/likes', likeRoutes);
 router.use('/topics', topicRoutes);
 router.use('/users', userRoutes);
 router.use('/responses', formResponseRoutes);
+router.use('/forms', formResponseRoutes);
 router.use('/tags', tagRoutes);
 router.use('/dashboard', dashboardRoutes);
 router.use('/admin', adminRoutes);
