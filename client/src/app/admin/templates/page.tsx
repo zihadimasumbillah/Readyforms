@@ -34,7 +34,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Eye, Edit, Trash2, Search, Filter, Plus, MoreHorizontal, Users } from "lucide-react";
+import { Eye, Edit, Trash2, Search, Filter, Plus, MoreHorizontal, Users, FileText } from "lucide-react";
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from "@/contexts/auth-context";
@@ -92,19 +92,55 @@ export default function AdminTemplatesPage() {
     fetchTemplates();
   }, [router, auth?.status, auth?.user]);
   
+  const [typeFilter, setTypeFilter] = useState<'all' | 'public' | 'private' | 'quiz'>('all');
+
   useEffect(() => {
-    if (searchTerm.trim() === "") {
-      setFilteredTemplates(templates);
-    } else {
-      const filtered = templates.filter(
+    let filtered = [...templates];
+    
+    if (searchTerm.trim() !== "") {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(
         template =>
-          template.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          (template.description?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
-          (template.user?.name?.toLowerCase() || "").includes(searchTerm.toLowerCase())
+          template.title.toLowerCase().includes(term) ||
+          (template.description?.toLowerCase() || "").includes(term) ||
+          (template.user?.name?.toLowerCase() || "").includes(term)
       );
-      setFilteredTemplates(filtered);
     }
-  }, [searchTerm, templates]);
+
+    if (typeFilter === 'public') {
+      filtered = filtered.filter(t => t.isPublic);
+    } else if (typeFilter === 'private') {
+      filtered = filtered.filter(t => !t.isPublic);
+    } else if (typeFilter === 'quiz') {
+      filtered = filtered.filter(t => t.isQuiz);
+    }
+
+    setFilteredTemplates(filtered);
+  }, [searchTerm, typeFilter, templates]);
+
+  const handleExportTemplatesCSV = () => {
+    if (!filteredTemplates.length) return;
+    const rows = [
+      ["Template ID", "Title", "Description", "Creator", "Type", "Quiz", "Created At"],
+      ...filteredTemplates.map(t => [
+        t.id,
+        t.title,
+        t.description || '',
+        t.user?.name || 'Unknown',
+        t.isPublic ? 'Public' : 'Private',
+        t.isQuiz ? 'Yes' : 'No',
+        t.createdAt || ''
+      ])
+    ];
+
+    const csvContent = "data:text/csv;charset=utf-8," + rows.map(e => e.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const a = document.createElement('a');
+    a.href = encodedUri;
+    a.download = `templates_catalog_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    toast({ title: "Exported Templates", description: `Exported ${filteredTemplates.length} templates to CSV.` });
+  };
   
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
@@ -154,27 +190,67 @@ export default function AdminTemplatesPage() {
   return (
     <AdminLayout>
       <div className="space-y-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Templates Management</h1>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold">Templates Management</h1>
+          <p className="text-muted-foreground text-sm">Review, govern, and audit all form templates across the platform</p>
+        </div>
         
-        <Button onClick={() => router.push('/templates/create')}>
-          <Plus className="h-4 w-4 mr-2" /> Create Template
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleExportTemplatesCSV}>
+            Export Catalog (CSV)
+          </Button>
+          <Button onClick={() => router.push('/templates/create')} size="sm" className="bg-black dark:bg-white text-white dark:text-black">
+            <Plus className="h-4 w-4 mr-2" /> Create Template
+          </Button>
+        </div>
       </div>
       
-      <Card className="mb-6">
+      <Card>
         <CardHeader className="pb-3">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <CardTitle>All Templates</CardTitle>
-            <div className="relative w-full md:w-80">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Search by title or creator..."
-                className="pl-8 w-full"
-                value={searchTerm}
-                onChange={handleSearchChange}
-              />
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <CardTitle className="text-lg">All Templates ({filteredTemplates.length})</CardTitle>
+            <div className="flex flex-col sm:flex-row items-center gap-3">
+              <div className="relative w-full sm:w-72">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="search"
+                  placeholder="Search title, description, author..."
+                  className="pl-8 w-full"
+                  value={searchTerm}
+                  onChange={handleSearchChange}
+                />
+              </div>
+              <div className="flex items-center gap-1.5 w-full sm:w-auto">
+                <Button 
+                  variant={typeFilter === 'all' ? "default" : "outline"} 
+                  size="sm" 
+                  onClick={() => setTypeFilter('all')}
+                >
+                  All
+                </Button>
+                <Button 
+                  variant={typeFilter === 'public' ? "default" : "outline"} 
+                  size="sm" 
+                  onClick={() => setTypeFilter('public')}
+                >
+                  Public
+                </Button>
+                <Button 
+                  variant={typeFilter === 'private' ? "default" : "outline"} 
+                  size="sm" 
+                  onClick={() => setTypeFilter('private')}
+                >
+                  Private
+                </Button>
+                <Button 
+                  variant={typeFilter === 'quiz' ? "default" : "outline"} 
+                  size="sm" 
+                  onClick={() => setTypeFilter('quiz')}
+                >
+                  Quizzes
+                </Button>
+              </div>
             </div>
           </div>
         </CardHeader>
@@ -230,22 +306,28 @@ export default function AdminTemplatesPage() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem>
+                              <DropdownMenuItem asChild>
                                 <Link href={`/templates/${template.id}`} className="flex items-center w-full">
                                   <Eye className="mr-2 h-4 w-4" />
-                                  <span>View</span>
+                                  <span>View Template</span>
                                 </Link>
                               </DropdownMenuItem>
-                              <DropdownMenuItem>
+                              <DropdownMenuItem asChild>
+                                <Link href={`/forms/${template.id}`} className="flex items-center w-full">
+                                  <FileText className="mr-2 h-4 w-4" />
+                                  <span>Fill Form</span>
+                                </Link>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem asChild>
                                 <Link href={`/admin/templates/${template.id}/edit`} className="flex items-center w-full">
                                   <Edit className="mr-2 h-4 w-4" />
-                                  <span>Edit</span>
+                                  <span>Edit Configuration</span>
                                 </Link>
                               </DropdownMenuItem>
-                              <DropdownMenuItem>
+                              <DropdownMenuItem asChild>
                                 <Link href={`/admin/templates/${template.id}/responses`} className="flex items-center w-full">
                                   <Users className="mr-2 h-4 w-4" />
-                                  <span>Responses</span>
+                                  <span>View Responses</span>
                                 </Link>
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />

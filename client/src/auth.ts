@@ -87,18 +87,38 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           if (response.data && response.data.token) {
             (user as any).backendToken = response.data.token;
             (user as any).isAdmin = Boolean(response.data.user?.isAdmin);
+            if (response.data.user?.id) {
+              (user as any).id = response.data.user.id;
+            }
             return true;
           }
         } catch (err: any) {
-          console.error("Google OAuth backend sync error:", err?.response?.data || err.message);
+          console.error("Google OAuth backend sync error in signIn callback:", err?.response?.data || err.message);
         }
       }
       return true;
     },
-    async jwt({ token, user }) {
-      if (user) {
-        token.id = user.id || token.sub;
-        token.backendToken = (user as any).backendToken || `oauth-token-${user.email || token.sub}`;
+    async jwt({ token, user, account }) {
+      if (account?.provider === "google" && (user?.email || token.email)) {
+        try {
+          const apiUrl = process.env.NEXT_PUBLIC_API_URL || process.env.API_BASE_URL || "https://readyforms-api.vercel.app/api";
+          const response = await axios.post(`${apiUrl}/auth/google-callback`, {
+            email: user?.email || token.email,
+            name: user?.name || token.name,
+            image: user?.image || token.picture,
+            googleId: account.providerAccountId,
+          });
+          if (response.data && response.data.token && response.data.user) {
+            token.id = response.data.user.id;
+            token.backendToken = response.data.token;
+            token.isAdmin = Boolean(response.data.user.isAdmin);
+          }
+        } catch (err: any) {
+          console.error("Google OAuth backend sync error in jwt callback:", err?.response?.data || err.message);
+        }
+      } else if (user) {
+        token.id = (user as any).id || user.id || token.sub;
+        token.backendToken = (user as any).backendToken || token.backendToken;
         token.isAdmin = Boolean((user as any).isAdmin);
       }
       return token;

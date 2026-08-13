@@ -1,7 +1,27 @@
 import { Request, Response } from 'express';
-import { Template, FormResponse, Like, Comment, sequelize } from '../models';
+import { Template, FormResponse, Like, Comment, User, Topic, Tag, sequelize } from '../models';
 import { Op } from 'sequelize';
 import catchAsync from '../utils/catchAsync';
+
+/**
+ * Helper to resolve all associated UUIDs for a user (including case-insensitive email match)
+ */
+async function resolveUserIds(user: any): Promise<string[]> {
+  const ids = [user.id];
+  const email = (user.email || '').toLowerCase().trim();
+  if (email) {
+    const matched = await User.findAll({
+      where: { email: { [Op.iLike]: email } },
+      attributes: ['id']
+    });
+    for (const m of matched) {
+      if (!ids.includes(m.id)) {
+        ids.push(m.id);
+      }
+    }
+  }
+  return ids;
+}
 
 /**
  * @route GET /api/dashboard/stats
@@ -11,15 +31,15 @@ export const getDashboardStats = catchAsync(async (req: Request, res: Response) 
     return res.status(401).json({ message: 'Authentication required' });
   }
 
-  const userId = req.user.id;
+  const userIds = await resolveUserIds(req.user);
 
   const [templatesCount, responsesSubmittedCount] = await Promise.all([
-    Template.count({ where: { userId } }),
-    FormResponse.count({ where: { userId } }),
+    Template.count({ where: { userId: { [Op.in]: userIds } } }),
+    FormResponse.count({ where: { userId: { [Op.in]: userIds } } }),
   ]);
 
   const userTemplates = await Template.findAll({
-    where: { userId },
+    where: { userId: { [Op.in]: userIds } },
     attributes: ['id'],
   });
 
@@ -56,17 +76,18 @@ export const getRecentActivity = catchAsync(async (req: Request, res: Response) 
     return res.status(401).json({ message: 'Authentication required' });
   }
 
-  const userId = req.user.id;
+  const userIds = await resolveUserIds(req.user);
 
   const recentTemplates = await Template.findAll({
-    where: { userId },
+    where: { userId: { [Op.in]: userIds } },
     order: [['createdAt', 'DESC']],
-    limit: 5
+    limit: 5,
+    include: [{ model: Topic, attributes: ['id', 'name'] }]
   });
 
   const templatesCreatedByUser = await Template.findAll({ 
     attributes: ['id'],
-    where: { userId } 
+    where: { userId: { [Op.in]: userIds } } 
   });
   
   const templateIds = templatesCreatedByUser.map(template => template.id);
@@ -75,12 +96,13 @@ export const getRecentActivity = catchAsync(async (req: Request, res: Response) 
     await FormResponse.findAll({
       where: { templateId: templateIds },
       order: [['createdAt', 'DESC']],
-      limit: 5
+      limit: 5,
+      include: [{ model: Template, attributes: ['id', 'title'] }]
     }) :
     [];
 
   const recentSubmissions = await FormResponse.findAll({
-    where: { userId },
+    where: { userId: { [Op.in]: userIds } },
     order: [['createdAt', 'DESC']],
     limit: 5,
     include: [{ model: Template, attributes: ['id', 'title'] }]
@@ -101,8 +123,14 @@ export const getUserTemplates = catchAsync(async (req: Request, res: Response) =
     return res.status(401).json({ message: 'Authentication required' });
   }
 
+  const userIds = await resolveUserIds(req.user);
+
   const templates = await Template.findAll({
-    where: { userId: req.user.id },
+    where: { userId: { [Op.in]: userIds } },
+    include: [
+      { model: Topic, attributes: ['id', 'name'] },
+      { model: Tag }
+    ],
     order: [['createdAt', 'DESC']]
   });
 
@@ -117,8 +145,10 @@ export const getUserResponses = catchAsync(async (req: Request, res: Response) =
     return res.status(401).json({ message: 'Authentication required' });
   }
 
+  const userIds = await resolveUserIds(req.user);
+
   const responses = await FormResponse.findAll({
-    where: { userId: req.user.id },
+    where: { userId: { [Op.in]: userIds } },
     order: [['createdAt', 'DESC']],
     include: [{ model: Template, attributes: ['id', 'title', 'description'] }]
   });

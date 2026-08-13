@@ -269,6 +269,48 @@ export const getResponseById = catchAsync(async (req: Request, res: Response) =>
 });
 
 /**
+ * @route PUT /api/admin/responses/:id
+ */
+export const updateResponse = catchAsync(async (req: Request, res: Response) => {
+  const id = req.params.id as string;
+  if (!isUuid(id)) {
+    return res.status(400).json({ message: 'Invalid response ID format' });
+  }
+
+  const response = await FormResponse.findByPk(id, {
+    include: [
+      { model: User, attributes: ['id', 'name', 'email'] },
+      { model: Template }
+    ]
+  });
+
+  if (!response) {
+    return res.status(404).json({ message: 'Response not found' });
+  }
+
+  const allowedFields = [
+    'customString1Answer', 'customString2Answer', 'customString3Answer', 'customString4Answer',
+    'customText1Answer',   'customText2Answer',   'customText3Answer',   'customText4Answer',
+    'customInt1Answer',    'customInt2Answer',    'customInt3Answer',    'customInt4Answer',
+    'customCheckbox1Answer', 'customCheckbox2Answer', 'customCheckbox3Answer', 'customCheckbox4Answer',
+    'score'
+  ];
+
+  const updateData: Record<string, any> = {};
+  for (const field of allowedFields) {
+    if (req.body[field] !== undefined) {
+      updateData[field] = req.body[field];
+    }
+  }
+
+  await response.update(updateData);
+  res.status(200).json({
+    message: 'Response updated successfully',
+    response
+  });
+});
+
+/**
  * @route DELETE /api/admin/responses/:id
  */
 export const deleteResponse = catchAsync(async (req: Request, res: Response) => {

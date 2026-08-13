@@ -104,6 +104,28 @@ export default function AdminResponsesPage() {
     }
   };
 
+  const handleExportResponsesCSV = () => {
+    if (!filteredResponses.length) return;
+    const rows = [
+      ["Response ID", "Template Title", "Respondent Name", "Respondent Email", "Submitted At"],
+      ...filteredResponses.map(r => [
+        r.id,
+        r.template?.title || 'Unknown',
+        r.user?.name || 'Anonymous',
+        r.user?.email || '',
+        r.createdAt || ''
+      ])
+    ];
+
+    const csvContent = "data:text/csv;charset=utf-8," + rows.map(e => e.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const a = document.createElement('a');
+    a.href = encodedUri;
+    a.download = `form_responses_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    toast({ title: "Exported Submissions", description: `Exported ${filteredResponses.length} form submissions to CSV.` });
+  };
+
   const formatDate = (dateString?: string) => {
     if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleDateString(undefined, {
@@ -118,15 +140,24 @@ export default function AdminResponsesPage() {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">System Form Submissions</h1>
-          <p className="text-muted-foreground">Administrative oversight of all user responses across all templates</p>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">System Form Submissions</h1>
+            <p className="text-muted-foreground text-sm">Administrative oversight and audit of all user responses across all templates</p>
+          </div>
+          <Button variant="outline" size="sm" onClick={handleExportResponsesCSV} className="w-fit">
+            Export All Submissions (CSV)
+          </Button>
         </div>
 
         <Card>
           <CardHeader>
-            <CardTitle>Global Responses Log ({filteredResponses.length})</CardTitle>
-            <CardDescription>Total responses recorded in database</CardDescription>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <CardTitle>Global Responses Log ({filteredResponses.length})</CardTitle>
+                <CardDescription>Total responses recorded in database</CardDescription>
+              </div>
+            </div>
             <div className="pt-4">
               <div className="relative">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />

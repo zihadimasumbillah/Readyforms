@@ -7,6 +7,7 @@ export interface User {
   language?: string;
   theme?: string;
   createdAt?: string;
+  updatedAt?: string;
   lastLoginAt?: string;
 }
 

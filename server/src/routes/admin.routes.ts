@@ -27,6 +27,7 @@ router.delete('/templates/:id', adminController.deleteTemplate);
 
 router.get('/responses', adminController.getAllResponses);
 router.get('/responses/:id', adminController.getResponseById);
+router.put('/responses/:id', adminController.updateResponse);
 router.delete('/responses/:id', adminController.deleteResponse);
 
 export default router;

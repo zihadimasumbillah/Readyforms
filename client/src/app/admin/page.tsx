@@ -182,21 +182,88 @@ export default function AdminDashboardPage() {
     );
   }
 
+  const handleExportSystemAudit = async () => {
+    try {
+      toast({ title: "Generating Audit Report", description: "Fetching latest system snapshots..." });
+      const [stats, users, templates, responses] = await Promise.all([
+        adminService.getDashboardStats().catch(() => ({})),
+        adminService.getAllUsers().catch(() => []),
+        adminService.getAllTemplates(1, 200).catch(() => []),
+        adminService.getAllResponses(1, 200).catch(() => []),
+      ]);
+
+      const auditSnapshot = {
+        generatedAt: new Date().toISOString(),
+        auditor: user?.email || 'Admin',
+        systemStats: stats,
+        counts: {
+          totalUsers: users.length,
+          totalTemplates: templates.length,
+          totalResponses: responses.length,
+        },
+        usersSummary: users.map((u: any) => ({
+          id: u.id,
+          name: u.name,
+          email: u.email,
+          isAdmin: u.isAdmin,
+          blocked: u.blocked,
+          lastLoginAt: u.lastLoginAt || u.updatedAt
+        })),
+        templatesSummary: templates.map((t: any) => ({
+          id: t.id,
+          title: t.title,
+          isPublic: t.isPublic,
+          isQuiz: t.isQuiz,
+          creator: t.user?.name,
+          createdAt: t.createdAt
+        })),
+        responsesSummary: responses.map((r: any) => ({
+          id: r.id,
+          templateTitle: r.template?.title,
+          respondent: r.user?.name,
+          createdAt: r.createdAt
+        }))
+      };
+
+      const blob = new Blob([JSON.stringify(auditSnapshot, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `readyforms_system_audit_${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast({ title: "Audit Report Exported", description: "Complete system audit downloaded." });
+    } catch (err: any) {
+      console.error("Failed to generate audit report:", err);
+      toast({ title: "Export Failed", description: "Could not compile audit data.", variant: "destructive" });
+    }
+  };
+
   return (
     <AdminLayout>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Admin Dashboard</h1>
-        <div className="space-x-2">
-          <Button variant="outline" className="gap-2" asChild>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl md:text-3xl font-bold">Admin Dashboard</h1>
+            <span className="flex h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" title="System Operational" />
+          </div>
+          <p className="text-muted-foreground text-sm">Platform administration, metrics, and security controls</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleExportSystemAudit} className="gap-1.5">
+            <ActivityIcon className="h-4 w-4 text-cyan-500" />
+            <span>Export System Audit</span>
+          </Button>
+          <Button variant="outline" size="sm" className="gap-2" asChild>
             <Link href="/api-status">
-              <ActivityIcon className="h-4 w-4" />
-              API Status
+              <ActivityIcon className="h-4 w-4 text-emerald-500" />
+              API Health
             </Link>
           </Button>
-          <Button variant="outline" className="gap-2" asChild>
+          <Button variant="outline" size="sm" className="gap-2" asChild>
             <Link href="/admin/system">
-              <ShieldAlert className="h-4 w-4" />
-              System Status
+              <ShieldAlert className="h-4 w-4 text-amber-500" />
+              System Log
             </Link>
           </Button>
         </div>

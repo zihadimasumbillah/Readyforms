@@ -191,6 +191,19 @@ export const adminService = {
       throw error;
     }
   },
+
+  /**
+   * Update form response answers / score
+   */
+  async updateFormResponse(responseId: string, updateData: Partial<FormResponse>): Promise<FormResponse> {
+    try {
+      const response = await apiClient.put(`/admin/responses/${responseId}`, updateData);
+      return response.data.response || response.data;
+    } catch (error: any) {
+      console.error(`Failed to update form response ${responseId}:`, error);
+      throw error;
+    }
+  },
   
   /**
    * Delete template (admin override)

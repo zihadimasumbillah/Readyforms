@@ -231,3 +231,82 @@ export const getAggregateData = catchAsync(async (req: Request, res: Response) =
     },
   });
 });
+
+/**
+ * @route PUT /api/responses/:id
+ */
+export const updateFormResponse = catchAsync(async (req: Request, res: Response) => {
+  if (!req.user) {
+    return res.status(401).json({ message: 'Authentication required' });
+  }
+
+  const id = req.params.id as string;
+  if (!id || !isUuid(id)) {
+    return res.status(400).json({ message: 'Valid response ID is required' });
+  }
+
+  const response = await FormResponse.findByPk(id, {
+    include: [
+      { model: Template },
+      { model: User, attributes: ['id', 'name', 'email'] }
+    ]
+  });
+
+  if (!response) {
+    return res.status(404).json({ message: 'Form response not found' });
+  }
+
+  if (response.userId !== req.user.id && response.template?.userId !== req.user.id && !req.user.isAdmin) {
+    return res.status(403).json({ message: 'Not authorized to edit this response' });
+  }
+
+  const allowedFields = [
+    'customString1Answer', 'customString2Answer', 'customString3Answer', 'customString4Answer',
+    'customText1Answer',   'customText2Answer',   'customText3Answer',   'customText4Answer',
+    'customInt1Answer',    'customInt2Answer',    'customInt3Answer',    'customInt4Answer',
+    'customCheckbox1Answer', 'customCheckbox2Answer', 'customCheckbox3Answer', 'customCheckbox4Answer',
+    'score'
+  ];
+
+  const updateData: Record<string, any> = {};
+  for (const field of allowedFields) {
+    if (req.body[field] !== undefined) {
+      updateData[field] = req.body[field];
+    }
+  }
+
+  await response.update(updateData);
+  return res.status(200).json({
+    message: 'Form response updated successfully',
+    response
+  });
+});
+
+/**
+ * @route DELETE /api/responses/:id
+ */
+export const deleteFormResponse = catchAsync(async (req: Request, res: Response) => {
+  if (!req.user) {
+    return res.status(401).json({ message: 'Authentication required' });
+  }
+
+  const id = req.params.id as string;
+  if (!id || !isUuid(id)) {
+    return res.status(400).json({ message: 'Valid response ID is required' });
+  }
+
+  const response = await FormResponse.findByPk(id, {
+    include: [{ model: Template }]
+  });
+
+  if (!response) {
+    return res.status(404).json({ message: 'Form response not found' });
+  }
+
+  if (response.userId !== req.user.id && response.template?.userId !== req.user.id && !req.user.isAdmin) {
+    return res.status(403).json({ message: 'Not authorized to delete this response' });
+  }
+
+  await response.destroy();
+  return res.status(200).json({ message: 'Form response deleted successfully' });
+});

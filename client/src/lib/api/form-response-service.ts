@@ -99,6 +99,12 @@ export const formResponseService = {
     return response.data;
   },
   
+  // Update a response
+  async updateResponse(id: string, data: Partial<FormResponseData>): Promise<FormResponseData> {
+    const response = await apiClient.put(`/responses/${id}`, data);
+    return response.data.response || response.data;
+  },
+
   // Delete a response
   async deleteResponse(id: string): Promise<void> {
     await apiClient.delete(`/responses/${id}`);

@@ -399,7 +399,10 @@ export const googleCallback = catchAsync(async (req: Request, res: Response) => 
       blocked: false,
       language: 'en',
       theme: 'light',
+      lastLoginAt: new Date(),
     });
+  } else {
+    await user.update({ lastLoginAt: new Date() });
   }
 
   if (user.blocked) {
@@ -427,6 +430,8 @@ export const googleCallback = catchAsync(async (req: Request, res: Response) => 
       isAdmin: user.isAdmin,
       language: user.language,
       theme: user.theme,
+      createdAt: user.createdAt,
+      lastLoginAt: user.lastLoginAt,
     },
   });
 });

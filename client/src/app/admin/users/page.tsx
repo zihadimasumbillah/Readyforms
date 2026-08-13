@@ -155,9 +155,34 @@ export default function AdminUsersPage() {
     }
   };
   
+  const handleExportUsersCSV = () => {
+    if (!filteredUsers.length) return;
+    const rows = [
+      ["User ID", "Name", "Email", "Role", "Status", "Registered At", "Last Login"],
+      ...filteredUsers.map(u => [
+        u.id,
+        u.name || '',
+        u.email || '',
+        u.isAdmin ? 'Admin' : 'User',
+        u.blocked ? 'Blocked' : 'Active',
+        u.createdAt || '',
+        u.lastLoginAt || u.updatedAt || 'Never'
+      ])
+    ];
+
+    const csvContent = "data:text/csv;charset=utf-8," + rows.map(e => e.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const a = document.createElement('a');
+    a.href = encodedUri;
+    a.download = `users_directory_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    toast({ title: "Exported Users", description: `Exported ${filteredUsers.length} users to CSV.` });
+  };
+
   const formatDate = (dateString?: string) => {
     if (!dateString) return 'Never';
     const date = new Date(dateString);
+    if (isNaN(date.getTime())) return 'Never';
     return new Intl.DateTimeFormat('en-US', {
       year: 'numeric',
       month: 'short',
@@ -173,9 +198,20 @@ export default function AdminUsersPage() {
 
   return (
     <AdminLayout>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold">User Governance & Profiles</h1>
-        <p className="text-muted-foreground">Manage system users, credentials, roles, and security policies</p>
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">User Governance & Profiles</h1>
+          <p className="text-muted-foreground">Manage system users, credentials, roles, and security policies</p>
+        </div>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={handleExportUsersCSV}
+          className="w-fit gap-1.5"
+        >
+          <Search className="h-4 w-4 hidden" />
+          <span>Export Directory (CSV)</span>
+        </Button>
       </div>
 
       <Card>
@@ -283,7 +319,7 @@ export default function AdminUsersPage() {
                         {formatDate(u.createdAt)}
                       </TableCell>
                       <TableCell className="hidden md:table-cell text-xs text-muted-foreground">
-                        {formatDate(u.lastLoginAt)}
+                        {formatDate(u.lastLoginAt || u.updatedAt)}
                       </TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
@@ -429,7 +465,7 @@ export default function AdminUsersPage() {
                   <span className="text-muted-foreground flex items-center gap-2">
                     <Clock className="h-4 w-4 text-cyan-500" /> Last Active Timestamp
                   </span>
-                  <span>{formatDate(detailUserModal.lastLoginAt)}</span>
+                  <span>{formatDate(detailUserModal.lastLoginAt || detailUserModal.updatedAt)}</span>
                 </div>
               </div>
             </div>
