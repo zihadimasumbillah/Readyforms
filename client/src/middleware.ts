@@ -1,8 +1,6 @@
-import { auth } from "@/auth";
 import { NextRequest, NextResponse } from "next/server";
 
-export default auth((req) => {
-  const isAuthenticated = !!req.auth;
+export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   if (pathname.startsWith("/api/auth")) {
@@ -35,19 +33,29 @@ export default auth((req) => {
     return NextResponse.next();
   }
 
-  if (!isAuthenticated) {
+  const session = req.cookies.get("next-auth.session-token")?.value || 
+                  req.cookies.get("__Secure-next-auth.session-token")?.value;
+
+  if (!session) {
     const loginUrl = new URL("/auth/login", req.url);
     loginUrl.searchParams.set("redirect", pathname);
     return NextResponse.redirect(loginUrl);
   }
 
-  if (pathname.startsWith("/admin") && !(req.auth?.user as any)?.isAdmin) {
-    return NextResponse.redirect(new URL("/dashboard", req.url));
+  if (pathname.startsWith("/admin")) {
+    try {
+      const token = JSON.parse(atob(session.split(".")[1]));
+      if (!token?.isAdmin) {
+        return NextResponse.redirect(new URL("/dashboard", req.url));
+      }
+    } catch {
+      return NextResponse.redirect(new URL("/dashboard", req.url));
+    }
   }
 
   return NextResponse.next();
-});
+}
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon\\.ico).*)'],
+  matcher: ['/((?!_next/static|_next/image|favicon\\.ico|api/auth).*)'],
 };
