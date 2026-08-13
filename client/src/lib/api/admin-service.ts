@@ -144,11 +144,19 @@ export const adminService = {
   /**
    * Get all templates
    */
-  async getAllTemplates(page = 1, limit = 10): Promise<Template[]> {
+  async getAllTemplates(page = 1, limit = 100): Promise<Template[]> {
     try {
       const response = await apiClient.get(`/admin/templates?page=${page}&limit=${limit}`);
-      // Return just the templates array instead of the whole response object
-      return response.data.templates;
+      if (Array.isArray(response.data)) {
+        return response.data;
+      }
+      if (Array.isArray(response.data?.templates)) {
+        return response.data.templates;
+      }
+      if (Array.isArray(response.data?.data)) {
+        return response.data.data;
+      }
+      return [];
     } catch (error: any) {
       console.error('Failed to fetch templates:', error);
       throw error;

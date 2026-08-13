@@ -267,10 +267,10 @@ export default function AdminTemplatesPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Title</TableHead>
-                    <TableHead className="hidden md:table-cell">Creator</TableHead>
-                    <TableHead className="hidden md:table-cell">Created</TableHead>
-                    <TableHead className="hidden md:table-cell">Status</TableHead>
-                    <TableHead className="hidden lg:table-cell">Responses</TableHead>
+                    <TableHead>Creator</TableHead>
+                    <TableHead className="hidden sm:table-cell">Created</TableHead>
+                    <TableHead className="hidden sm:table-cell">Status</TableHead>
+                    <TableHead>Responses</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -279,30 +279,44 @@ export default function AdminTemplatesPage() {
                     filteredTemplates.map((template) => (
                       <TableRow key={template.id}>
                         <TableCell className="font-medium">
-                          <div className="max-w-[200px] truncate" title={template.title}>
+                          <Link 
+                            href={`/templates/${template.id}`}
+                            className="max-w-[200px] truncate block hover:text-primary transition-colors font-semibold" 
+                            title={template.title}
+                          >
                             {template.title}
-                          </div>
+                          </Link>
+                          <span className="text-[11px] text-muted-foreground sm:hidden block">
+                            {formatDate(template.createdAt)} • {template.isPublic ? "Public" : "Private"}
+                          </span>
                         </TableCell>
-                        <TableCell className="hidden md:table-cell">
+                        <TableCell>
                           <div className="flex items-center gap-2">
                             <div className="h-6 w-6 rounded-full bg-primary/10 text-primary text-xs flex items-center justify-center font-bold shrink-0">
                               {(template.user?.name || (template as any).User?.name || (template as any).author?.name || 'U')[0].toUpperCase()}
                             </div>
-                            <span className="truncate max-w-[140px]" title={template.user?.email || (template as any).User?.email || ''}>
+                            <span className="truncate max-w-[120px] text-xs" title={template.user?.email || (template as any).User?.email || ''}>
                               {template.user?.name || (template as any).User?.name || (template as any).author?.name || template.user?.email?.split('@')[0] || (template as any).User?.email?.split('@')[0] || 'Community User'}
                             </span>
                           </div>
                         </TableCell>
-                        <TableCell className="hidden md:table-cell">
+                        <TableCell className="hidden sm:table-cell text-xs text-muted-foreground">
                           {formatDate(template.createdAt)}
                         </TableCell>
-                        <TableCell className="hidden md:table-cell">
-                          <Badge variant={template.isPublic ? "default" : "outline"}>
+                        <TableCell className="hidden sm:table-cell">
+                          <Badge variant={template.isPublic ? "default" : "outline"} className="text-[11px]">
                             {template.isPublic ? "Public" : "Private"}
                           </Badge>
                         </TableCell>
-                        <TableCell className="hidden lg:table-cell font-mono font-medium">
-                          {template.responsesCount ?? (template as any).responseCount ?? ((template as any).FormResponses?.length) ?? 0}
+                        <TableCell>
+                          <Link 
+                            href={`/admin/templates/${template.id}/responses`}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                            title="Click to view all submissions for this template"
+                          >
+                            <FileText className="h-3 w-3" />
+                            <span>{template.responsesCount ?? (template as any).responseCount ?? ((template as any).FormResponses?.length) ?? 0}</span>
+                          </Link>
                         </TableCell>
                         <TableCell className="text-right">
                           <DropdownMenu>
