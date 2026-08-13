@@ -64,6 +64,10 @@ providers.push(
         return null;
       } catch (error: any) {
         console.error("Credentials authorize error:", error?.response?.data || error.message);
+        const msg = String(error?.response?.data?.message || error?.message || '').toLowerCase();
+        if (error?.response?.status === 403 || msg.includes('blocked')) {
+          throw new Error("AccountBlocked");
+        }
         return null;
       }
     },

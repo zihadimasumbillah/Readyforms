@@ -21,7 +21,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/use-toast";
 import { signIn, getSession } from "next-auth/react";
-import { Mail, Lock, ShieldCheck } from "lucide-react";
+import { Mail, Lock, ShieldCheck, ShieldAlert, AlertTriangle } from "lucide-react";
 import { useQueryParams } from "@/hooks/use-query-params";
 import { authService, initializeAuthClient } from "@/lib/api/auth-service";
 
@@ -81,6 +81,12 @@ export default function LoginPage() {
   const router = useRouter();
   const queryParams = useQueryParams();
   const redirect = validateRedirect(queryParams.get("redirect"));
+  const initialError = queryParams.get("error");
+  const [blockedState, setBlockedState] = useState(
+    initialError === "AccountBlocked" ||
+    initialError === "AccessDenied" ||
+    Boolean(initialError && initialError.toLowerCase().includes("block"))
+  );
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -100,6 +106,16 @@ export default function LoginPage() {
       });
 
       if (result?.error) {
+        if (result.error.includes("AccountBlocked") || result.error.toLowerCase().includes("block")) {
+          setBlockedState(true);
+          toast({
+            title: "Account Blocked",
+            description: "Your account is suspended. Please contact the administrator.",
+            variant: "destructive",
+          });
+          return;
+        }
+
         toast({
           title: "Authentication Failed",
           description: "Invalid email or password",
@@ -278,6 +294,30 @@ export default function LoginPage() {
           transition={{ delay: 0.15, duration: 0.4 }}
           className="bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 shadow-2xl rounded-2xl p-6 sm:p-8 space-y-5"
         >
+          {blockedState && (
+            <div className="p-4 rounded-xl border border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-300 space-y-2.5">
+              <div className="flex items-center gap-2 font-bold text-sm text-red-600 dark:text-red-400">
+                <ShieldAlert className="h-5 w-5 shrink-0 text-red-600 dark:text-red-400" />
+                <span>Your Account is Blocked</span>
+              </div>
+              <p className="text-xs leading-relaxed text-neutral-700 dark:text-neutral-300">
+                An administrator has suspended access for this account. If you believe this is a mistake or need assistance regaining access, please contact the administrator.
+              </p>
+              <div className="pt-1">
+                <Button
+                  asChild
+                  size="sm"
+                  className="w-full bg-red-600 hover:bg-red-700 text-white text-xs font-semibold h-9 rounded-lg gap-2 shadow-sm"
+                >
+                  <a href="mailto:support@readyforms.com?subject=Account%20Unblock%20Request&body=Hello%20Administrator,%0A%0AMy%20account%20has%20been%20blocked%20and%20I%20would%20like%20to%20request%20access%20reactivation.%0A%0AThank%20you.">
+                    <Mail className="h-3.5 w-3.5" />
+                    <span>Contact Administrator</span>
+                  </a>
+                </Button>
+              </div>
+            </div>
+          )}
+
           <Tabs defaultValue="password" className="w-full">
             <TabsList className="grid w-full grid-cols-2 bg-neutral-100 dark:bg-neutral-900 p-1 rounded-xl border border-neutral-200 dark:border-neutral-800 mb-6">
               <TabsTrigger value="password" className="text-xs font-semibold data-[state=active]:bg-black data-[state=active]:text-white dark:data-[state=active]:bg-white dark:data-[state=active]:text-black rounded-lg transition-all">
