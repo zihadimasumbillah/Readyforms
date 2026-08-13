@@ -4,7 +4,8 @@ import { getToken } from "next-auth/jwt";
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  if (pathname.startsWith("/api/auth")) {
+  // Bypass middleware checks for all API routes (/api/*)
+  if (pathname.startsWith("/api/")) {
     return NextResponse.next();
   }
 
@@ -68,5 +69,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon\\.ico|api/auth).*)'],
+  matcher: ['/((?!_next/static|_next/image|favicon\\.ico|api/).*)'],
 };
