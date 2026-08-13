@@ -48,11 +48,13 @@ export function useAuth() {
     }
   }, []);
 
-  const logout = useCallback(async () => {
+  const logout = useCallback(async (callbackUrl = "/auth/login") => {
     if (typeof window !== "undefined") {
       localStorage.removeItem("auth_token");
+      initializeAuthClient(() => null);
+      window.location.href = callbackUrl;
     }
-    await nextAuthSignOut({ redirect: false });
+    await nextAuthSignOut({ callbackUrl, redirect: false });
   }, []);
 
   const isAuthenticated = !!user;
