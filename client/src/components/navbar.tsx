@@ -147,14 +147,11 @@ export function Navbar() {
               </DropdownMenu>
             ) : (
               <div className="flex items-center gap-2">
-                <Button asChild variant="ghost" size="sm">
+                <Button asChild size="sm" className="bg-black hover:bg-neutral-800 text-white dark:bg-white dark:hover:bg-neutral-200 dark:text-black font-semibold rounded-lg shadow-sm">
                   <Link href="/auth/login">
                     <LogIn className="h-4 w-4 mr-2" />
                     Log in
                   </Link>
-                </Button>
-                <Button asChild size="sm" className="bg-indigo-600 hover:bg-indigo-700">
-                  <Link href="/auth/register">Sign up</Link>
                 </Button>
               </div>
             )}
@@ -253,14 +250,9 @@ export function Navbar() {
                 ) : (
                   <div className="pt-4 border-t">
                     <div className="flex flex-col space-y-3">
-                      <Button asChild variant="ghost">
+                      <Button asChild className="w-full bg-black hover:bg-neutral-800 text-white dark:bg-white dark:hover:bg-neutral-200 dark:text-black font-semibold rounded-xl">
                         <Link href="/auth/login" onClick={closeMobileMenu}>
                           Log in
-                        </Link>
-                      </Button>
-                      <Button asChild className="bg-indigo-600 hover:bg-indigo-700">
-                        <Link href="/auth/register" onClick={closeMobileMenu}>
-                          Sign up
                         </Link>
                       </Button>
                     </div>
