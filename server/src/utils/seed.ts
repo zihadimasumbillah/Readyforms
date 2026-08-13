@@ -586,14 +586,35 @@ const seedDatabase = async () => {
 
   } catch (error) {
     console.error('❌ Error seeding database:', error);
-  } finally {
-    console.log('\nTerminating seed process...');
-    process.exit(0);
+  }
+};
+
+export const ensureDatabaseInitialized = async () => {
+  try {
+    console.log('[DB] Ensuring database schema and tables exist...');
+    await sequelize.sync({ alter: true });
+    console.log('[DB] Database schema sync successful.');
+
+    let topicCount = 0;
+    try {
+      topicCount = await Topic.count();
+    } catch (e) {
+      topicCount = 0;
+    }
+
+    if (topicCount === 0) {
+      console.log('[DB] Database is empty. Seeding initial topics & mock data...');
+      await seedDatabase();
+    }
+    return { success: true, message: 'Database schema synced and initial data ready' };
+  } catch (err: any) {
+    console.error('[DB] Error initializing database:', err.message);
+    return { success: false, error: err.message };
   }
 };
 
 if (require.main === module) {
-  seedDatabase();
+  seedDatabase().then(() => process.exit(0));
 }
 
 export default seedDatabase;

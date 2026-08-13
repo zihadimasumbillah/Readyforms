@@ -147,5 +147,36 @@ export const checkEndpoints = async (req: Request, res: Response): Promise<void>
   });
 };
 
+/**
+ * Trigger database schema sync and seed
+ * @route GET /api/health/db-sync
+ */
+export const syncDatabase = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { ensureDatabaseInitialized } = require('../utils/seed');
+    const result = await ensureDatabaseInitialized();
+    if (result.success) {
+      res.status(200).json({
+        status: 'ok',
+        message: 'Database schema synchronized and seeded successfully',
+        timestamp: new Date().toISOString()
+      });
+    } else {
+      res.status(500).json({
+        status: 'error',
+        message: 'Database sync failed',
+        error: result.error,
+        timestamp: new Date().toISOString()
+      });
+    }
+  } catch (error: any) {
+    res.status(500).json({
+      status: 'error',
+      message: 'Server error during DB sync',
+      error: error.message
+    });
+  }
+};
+
 export default ping;
 

@@ -136,9 +136,17 @@ if (process.env.VERCEL !== '1') {
     }
   });
 } else {
-  // On Vercel serverless environment, trigger background DB authentication
+  // On Vercel serverless environment, trigger background DB authentication & schema initialization
   sequelize.authenticate()
-    .then(() => console.info('[DB Serverless] Connection established successfully.'))
+    .then(async () => {
+      console.info('[DB Serverless] Connection established successfully.');
+      try {
+        const { ensureDatabaseInitialized } = require('./utils/seed');
+        await ensureDatabaseInitialized();
+      } catch (err: any) {
+        console.error('[DB Serverless] Auto-sync error:', err.message);
+      }
+    })
     .catch((err) => console.error('[DB Serverless] Connection failed:', err.message));
 }
 

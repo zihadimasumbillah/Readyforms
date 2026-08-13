@@ -1,5 +1,5 @@
 import express from 'express';
-import { ping, checkDatabase, checkCors, fullCheck, status, checkEndpoints } from '../controllers/health.controller';
+import { ping, checkDatabase, checkCors, fullCheck, status, checkEndpoints, syncDatabase } from '../controllers/health.controller';
 
 const router = express.Router();
 
@@ -10,6 +10,7 @@ router.get('/cors', checkCors);
 router.get('/full', fullCheck);
 router.get('/status', status);
 router.get('/endpoints', checkEndpoints);
+router.get('/db-sync', syncDatabase);
 router.get('/', ping); // Add default route for /api/health
 
 export default router;
