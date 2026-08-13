@@ -8,6 +8,17 @@ import catchAsync from '../utils/catchAsync';
 import { Op } from 'sequelize';
 
 /**
+ * ReDoS-safe email validation without polynomial backtracking loops.
+ */
+function isValidEmail(email: string): boolean {
+  if (!email || typeof email !== 'string' || email.length > 254) {
+    return false;
+  }
+  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  return emailRegex.test(email);
+}
+
+/**
  * @route POST /api/auth/register
  */
 export const register = catchAsync(async (req: Request, res: Response) => {
@@ -18,8 +29,7 @@ export const register = catchAsync(async (req: Request, res: Response) => {
     return res.status(400).json({ message: 'Name, email and password are required' });
   }
 
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(email)) {
+  if (!isValidEmail(email)) {
     return res.status(400).json({ message: 'Please provide a valid email address' });
   }
 
@@ -212,8 +222,7 @@ export const sendOTP = catchAsync(async (req: Request, res: Response) => {
   }
 
   const normalizedEmail = String(email).toLowerCase().trim();
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(normalizedEmail)) {
+  if (!isValidEmail(normalizedEmail)) {
     return res.status(400).json({ message: 'Invalid email address' });
   }
 
