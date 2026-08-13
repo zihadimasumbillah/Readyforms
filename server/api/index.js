@@ -7,7 +7,7 @@ try {
 
 let dbInitialized = false;
 
-// Global Middleware: CORS, URL Rewriting & Self-Healing Neon Database Auto-Sync
+// Global Middleware: CORS & Self-Healing Neon Database Auto-Sync
 app.use(async (req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
@@ -16,13 +16,6 @@ app.use(async (req, res, next) => {
   
   if (req.method === 'OPTIONS') {
     return res.status(204).end();
-  }
-
-  // Auto-rewrite un-prefixed requests like /templates -> /api/templates
-  if (req.path !== '/' && req.path !== '/health' && req.path !== '/ping' && req.path !== '/cors-test') {
-    if (!req.path.startsWith('/api/') && !req.path.startsWith('/api')) {
-      req.url = '/api' + (req.url.startsWith('/') ? req.url : '/' + req.url);
-    }
   }
 
   if (!dbInitialized) {
@@ -73,14 +66,6 @@ app.get('/', (req, res) => {
 });
 
 // Direct Seed Route for Manual Initialization
-app.get('/api/auth/error', (req, res) => {
-  res.status(200).json({
-    status: 'error',
-    message: 'Authentication error. Please try logging in again.',
-    redirectUrl: '/auth/login'
-  });
-});
-
 app.get('/api/seed', async (req, res) => {
   try {
     let seedModule;
