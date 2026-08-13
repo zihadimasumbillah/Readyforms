@@ -180,24 +180,50 @@ export default function LoginPage() {
 
     try {
       setIsLoading(true);
-      const response = await authService.verifyOTP(otpEmail, otpCode);
-      if (response && response.token) {
-        if (typeof window !== "undefined") {
-          localStorage.setItem("auth_token", response.token);
-          initializeAuthClient(() => response.token);
-        }
+      const result = await signIn("credentials", {
+        email: otpEmail,
+        otp: otpCode,
+        isOtp: "true",
+        redirect: false,
+      });
+
+      if (result?.error) {
         toast({
-          title: "OTP Verified!",
-          description: "Welcome back!",
+          title: "Verification Failed",
+          description: "Invalid or expired verification code.",
+          variant: "destructive",
         });
+        return;
+      }
+
+      toast({
+        title: "OTP Verified!",
+        description: "Welcome back!",
+      });
+
+      try {
+        const session = await getSession();
+        const isAdmin = session?.user?.isAdmin;
+        const backendToken = session?.user?.backendToken;
+        if (backendToken && typeof window !== "undefined") {
+          localStorage.setItem("auth_token", backendToken);
+          initializeAuthClient(() => backendToken);
+        }
+        const targetPath = isAdmin
+          ? ROUTES.ADMIN
+          : redirect === ROUTES.DASHBOARD
+          ? ROUTES.DASHBOARD
+          : redirect;
+        router.push(targetPath);
+        router.refresh();
+      } catch {
         router.push(redirect);
         router.refresh();
       }
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Invalid or expired verification code.";
+    } catch {
       toast({
         title: "Verification Failed",
-        description: message,
+        description: "Invalid or expired verification code.",
         variant: "destructive",
       });
     } finally {

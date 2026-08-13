@@ -20,10 +20,32 @@ providers.push(
     credentials: {
       email: { label: "Email", type: "email" },
       password: { label: "Password", type: "password" },
+      otp: { label: "OTP", type: "text" },
+      isOtp: { label: "Is OTP", type: "text" },
     },
     async authorize(credentials) {
       try {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || process.env.API_BASE_URL || "https://readyforms-api.vercel.app/api";
+
+        if (credentials?.isOtp === "true" && credentials?.otp) {
+          const response = await axios.post(`${apiUrl}/auth/verify-otp`, {
+            email: credentials?.email,
+            otp: credentials?.otp,
+          });
+
+          if (response.data && response.data.token && response.data.user) {
+            return {
+              id: response.data.user.id,
+              email: response.data.user.email,
+              name: response.data.user.name,
+              image: null,
+              backendToken: response.data.token,
+              isAdmin: Boolean(response.data.user.isAdmin),
+            };
+          }
+          return null;
+        }
+
         const response = await axios.post(`${apiUrl}/auth/login`, {
           email: credentials?.email,
           password: credentials?.password,
