@@ -16,6 +16,9 @@ import {
   Settings,
   LayoutDashboard,
   Sparkles,
+  Layers,
+  History,
+  Server,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -114,12 +117,12 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     {
       href: "/admin/users",
       icon: <Users className="h-4 w-4 text-black dark:text-white" />,
-      label: "User Accounts",
+      label: "User Governance",
     },
     {
       href: "/admin/templates",
       icon: <BookTemplate className="h-4 w-4 text-black dark:text-white" />,
-      label: "Global Templates",
+      label: "Template Catalog",
     },
     {
       href: "/admin/responses",
@@ -127,9 +130,24 @@ export function AdminLayout({ children }: AdminLayoutProps) {
       label: "Form Submissions",
     },
     {
+      href: "/admin/topics",
+      icon: <Layers className="h-4 w-4 text-black dark:text-white" />,
+      label: "Taxonomy & Topics",
+    },
+    {
+      href: "/admin/activity",
+      icon: <History className="h-4 w-4 text-black dark:text-white" />,
+      label: "Audit & Activity",
+    },
+    {
+      href: "/admin/system",
+      icon: <Server className="h-4 w-4 text-black dark:text-white" />,
+      label: "System Diagnostics",
+    },
+    {
       href: "/api-status",
       icon: <Activity className="h-4 w-4 text-black dark:text-white" />,
-      label: "System Health",
+      label: "API Status",
     },
   ];
 

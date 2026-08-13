@@ -17,6 +17,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ShareAndEmbedDialog } from '@/components/forms/share-and-embed-dialog';
 
 interface TemplateDetailsProps {
   params: Promise<{
@@ -281,21 +282,10 @@ export default function TemplateDetailsPage({ params }: TemplateDetailsProps) {
                 <span>{likeCount}</span>
               </Button>
 
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => {
-                  navigator.clipboard.writeText(window.location.href);
-                  toast({
-                    title: "Link copied",
-                    description: "Template link copied to clipboard"
-                  });
-                }}
-                className="flex items-center gap-1"
-              >
-                <Share className="h-4 w-4" />
-                Share
-              </Button>
+              <ShareAndEmbedDialog
+                templateId={template.id}
+                title={template.title}
+              />
             </div>
           </div>
 

@@ -360,3 +360,109 @@ export const getAllTopics = catchAsync(async (req: Request, res: Response) => {
   res.status(200).json(topics);
 });
 
+/**
+ * @route GET /api/admin/system-activity/:count?
+ */
+export const getSystemActivity = catchAsync(async (req: Request, res: Response) => {
+  const count = Math.min(100, Math.max(1, parseInt(req.params.count as string) || 20));
+
+  const [recentUsers, recentTemplates, recentResponses, recentComments, recentLikes] = await Promise.all([
+    User.findAll({
+      attributes: ['id', 'name', 'email', 'createdAt'],
+      order: [['createdAt', 'DESC']],
+      limit: count,
+    }).catch(() => []),
+    Template.findAll({
+      attributes: ['id', 'title', 'userId', 'createdAt'],
+      include: [{ model: User, attributes: ['id', 'name', 'email'] }],
+      order: [['createdAt', 'DESC']],
+      limit: count,
+    }).catch(() => []),
+    FormResponse.findAll({
+      attributes: ['id', 'templateId', 'userId', 'createdAt', 'score'],
+      include: [
+        { model: User, attributes: ['id', 'name', 'email'] },
+        { model: Template, attributes: ['id', 'title'] },
+      ],
+      order: [['createdAt', 'DESC']],
+      limit: count,
+    }).catch(() => []),
+    Comment.findAll({
+      attributes: ['id', 'text', 'templateId', 'userId', 'createdAt'],
+      include: [
+        { model: User, attributes: ['id', 'name', 'email'] },
+        { model: Template, attributes: ['id', 'title'] },
+      ],
+      order: [['createdAt', 'DESC']],
+      limit: count,
+    }).catch(() => []),
+    Like.findAll({
+      attributes: ['id', 'templateId', 'userId', 'createdAt'],
+      include: [
+        { model: User, attributes: ['id', 'name', 'email'] },
+        { model: Template, attributes: ['id', 'title'] },
+      ],
+      order: [['createdAt', 'DESC']],
+      limit: count,
+    }).catch(() => []),
+  ]);
+
+  const activities: any[] = [];
+
+  for (const u of recentUsers as any[]) {
+    activities.push({
+      id: `user-${u.id}`,
+      type: 'user',
+      description: `New user registration: ${u.name || u.email}`,
+      timestamp: u.createdAt,
+      user: { id: u.id, name: u.name, email: u.email },
+    });
+  }
+
+  for (const t of recentTemplates as any[]) {
+    activities.push({
+      id: `template-${t.id}`,
+      type: 'template',
+      description: `New template created: "${t.title}"`,
+      timestamp: t.createdAt,
+      user: t.user,
+      meta: { templateId: t.id, title: t.title },
+    });
+  }
+
+  for (const r of recentResponses as any[]) {
+    activities.push({
+      id: `response-${r.id}`,
+      type: 'response',
+      description: `Form response submitted for "${r.template?.title || 'Form'}"`,
+      timestamp: r.createdAt,
+      user: r.user,
+      meta: { responseId: r.id, templateId: r.templateId, score: r.score },
+    });
+  }
+
+  for (const c of recentComments as any[]) {
+    activities.push({
+      id: `comment-${c.id}`,
+      type: 'comment',
+      description: `New comment on "${c.template?.title || 'Form'}": "${(c.text || '').slice(0, 40)}"`,
+      timestamp: c.createdAt,
+      user: c.user,
+    });
+  }
+
+  for (const l of recentLikes as any[]) {
+    activities.push({
+      id: `like-${l.id}`,
+      type: 'like',
+      description: `Liked form template "${l.template?.title || 'Form'}"`,
+      timestamp: l.createdAt,
+      user: l.user,
+    });
+  }
+
+  activities.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+  res.status(200).json(activities.slice(0, count));
+});
+

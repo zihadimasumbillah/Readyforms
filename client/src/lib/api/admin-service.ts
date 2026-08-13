@@ -24,12 +24,15 @@ interface DashboardStats {
   formSubmissions?: any[];
 }
 
-interface SystemActivity {
+export interface SystemActivity {
+  id?: string;
   type: string;
-  action: string;
+  action?: string;
+  description?: string;
   timestamp: string;
-  user: { id: string; name: string } | null;
-  data: any;
+  user?: { id?: string; name?: string; email?: string } | null;
+  data?: any;
+  meta?: any;
 }
 
 export const adminService = {
