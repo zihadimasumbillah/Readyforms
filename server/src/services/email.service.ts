@@ -89,7 +89,7 @@ export class EmailService {
 `;
 
     if (!resend) {
-      console.log(`[EMAIL SERVICE] RESEND_API_KEY not configured. Console fallback OTP for ${normalizedEmail}: ${otpCode}`);
+      console.log('[EMAIL SERVICE] RESEND_API_KEY not configured. Console fallback OTP for %s: %s', normalizedEmail, otpCode);
       return { success: true };
     }
 
@@ -101,10 +101,10 @@ export class EmailService {
         html: htmlContent,
       });
 
-      console.log(`[EMAIL SERVICE] OTP email successfully sent to ${normalizedEmail} via Resend. Message ID: ${response.data?.id}`);
+      console.log('[EMAIL SERVICE] OTP email successfully sent to %s via Resend. Message ID: %s', normalizedEmail, response.data?.id);
       return { success: true, messageId: response.data?.id };
     } catch (error: any) {
-      console.error(`[EMAIL SERVICE] Failed to send OTP email to ${normalizedEmail} via Resend:`, error?.message || error);
+      console.error('[EMAIL SERVICE] Failed to send OTP email to %s via Resend: %s', normalizedEmail, error?.message || error);
       return { success: false };
     }
   }

@@ -228,7 +228,7 @@ export const sendOTP = catchAsync(async (req: Request, res: Response) => {
 
   const otpCode = OTPService.setOTP(normalizedEmail, 10 * 60 * 1000);
 
-  console.log(`[OTP SYSTEM] Generated OTP for ${normalizedEmail} (${purpose}): ${otpCode}`);
+  console.log('[OTP SYSTEM] Generated OTP for %s (%s): %s', normalizedEmail, purpose, otpCode);
 
   EmailService.sendOTPEmail(normalizedEmail, otpCode, purpose).catch((err) => {
     console.error('[OTP EMAIL ERROR]', err);
@@ -364,7 +364,7 @@ export const forgotPassword = catchAsync(async (req: Request, res: Response) => 
   // Generate CSPRNG 6-digit OTP via OTPService
   const otpCode = OTPService.setOTP(normalizedEmail, 10 * 60 * 1000);
 
-  console.log(`[PASSWORD RESET OTP] For ${normalizedEmail}: ${otpCode}`);
+  console.log('[PASSWORD RESET OTP] For %s: %s', normalizedEmail, otpCode);
 
   EmailService.sendOTPEmail(normalizedEmail, otpCode, 'password reset').catch((err) => {
     console.error('[RESET EMAIL ERROR]', err);
