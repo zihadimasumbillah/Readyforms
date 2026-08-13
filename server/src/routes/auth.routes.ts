@@ -34,4 +34,13 @@ router.get('/me', verifyToken as express.RequestHandler, getCurrentUser);
 router.put('/preferences', verifyToken as express.RequestHandler, updatePreferences);
 router.put('/profile', verifyToken as express.RequestHandler, updateProfile);
 
+router.get('/error', (req: express.Request, res: express.Response) => {
+  res.status(200).json({
+    status: 'error',
+    message: 'Authentication error occurred. Please try logging in again.',
+    redirectUrl: '/auth/login',
+    timestamp: new Date().toISOString()
+  });
+});
+
 export default router;

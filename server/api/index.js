@@ -73,6 +73,14 @@ app.get('/', (req, res) => {
 });
 
 // Direct Seed Route for Manual Initialization
+app.get('/api/auth/error', (req, res) => {
+  res.status(200).json({
+    status: 'error',
+    message: 'Authentication error. Please try logging in again.',
+    redirectUrl: '/auth/login'
+  });
+});
+
 app.get('/api/seed', async (req, res) => {
   try {
     let seedModule;
