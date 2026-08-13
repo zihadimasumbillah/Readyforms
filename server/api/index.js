@@ -40,6 +40,42 @@ app.use(async (req, res, next) => {
   next();
 });
 
+// Root metadata endpoint for Vercel
+app.get('/', (req, res) => {
+  res.status(200).json({
+    name: 'ReadyForms API Server',
+    version: '1.0.0',
+    status: 'online',
+    message: 'Welcome to ReadyForms backend API service',
+    documentation: 'https://readyforms.vercel.app',
+    environment: process.env.NODE_ENV || 'production',
+    endpoints: {
+      root: '/',
+      health: '/health',
+      ping: '/ping',
+      topics: '/api/topics',
+      templates: '/api/templates',
+      auth: '/api/auth',
+      forms: '/api/forms',
+      likes: '/api/likes',
+      comments: '/api/comments',
+      admin: '/api/admin',
+    },
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Route aliases for non-prefixed paths
+app.get('/templates', (req, res, next) => {
+  req.url = '/api/templates';
+  app.handle(req, res, next);
+});
+
+app.get('/topics', (req, res, next) => {
+  req.url = '/api/topics';
+  app.handle(req, res, next);
+});
+
 // Direct Seed Route for Manual Initialization
 app.get('/api/seed', async (req, res) => {
   try {
