@@ -170,7 +170,7 @@ export const getAllTemplates = catchAsync(async (req: Request, res: Response) =>
   const offset = (pageNumber - 1) * limitNumber;
 
   const { count, rows: templates } = await Template.findAndCountAll({
-    include: [{ model: User, attributes: ['id', 'name', 'email'] }],
+    include: [{ model: User, attributes: ['id', 'name', 'email'], required: false }],
     limit: limitNumber,
     offset,
     order: [['createdAt', 'DESC']],
@@ -202,7 +202,7 @@ export const getTemplateById = catchAsync(async (req: Request, res: Response) =>
   
   const template = await Template.findByPk(id, {
     include: [
-      { model: User, attributes: ['id', 'name', 'email'] }
+      { model: User, attributes: ['id', 'name', 'email'], required: false }
     ]
   });
   
@@ -220,11 +220,18 @@ export const getAllResponses = catchAsync(async (req: Request, res: Response) =>
   const pageNumber = Math.max(1, parseInt(req.query.page as string) || 1);
   const limitNumber = Math.max(1, Math.min(100, parseInt(req.query.limit as string) || 20));
   const offset = (pageNumber - 1) * limitNumber;
+  const templateId = req.query.templateId as string;
+
+  const whereClause: any = {};
+  if (templateId && isUuid(templateId)) {
+    whereClause.templateId = templateId;
+  }
 
   const { count, rows: responses } = await FormResponse.findAndCountAll({
+    where: whereClause,
     include: [
-      { model: User, attributes: ['id', 'name', 'email'] },
-      { model: Template, attributes: ['id', 'title'] },
+      { model: User, attributes: ['id', 'name', 'email'], required: false },
+      { model: Template, attributes: ['id', 'title'], required: false },
     ],
     limit: limitNumber,
     offset,

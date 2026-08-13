@@ -171,11 +171,16 @@ export const adminService = {
   /**
    * Get all form responses
    */
-  async getAllResponses(page = 1, limit = 10): Promise<FormResponse[]> {
+  async getAllResponses(page = 1, limit = 10, templateId?: string): Promise<FormResponse[]> {
     try {
-      const response = await apiClient.get(`/admin/responses?page=${page}&limit=${limit}`);
-      // Return just the responses array instead of the whole response object
-      return response.data.responses;
+      const url = templateId 
+        ? `/admin/responses?page=${page}&limit=${limit}&templateId=${templateId}`
+        : `/admin/responses?page=${page}&limit=${limit}`;
+      const response = await apiClient.get(url);
+      if (Array.isArray(response.data)) {
+        return response.data;
+      }
+      return response.data?.responses || response.data?.data || [];
     } catch (error: any) {
       console.error('Failed to fetch responses:', error);
       throw error;
@@ -238,7 +243,10 @@ export const adminService = {
   async getFormResponsesByTemplate(templateId: string): Promise<FormResponse[]> {
     try {
       const response = await apiClient.get(`/admin/templates/${templateId}/responses`);
-      return response.data;
+      if (Array.isArray(response.data)) {
+        return response.data;
+      }
+      return response.data?.responses || response.data?.data || [];
     } catch (error: any) {
       console.error(`Failed to fetch responses for template ${templateId}:`, error);
       throw error;

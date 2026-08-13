@@ -102,7 +102,8 @@ export const getFormResponsesByTemplate = catchAsync(async (req: Request, res: R
 
   const responses = await FormResponse.findAll({
     where: { templateId },
-    include: [{ model: User, attributes: ['id', 'name', 'email'] }]
+    include: [{ model: User, attributes: ['id', 'name', 'email'], required: false }],
+    order: [['createdAt', 'DESC']]
   });
 
   return res.status(200).json(responses);
@@ -124,8 +125,8 @@ export const getFormResponseById = catchAsync(async (req: Request, res: Response
 
   const response = await FormResponse.findByPk(id, {
     include: [
-      { model: Template },
-      { model: User, attributes: ['id', 'name'] }
+      { model: Template, required: false },
+      { model: User, attributes: ['id', 'name', 'email'], required: false }
     ]
   });
 
@@ -158,7 +159,8 @@ export const getFormResponsesByUser = catchAsync(async (req: Request, res: Respo
 
   const responses = await FormResponse.findAll({
     where: { userId: targetUserId },
-    include: [{ model: Template, attributes: ['id', 'title', 'description'] }]
+    include: [{ model: Template, attributes: ['id', 'title', 'description'], required: false }],
+    order: [['createdAt', 'DESC']]
   });
 
   return res.status(200).json(responses);
